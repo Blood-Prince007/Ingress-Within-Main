@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/db';
 import { IntelligenceOrchestrator } from '../../../../lib/orchestrator/intelligenceOrchestrator';
+import { requireAuthorizedAdmin } from '../../../../lib/auth/adminAuthHelper';
 
 /**
  * GET /api/admin/health: Production Health Dashboard & Pipeline Audit API
  */
 export async function GET(request: NextRequest) {
   try {
+    await requireAuthorizedAdmin(request);
     const userId = request.nextUrl.searchParams.get('userId');
 
     // 1. Queue Status & Failed Jobs

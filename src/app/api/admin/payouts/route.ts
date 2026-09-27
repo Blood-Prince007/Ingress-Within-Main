@@ -1,24 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TherapistPayoutService } from '../../../../lib/therapist/therapistPayoutService';
+import { requireAuthorizedAdmin } from '../../../../lib/auth/adminAuthHelper';
+import { AdminAuditService } from '../../../../lib/admin/adminAuditService';
 import { supabase } from '../../../../lib/db';
 
-function verifyAdminAuthorization(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization') || '';
-  const adminKey = request.headers.get('x-admin-key') || '';
-  const expectedAdminKey =
-    process.env.ADMIN_SECRET_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    'iw_admin_dev_secret';
-
-  return (
-    adminKey === expectedAdminKey ||
-    authHeader === `Bearer ${expectedAdminKey}` ||
-    authHeader === `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-  );
-}
-
 export async function GET(request: NextRequest) {
-  if (!verifyAdminAuthorization(request)) {
+  try {
+    await requireAuthorizedAdmin(request);
+  } catch (err: any) {
     return NextResponse.json(
       { error: { code: 'ADMIN_UNAUTHORIZED', message: 'Admin authorization required.' } },
       { status: 403 }
@@ -53,14 +42,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!verifyAdminAuthorization(request)) {
-    return NextResponse.json(
-      { error: { code: 'ADMIN_UNAUTHORIZED', message: 'Admin authorization required.' } },
-      { status: 403 }
-    );
-  }
-
   try {
+    const admin = await requireAuthorizedAdmin(request);
+
     const body = await request.json();
     const { therapist_account_id, period_start, period_end } = body;
 
@@ -80,6 +64,21 @@ export async function POST(request: NextRequest) {
       therapistAccountId: therapist_account_id,
       periodStart: period_start,
       periodEnd: period_end,
+    });
+
+    await AdminAuditService.logAction({
+      actorId: admin.adminId,
+      actorType: admin.actorType,
+      action: 'payout_batch_created',
+      entityType: 'payout_batch',
+      entityId: result.batch.id,
+      metadata: {
+        therapist_account_id,
+        period_start,
+        period_end,
+        total_net: result.batch.total_net,
+        item_count: result.items.length,
+      },
     });
 
     return NextResponse.json({

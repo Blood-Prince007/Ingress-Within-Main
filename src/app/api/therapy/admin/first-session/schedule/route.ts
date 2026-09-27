@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SessionBookingService } from '../../../../../../lib/therapy/sessionBookingService';
+import { requireAuthorizedAdmin } from '../../../../../../lib/auth/adminAuthHelper';
+import { AdminAuditService } from '../../../../../../lib/admin/adminAuditService';
 import { supabase } from '../../../../../../lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    // In production, verify admin API key or admin JWT role
+    const admin = await requireAuthorizedAdmin(request);
     const body = await request.json();
     const { therapistAccountId, userId, slotStart, slotEnd, sessionType, modality, notes } = body;
 
@@ -39,6 +41,20 @@ export async function POST(request: NextRequest) {
       modality: modality || 'telehealth',
       isFirstSessionCoordination: true,
       clientNotes: notes,
+    });
+
+    await AdminAuditService.logAction({
+      actorId: admin.adminId,
+      actorType: admin.actorType,
+      action: 'first_session_scheduled',
+      entityType: 'booking',
+      entityId: order.bookingId,
+      metadata: {
+        therapist_account_id: therapistAccountId,
+        user_id: userId,
+        slot_start: slotStart,
+        slot_end: slotEnd,
+      },
     });
 
     return NextResponse.json({

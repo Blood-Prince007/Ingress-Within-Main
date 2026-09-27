@@ -335,6 +335,7 @@ export class TherapistPlatformService {
         scheduled_start,
         scheduled_end,
         session_type,
+        attendance_status,
         users (
           id,
           name
@@ -344,7 +345,11 @@ export class TherapistPlatformService {
       .eq('status', 'completed')
       .order('scheduled_end', { ascending: false });
 
-    const completedIds = (rawCompletedSessions || []).map((s) => s.id);
+    // No-shows must not appear in notesDue on the therapist Today view, nor require normal SOAP notes
+    const attendedSessions = (rawCompletedSessions || []).filter(
+      (s: any) => s.attendance_status !== 'client_no_show' && s.attendance_status !== 'therapist_no_show'
+    );
+    const completedIds = attendedSessions.map((s: any) => s.id);
     let notesDue: any[] = [];
 
     if (completedIds.length > 0) {
@@ -357,7 +362,7 @@ export class TherapistPlatformService {
         (notes || []).filter((n) => !n.is_draft).map((n) => n.appointment_id)
       );
 
-      notesDue = (rawCompletedSessions || [])
+      notesDue = attendedSessions
         .filter((s: any) => !finalizedSet.has(s.id))
         .map((s: any) => ({
           id: s.id,
@@ -1061,7 +1066,7 @@ export class TherapistPlatformService {
     // 6. Fetch canonical appointments for this relationship
     const { data: appointments } = await supabase
       .from('therapist_clinical_appointments')
-      .select('id, scheduled_start, scheduled_end, status, session_type, modality, meeting_link, created_at')
+      .select('id, scheduled_start, scheduled_end, status, attendance_status, session_type, modality, meeting_link, created_at')
       .eq('therapist_account_id', therapistAccountId)
       .eq('user_id', clientId)
       .order('scheduled_start', { ascending: false });
@@ -1070,7 +1075,9 @@ export class TherapistPlatformService {
     const now = new Date();
 
     const totalSessions = appts.length;
-    const completedSessions = appts.filter((a) => a.status === 'completed').length;
+    const completedSessions = appts.filter(
+      (a) => a.status === 'completed' && a.attendance_status !== 'client_no_show' && a.attendance_status !== 'therapist_no_show'
+    ).length;
     const upcomingSessions = appts.filter(
       (a) => ['scheduled', 'confirmed', 'in_progress'].includes(a.status) && new Date(a.scheduled_start) >= now
     ).length;
@@ -2344,7 +2351,7 @@ export class TherapistPlatformService {
     // 1. Verify appointment ownership and get user_id
     const { data: appt, error: apptErr } = await supabase
       .from('therapist_clinical_appointments')
-      .select('id, user_id, status, therapist_account_id')
+      .select('id, user_id, status, attendance_status, therapist_account_id')
       .eq('id', appointmentId)
       .eq('therapist_account_id', therapistAccountId)
       .maybeSingle();
@@ -2360,6 +2367,13 @@ export class TherapistPlatformService {
       const err: any = new Error('Cannot add or edit clinical SOAP notes for a cancelled session.');
       err.status = 400;
       err.code = 'SESSION_CANCELLED';
+      throw err;
+    }
+
+    if (appt.attendance_status === 'client_no_show' || appt.attendance_status === 'therapist_no_show') {
+      const err: any = new Error('Cannot create or edit clinical SOAP notes for a session marked as no-show.');
+      err.status = 400;
+      err.code = 'SESSION_NO_SHOW';
       throw err;
     }
 
@@ -2473,7 +2487,7 @@ export class TherapistPlatformService {
     // 1. Verify appointment ownership
     const { data: appt, error: apptErr } = await supabase
       .from('therapist_clinical_appointments')
-      .select('id, user_id, status, therapist_account_id')
+      .select('id, user_id, status, attendance_status, therapist_account_id')
       .eq('id', appointmentId)
       .eq('therapist_account_id', therapistAccountId)
       .maybeSingle();
@@ -2489,6 +2503,13 @@ export class TherapistPlatformService {
       const err: any = new Error('Cannot finalize clinical notes for a cancelled session.');
       err.status = 400;
       err.code = 'SESSION_CANCELLED';
+      throw err;
+    }
+
+    if (appt.attendance_status === 'client_no_show' || appt.attendance_status === 'therapist_no_show') {
+      const err: any = new Error('Cannot finalize clinical notes for a session marked as no-show.');
+      err.status = 400;
+      err.code = 'SESSION_NO_SHOW';
       throw err;
     }
 

@@ -233,7 +233,8 @@ async function runPlatformTestSuite() {
   );
 
   // Invalid decision check
-  const adminSecret = process.env.ADMIN_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || 'iw_admin_dev_secret';
+  const adminSecret = process.env.ADMIN_SECRET_KEY || 'valid_test_admin_secret_key_999!';
+  process.env.ADMIN_SECRET_KEY = adminSecret;
   const badDecisionReq = new NextRequest('http://localhost:3000/api/admin/therapists/review', {
     method: 'POST',
     headers: {

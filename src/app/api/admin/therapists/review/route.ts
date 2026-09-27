@@ -1,24 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TherapistPlatformService } from '../../../../../lib/therapist/therapistPlatformService';
+import { requireAuthorizedAdmin } from '../../../../../lib/auth/adminAuthHelper';
+import { AdminAuditService } from '../../../../../lib/admin/adminAuditService';
 
 export async function POST(request: NextRequest) {
   try {
-    // Admin Authorization Guard: require admin secret header or bearer token
-    const authHeader = request.headers.get('authorization') || '';
-    const adminKey = request.headers.get('x-admin-key') || '';
-    const expectedAdminKey = process.env.ADMIN_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || 'iw_admin_dev_secret';
-
-    const isAuthorized =
-      adminKey === expectedAdminKey ||
-      authHeader === `Bearer ${expectedAdminKey}` ||
-      authHeader === `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`;
-
-    if (!isAuthorized) {
-      return NextResponse.json(
-        { error: { code: 'ADMIN_UNAUTHORIZED', message: 'Administrative authorization required.' } },
-        { status: 403 }
-      );
-    }
+    const admin = await requireAuthorizedAdmin(request);
 
     const body = await request.json().catch(() => ({}));
     const { therapist_account_id, decision, reviewer_notes } = body;
@@ -40,9 +27,22 @@ export async function POST(request: NextRequest) {
     const result = await TherapistPlatformService.adminReviewTherapist(
       therapist_account_id,
       decision,
-      'admin_reviewer',
+      admin.adminId,
       reviewer_notes
     );
+
+    // Record immutable admin audit log
+    await AdminAuditService.logAction({
+      actorId: admin.adminId,
+      actorType: admin.actorType,
+      action: decision === 'approved' ? 'therapist_approved' : 'therapist_rejected',
+      entityType: 'therapist',
+      entityId: therapist_account_id,
+      metadata: {
+        decision,
+        reviewer_notes: reviewer_notes || null,
+      },
+    });
 
     return NextResponse.json({
       message: `Therapist application ${decision}.`,

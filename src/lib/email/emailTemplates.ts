@@ -163,6 +163,8 @@ export const EmailTemplates: Record<string, (data: Record<string, any>) => Email
                   ? 'A 100% full refund has been initiated to your original payment method.'
                   : refundStatus === 'eligible'
                   ? 'Your cancellation qualifies for a full refund and is processing.'
+                  : refundStatus === 'failed'
+                  ? 'Your refund is pending resolution by our care team and will be disbursed shortly.'
                   : refundStatus === 'denied'
                   ? 'Non-refundable (cancellation occurred within 24 hours of session).'
                   : 'Pending administrative review under platform cancellation guidelines.'

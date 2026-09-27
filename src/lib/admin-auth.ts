@@ -17,18 +17,10 @@ export async function getAuthenticatedAdmin(request: NextRequest): Promise<Authe
     const isDev = process.env.NODE_ENV === 'development';
     const isDevLabEnabled = process.env.ENABLE_DEVELOPER_LAB === 'true' || process.env.NEXT_PUBLIC_ENABLE_DEV_LAB === 'true';
 
-    // Allow developer mode access in development
     const authUser = await getAuthenticatedUser(request);
 
     if (!authUser) {
-      // Return synthetic dev admin session for Developer Lab testing
-      return {
-        userId: 'dev_admin_001',
-        phoneNumber: '+1000000000',
-        deviceId: 'dev_device_001',
-        isAdmin: true,
-        role: 'admin'
-      };
+      return null;
     }
 
     // Query user record in database to check admin status
@@ -38,7 +30,7 @@ export async function getAuthenticatedAdmin(request: NextRequest): Promise<Authe
       .eq('id', authUser.userId)
       .maybeSingle();
 
-    const isAdmin = userRecord?.is_admin === true || userRecord?.role === 'admin' || isDev || isDevLabEnabled;
+    const isAdmin = userRecord?.is_admin === true || userRecord?.role === 'admin';
 
     if (!isAdmin) {
       return null;

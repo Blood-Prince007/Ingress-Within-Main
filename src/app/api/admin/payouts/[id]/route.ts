@@ -1,27 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TherapistPayoutService } from '../../../../../lib/therapist/therapistPayoutService';
+import { requireAuthorizedAdmin } from '../../../../../lib/auth/adminAuthHelper';
+import { AdminAuditService } from '../../../../../lib/admin/adminAuditService';
 import { supabase } from '../../../../../lib/db';
-
-function verifyAdminAuthorization(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization') || '';
-  const adminKey = request.headers.get('x-admin-key') || '';
-  const expectedAdminKey =
-    process.env.ADMIN_SECRET_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    'iw_admin_dev_secret';
-
-  return (
-    adminKey === expectedAdminKey ||
-    authHeader === `Bearer ${expectedAdminKey}` ||
-    authHeader === `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-  );
-}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!verifyAdminAuthorization(request)) {
+  try {
+    await requireAuthorizedAdmin(request);
+  } catch (err: any) {
     return NextResponse.json(
       { error: { code: 'ADMIN_UNAUTHORIZED', message: 'Admin authorization required.' } },
       { status: 403 }
@@ -57,7 +46,10 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!verifyAdminAuthorization(request)) {
+  let admin;
+  try {
+    admin = await requireAuthorizedAdmin(request);
+  } catch (err: any) {
     return NextResponse.json(
       { error: { code: 'ADMIN_UNAUTHORIZED', message: 'Admin authorization required.' } },
       { status: 403 }
@@ -71,25 +63,30 @@ export async function PATCH(
     const { action, bank_reference, paid_at, reason } = body;
 
     let result;
+    let auditAction = '';
     switch (action) {
       case 'start':
         result = await TherapistPayoutService.startPayoutBatch(batchId);
+        auditAction = 'payout_started';
         break;
       case 'mark_paid':
         result = await TherapistPayoutService.markPayoutPaid(batchId, {
           bankReference: bank_reference,
           paidAt: paid_at,
         });
+        auditAction = 'payout_paid';
         break;
       case 'mark_failed':
         result = await TherapistPayoutService.markPayoutFailed(batchId, {
           reason,
         });
+        auditAction = 'payout_failed';
         break;
       case 'reverse':
         result = await TherapistPayoutService.reversePayout(batchId, {
           reason: reason || 'Administrative reversal',
         });
+        auditAction = 'payout_reversed';
         break;
       default:
         return NextResponse.json(
@@ -103,6 +100,20 @@ export async function PATCH(
           { status: 400 }
         );
     }
+
+    await AdminAuditService.logAction({
+      actorId: admin.adminId,
+      actorType: admin.actorType,
+      action: auditAction,
+      entityType: 'payout_batch',
+      entityId: batchId,
+      metadata: {
+        action,
+        status: result.status,
+        bank_reference: bank_reference || null,
+        reason: reason || null,
+      },
+    });
 
     return NextResponse.json({
       success: true,

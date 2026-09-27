@@ -445,7 +445,8 @@ async function runFinancialSuite() {
   assert(unauthRes.status === 403, 'Unauthorized call to POST /api/admin/payouts blocked with 403');
 
   // Authorized request with x-admin-key
-  const adminSecret = process.env.ADMIN_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || 'iw_admin_dev_secret';
+  const adminSecret = process.env.ADMIN_SECRET_KEY || 'valid_test_admin_secret_key_999!';
+  process.env.ADMIN_SECRET_KEY = adminSecret;
   const authReq = new NextRequest('http://localhost:3000/api/admin/payouts', {
     method: 'GET',
     headers: { 'x-admin-key': adminSecret },

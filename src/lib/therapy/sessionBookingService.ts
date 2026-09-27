@@ -5,6 +5,7 @@ import { GoogleCalendarService } from '../calendar/googleCalendarService';
 import { EmailService } from '../email/emailService';
 import { EmailEvents } from '../email/emailEvents';
 import { TherapistPayoutService } from '../therapist/therapistPayoutService';
+import { AdminAuditService } from '../admin/adminAuditService';
 
 export interface AuthoritativePricing {
   subtotalInr: number;
@@ -16,6 +17,10 @@ export interface AuthoritativePricing {
 }
 
 export class SessionBookingService {
+  // Concurrency Locks to protect against race conditions
+  private static activeCancellationLocks: Set<string> = new Set();
+  private static activeNoShowLocks: Set<string> = new Set();
+  private static activeRefundLocks: Set<string> = new Set();
   /**
    * Calculates platform authoritative pricing for a therapist's session.
    * Client-side pricing is strictly prohibited and discarded.
@@ -733,251 +738,200 @@ export class SessionBookingService {
   }) {
     const { appointmentId, cancelledBy, reason } = params;
 
-    // 1. Fetch appointment
-    const { data: appt, error } = await supabase
-      .from('therapist_clinical_appointments')
-      .select('*')
-      .eq('id', appointmentId)
-      .maybeSingle();
-
-    if (error || !appt) {
-      const err: any = new Error('Appointment not found.');
-      err.code = 'SESSION_NOT_FOUND';
-      err.status = 404;
+    if (this.activeCancellationLocks.has(appointmentId)) {
+      const err: any = new Error('Cancellation currently in progress for this appointment.');
+      err.code = 'CONCURRENT_OPERATION';
+      err.status = 409;
       throw err;
     }
+    this.activeCancellationLocks.add(appointmentId);
 
-    if (appt.status === 'completed') {
-      const err: any = new Error('Cannot cancel a completed session.');
-      err.code = 'SESSION_IMMUTABLE';
-      err.status = 400;
-      throw err;
-    }
-
-    if (appt.status === 'cancelled') {
-      return { success: true, appointment: appt, alreadyCancelled: true };
-    }
-
-    // 2. Evaluate Refund Policy
-    const scheduledStart = new Date(appt.scheduled_start).getTime();
-    const now = Date.now();
-    const hoursRemaining = (scheduledStart - now) / (1000 * 60 * 60);
-
-    let refundStatus: 'full' | 'pending' | 'denied' = 'denied';
-
-    if (cancelledBy === 'therapist' || cancelledBy === 'admin') {
-      refundStatus = 'full';
-    } else if (hoursRemaining >= 48) {
-      refundStatus = 'full';
-    } else if (hoursRemaining >= 24) {
-      refundStatus = 'pending'; // 24-48 hours review window
-    } else {
-      refundStatus = 'denied';  // Under 24 hours
-    }
-
-    // 3. Execute Razorpay refund if full refund
-    let refundId: string | null = null;
-    let refundAmountPaise = 0;
-
-    if (refundStatus === 'full' && appt.payment_id) {
-      const rzp = BillingService.getRazorpayClient();
-      refundId = `rfnd_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-      if (rzp) {
-        try {
-          const rzpRefund = await rzp.payments.refund(appt.payment_id, {});
-          if (rzpRefund?.id) {
-            refundId = rzpRefund.id;
-          }
-        } catch (rfErr) {
-          console.warn('[SessionBookingService] Razorpay refund API warning:', rfErr);
-        }
-      }
-    }
-
-    // 4. Update linked booking if present
-    if (appt.booking_id) {
-      const { data: bkg } = await supabase
-        .from('therapy_session_bookings')
-        .select('amount_paise')
-        .eq('id', appt.booking_id)
+    try {
+      // 1. Fetch appointment
+      const { data: appt, error } = await supabase
+        .from('therapist_clinical_appointments')
+        .select('*')
+        .eq('id', appointmentId)
         .maybeSingle();
 
-      refundAmountPaise = bkg?.amount_paise || 177000;
+      if (error || !appt) {
+        const err: any = new Error('Appointment not found.');
+        err.code = 'SESSION_NOT_FOUND';
+        err.status = 404;
+        throw err;
+      }
 
-      await supabase
-        .from('therapy_session_bookings')
-        .update({
-          booking_status: 'cancelled',
-          cancellation_reason: reason || `Cancelled by ${cancelledBy}`,
-          payment_status: refundStatus === 'full' ? 'refunded' : 'paid',
-          refund_status: refundStatus,
-          refund_id: refundId,
-          refund_amount_paise: refundStatus === 'full' ? refundAmountPaise : 0,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', appt.booking_id);
-    }
+      if (appt.status === 'completed') {
+        const err: any = new Error('Cannot cancel a completed session.');
+        err.code = 'SESSION_IMMUTABLE';
+        err.status = 400;
+        throw err;
+      }
 
-    // 5. Update appointment
-    const { data: updatedAppt } = await supabase
-      .from('therapist_clinical_appointments')
-      .update({
+      if (appt.status === 'cancelled') {
+        return { success: true, appointment: appt, alreadyCancelled: true };
+      }
+
+      // 2. Evaluate Refund Policy
+      const scheduledStart = new Date(appt.scheduled_start).getTime();
+      const now = Date.now();
+      const hoursRemaining = (scheduledStart - now) / (1000 * 60 * 60);
+
+      let refundStatus: 'none' | 'eligible' | 'pending' | 'full' | 'partial' | 'denied' | 'failed' = 'denied';
+
+      if (cancelledBy === 'therapist' || cancelledBy === 'admin') {
+        refundStatus = 'eligible';
+      } else if (hoursRemaining >= 48) {
+        refundStatus = 'eligible';
+      } else if (hoursRemaining >= 24) {
+        refundStatus = 'pending'; // 24-48 hours review window
+      } else {
+        refundStatus = 'denied';  // Under 24 hours
+      }
+
+      // 3. Execute Razorpay refund if eligible
+      let refundId: string | null = appt.refund_id || null;
+      let refundAmountPaise = 0;
+
+      if (appt.booking_id) {
+        const { data: bkg } = await supabase
+          .from('therapy_session_bookings')
+          .select('amount_paise')
+          .eq('id', appt.booking_id)
+          .maybeSingle();
+
+        refundAmountPaise = bkg?.amount_paise || 177000;
+      }
+
+      // Idempotency anchor: if already refunded, keep full
+      if (appt.refund_status === 'full') {
+        refundStatus = 'full';
+        refundId = appt.refund_id || null;
+      } else if (refundStatus === 'eligible') {
+        if (appt.payment_id) {
+          const rzp = BillingService.getRazorpayClient();
+          if (rzp) {
+            try {
+              const rzpRefund = await rzp.payments.refund(appt.payment_id, {
+                amount: refundAmountPaise > 0 ? refundAmountPaise : undefined,
+                notes: {
+                  appointment_id: appointmentId,
+                  cancelled_by: cancelledBy,
+                },
+              });
+              if (rzpRefund?.id) {
+                refundId = rzpRefund.id;
+                refundStatus = 'full';
+                await AdminAuditService.logAction({
+                  action: 'refund_issued',
+                  resourceType: 'appointment',
+                  resourceId: appointmentId,
+                  actorType: cancelledBy === 'admin' ? 'admin' : (cancelledBy === 'therapist' ? 'therapist' : 'client'),
+                  actorId: params.userId || params.therapistAccountId || 'system',
+                  metadata: {
+                    refundId,
+                    amountPaise: refundAmountPaise,
+                    paymentId: appt.payment_id,
+                  },
+                });
+              } else {
+                refundStatus = 'failed';
+              }
+            } catch (rfErr: any) {
+              console.error('[SessionBookingService] Razorpay refund failed:', rfErr);
+              refundStatus = 'failed';
+              await AdminAuditService.logAction({
+                action: 'refund_failed',
+                resourceType: 'appointment',
+                resourceId: appointmentId,
+                actorType: cancelledBy === 'admin' ? 'admin' : (cancelledBy === 'therapist' ? 'therapist' : 'client'),
+                actorId: params.userId || params.therapistAccountId || 'system',
+                metadata: {
+                  error: rfErr?.message || String(rfErr),
+                  paymentId: appt.payment_id,
+                  amountPaise: refundAmountPaise,
+                },
+              });
+            }
+          } else {
+            refundStatus = 'failed';
+            await AdminAuditService.logAction({
+              action: 'refund_failed',
+              resourceType: 'appointment',
+              resourceId: appointmentId,
+              actorType: cancelledBy === 'admin' ? 'admin' : (cancelledBy === 'therapist' ? 'therapist' : 'client'),
+              actorId: params.userId || params.therapistAccountId || 'system',
+              metadata: {
+                error: 'Razorpay gateway client not configured.',
+                paymentId: appt.payment_id,
+              },
+            });
+          }
+        } else {
+          refundStatus = 'none';
+        }
+      }
+
+      // 4. Update linked booking if present
+      if (appt.booking_id) {
+        await supabase
+          .from('therapy_session_bookings')
+          .update({
+            booking_status: 'cancelled',
+            cancellation_reason: reason || `Cancelled by ${cancelledBy}`,
+            payment_status: refundStatus === 'full' ? 'refunded' : (refundStatus === 'failed' ? 'paid' : (refundStatus === 'pending' ? 'pending' : 'paid')),
+            refund_status: refundStatus,
+            refund_id: refundId,
+            refund_amount_paise: refundStatus === 'full' ? refundAmountPaise : 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', appt.booking_id);
+      }
+
+      // 5. Update appointment
+      const apptUpdate: Record<string, any> = {
         status: 'cancelled',
         cancelled_by: cancelledBy,
         cancellation_reason: reason || `Cancelled by ${cancelledBy}`,
         refund_status: refundStatus,
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', appointmentId)
-      .select('*')
-      .single();
-
-    // 6. Delete Google Calendar event
-    if (appt.google_calendar_event_id) {
-      await GoogleCalendarService.deleteEvent(
-        appt.therapist_account_id,
-        appt.google_calendar_event_id
-      );
-    }
-
-    // 7. Adjust earnings if therapist cancelled or refunded
-    if (refundStatus === 'full') {
-      await TherapistPayoutService.handleAppointmentRefund(appointmentId);
-    }
-
-    // 8. Dispatch notification emails
-    const { data: clientUser } = await supabase
-      .from('users')
-      .select('email, full_name')
-      .eq('id', appt.user_id)
-      .maybeSingle();
-
-    const { data: therapistAccount } = await supabase
-      .from('therapist_accounts')
-      .select('email, full_name')
-      .eq('id', appt.therapist_account_id)
-      .maybeSingle();
-
-    await EmailService.notifySessionCancelled({
-      appointmentId,
-      scheduledStart: appt.scheduled_start,
-      clientEmail: clientUser?.email || 'client@ingresswithin.com',
-      therapistEmail: therapistAccount?.email || 'therapist@ingresswithin.com',
-      clientName: clientUser?.full_name || 'Client',
-      therapistName: therapistAccount?.full_name || 'Therapist',
-      reason,
-      refundStatus,
-    });
-
-    if (refundStatus === 'full' && refundId) {
-      await EmailService.notifyRefundInitiated({
-        clientEmail: clientUser?.email || 'client@ingresswithin.com',
-        clientName: clientUser?.full_name || 'Client',
-        amountPaise: refundAmountPaise,
-        refundId,
-        bookingId: appt.booking_id,
-      });
-    }
-
-    return {
-      success: true,
-      refundStatus,
-      refundId,
-      appointment: updatedAppt,
-    };
-  }
-
-  /**
-   * Handles attendance status / no-show recording.
-   * - client_no_show: Non-refundable, therapist earnings kept.
-   * - therapist_no_show: 100% full refund to client, therapist earnings voided.
-   */
-  static async recordAttendanceStatus(params: {
-    appointmentId: string;
-    therapistAccountId: string;
-    attendanceStatus: 'attended' | 'client_no_show' | 'therapist_no_show';
-    notes?: string;
-  }) {
-    const { appointmentId, therapistAccountId, attendanceStatus, notes } = params;
-
-    const { data: appt, error } = await supabase
-      .from('therapist_clinical_appointments')
-      .select('*')
-      .eq('id', appointmentId)
-      .eq('therapist_account_id', therapistAccountId)
-      .maybeSingle();
-
-    if (error || !appt) {
-      const err: any = new Error('Appointment not found or unauthorized.');
-      err.code = 'SESSION_NOT_FOUND';
-      err.status = 404;
-      throw err;
-    }
-
-    if (appt.status === 'cancelled') {
-      const err: any = new Error('Cannot update attendance for a cancelled session.');
-      err.code = 'SESSION_CANCELLED';
-      err.status = 400;
-      throw err;
-    }
-
-    let refundStatus = appt.refund_status || 'none';
-    let refundId: string | null = null;
-    let newStatus = appt.status;
-
-    if (attendanceStatus === 'client_no_show') {
-      // Client missed: session counts as consumed, NO refund
-      newStatus = 'completed';
-      refundStatus = 'denied';
-      await TherapistPayoutService.handleAppointmentNoShow(appointmentId, 'client');
-    } else if (attendanceStatus === 'therapist_no_show') {
-      // Clinician missed: 100% full refund to client
-      newStatus = 'cancelled';
-      refundStatus = 'full';
-      refundId = `rfnd_noshow_${Date.now()}`;
-
-      if (appt.payment_id) {
-        const rzp = BillingService.getRazorpayClient();
-        if (rzp) {
-          try {
-            const rzpRefund = await rzp.payments.refund(appt.payment_id, {});
-            if (rzpRefund?.id) refundId = rzpRefund.id;
-          } catch (rErr) {
-            console.warn('[SessionBookingService] No-show refund error:', rErr);
-          }
-        }
+      };
+      if (refundId) {
+        apptUpdate.refund_id = refundId;
       }
 
-      // Void therapist earnings
-      await TherapistPayoutService.handleAppointmentNoShow(appointmentId, 'therapist');
-    } else if (attendanceStatus === 'attended') {
-      newStatus = 'completed';
-    }
+      let { data: updatedAppt, error: cancelUpdErr } = await supabase
+        .from('therapist_clinical_appointments')
+        .update(apptUpdate)
+        .eq('id', appointmentId)
+        .select('*')
+        .single();
 
-    const { data: updatedAppt } = await supabase
-      .from('therapist_clinical_appointments')
-      .update({
-        attendance_status: attendanceStatus,
-        status: newStatus,
-        refund_status: refundStatus,
-        client_notes: notes || appt.client_notes,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', appointmentId)
-      .select('*')
-      .single();
+      if (cancelUpdErr && (cancelUpdErr.message?.includes('refund_id') || cancelUpdErr.code === 'PGRST204')) {
+        delete apptUpdate.refund_id;
+        const fbRes = await supabase
+          .from('therapist_clinical_appointments')
+          .update(apptUpdate)
+          .eq('id', appointmentId)
+          .select('*')
+          .single();
+        updatedAppt = fbRes.data;
+      }
 
-    // Mark first_session_completed if this was first session
-    if (newStatus === 'completed' && appt.relationship_id) {
-      await supabase
-        .from('therapy_care_relationships')
-        .update({ first_session_completed: true })
-        .eq('id', appt.relationship_id);
-    }
+      // 6. Delete Google Calendar event
+      if (appt.google_calendar_event_id) {
+        await GoogleCalendarService.deleteEvent(
+          appt.therapist_account_id,
+          appt.google_calendar_event_id
+        );
+      }
 
-    // Send notifications if no-show
-    if (attendanceStatus === 'client_no_show' || attendanceStatus === 'therapist_no_show') {
+      // 7. Adjust earnings ONLY IF refund confirmed
+      if (refundStatus === 'full') {
+        await TherapistPayoutService.handleAppointmentRefund(appointmentId);
+      }
+
+      // 8. Dispatch notification emails
       const { data: clientUser } = await supabase
         .from('users')
         .select('email, full_name')
@@ -990,27 +944,394 @@ export class SessionBookingService {
         .eq('id', appt.therapist_account_id)
         .maybeSingle();
 
-      await EmailService.notifyNoShow({
+      await EmailService.notifySessionCancelled({
         appointmentId,
         scheduledStart: appt.scheduled_start,
         clientEmail: clientUser?.email || 'client@ingresswithin.com',
         therapistEmail: therapistAccount?.email || 'therapist@ingresswithin.com',
         clientName: clientUser?.full_name || 'Client',
         therapistName: therapistAccount?.full_name || 'Therapist',
-        attendanceStatus,
+        reason,
+        refundStatus,
       });
 
-      if (attendanceStatus === 'therapist_no_show' && refundId) {
+      if (refundStatus === 'full' && refundId) {
         await EmailService.notifyRefundInitiated({
           clientEmail: clientUser?.email || 'client@ingresswithin.com',
           clientName: clientUser?.full_name || 'Client',
-          amountPaise: 177000,
+          amountPaise: refundAmountPaise,
           refundId,
           bookingId: appt.booking_id,
         });
       }
-    }
 
-    return updatedAppt;
+      return {
+        success: true,
+        refundStatus,
+        refundId,
+        appointment: updatedAppt,
+      };
+    } finally {
+      this.activeCancellationLocks.delete(appointmentId);
+    }
+  }
+
+  /**
+   * Retries a failed or pending refund for an appointment.
+   * Admin-only operation with strict concurrency locking and audit logging.
+   */
+  static async retryRefund(appointmentId: string, adminActorId: string) {
+    if (this.activeRefundLocks.has(appointmentId)) {
+      const err: any = new Error('Refund retry currently in progress.');
+      err.code = 'CONCURRENT_OPERATION';
+      err.status = 409;
+      throw err;
+    }
+    this.activeRefundLocks.add(appointmentId);
+
+    try {
+      const { data: appt, error } = await supabase
+        .from('therapist_clinical_appointments')
+        .select('*')
+        .eq('id', appointmentId)
+        .maybeSingle();
+
+      if (error || !appt) {
+        const err: any = new Error('Appointment not found.');
+        err.code = 'SESSION_NOT_FOUND';
+        err.status = 404;
+        throw err;
+      }
+
+      if (appt.refund_status === 'full') {
+        return { success: true, refundStatus: 'full', refundId: appt.refund_id || null, alreadyRefunded: true };
+      }
+
+      if (!appt.payment_id) {
+        const err: any = new Error('No payment ID associated with appointment to refund.');
+        err.code = 'PAYMENT_NOT_FOUND';
+        err.status = 400;
+        throw err;
+      }
+
+      let refundAmountPaise = 177000;
+      if (appt.booking_id) {
+        const { data: bkg } = await supabase
+          .from('therapy_session_bookings')
+          .select('amount_paise')
+          .eq('id', appt.booking_id)
+          .maybeSingle();
+        if (bkg?.amount_paise) refundAmountPaise = bkg.amount_paise;
+      }
+
+      const rzp = BillingService.getRazorpayClient();
+      if (!rzp) {
+        const err: any = new Error('Razorpay gateway client not configured.');
+        err.code = 'GATEWAY_ERROR';
+        err.status = 502;
+        throw err;
+      }
+
+      let refundId: string | null = null;
+      try {
+        const rzpRefund = await rzp.payments.refund(appt.payment_id, {
+          amount: refundAmountPaise > 0 ? refundAmountPaise : undefined,
+          notes: {
+            appointment_id: appointmentId,
+            retry_by: adminActorId,
+          },
+        });
+        if (rzpRefund?.id) {
+          refundId = rzpRefund.id;
+        } else {
+          throw new Error('Razorpay did not return a refund ID');
+        }
+      } catch (rfErr: any) {
+        await AdminAuditService.logAction({
+          action: 'refund_failed',
+          resourceType: 'appointment',
+          resourceId: appointmentId,
+          actorType: 'admin',
+          actorId: adminActorId,
+          metadata: {
+            error: rfErr?.message || String(rfErr),
+            paymentId: appt.payment_id,
+            isRetry: true,
+          },
+        });
+        throw rfErr;
+      }
+
+      // Update DB with confirmed refund
+      const updateData: Record<string, any> = {
+        refund_status: 'full',
+        updated_at: new Date().toISOString(),
+      };
+      if (refundId) {
+        updateData.refund_id = refundId;
+      }
+
+      const { error: updErr } = await supabase
+        .from('therapist_clinical_appointments')
+        .update(updateData)
+        .eq('id', appointmentId);
+
+      if (updErr && (updErr.message?.includes('refund_id') || updErr.code === 'PGRST204')) {
+        delete updateData.refund_id;
+        await supabase
+          .from('therapist_clinical_appointments')
+          .update(updateData)
+          .eq('id', appointmentId);
+      }
+
+      if (appt.booking_id) {
+        await supabase
+          .from('therapy_session_bookings')
+          .update({
+            payment_status: 'refunded',
+            refund_status: 'full',
+            refund_id: refundId,
+            refund_amount_paise: refundAmountPaise,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', appt.booking_id);
+      }
+
+      // Void therapist earnings now that refund is confirmed
+      await TherapistPayoutService.handleAppointmentRefund(appointmentId);
+
+      // Audit log
+      await AdminAuditService.logAction({
+        action: 'refund_issued',
+        resourceType: 'appointment',
+        resourceId: appointmentId,
+        actorType: 'admin',
+        actorId: adminActorId,
+        metadata: {
+          refundId,
+          amountPaise: refundAmountPaise,
+          paymentId: appt.payment_id,
+          isRetry: true,
+        },
+      });
+
+      return {
+        success: true,
+        refundStatus: 'full',
+        refundId,
+      };
+    } finally {
+      this.activeRefundLocks.delete(appointmentId);
+    }
+  }
+
+  /**
+   * Handles attendance status / no-show recording.
+   * - attended: Session completed normally, therapist paid, first_session_completed set if first session.
+   * - client_no_show: Non-refundable, therapist earnings kept, first_session_completed NOT set.
+   * - therapist_no_show: 100% full refund to client, therapist earnings voided, first_session_completed NOT set.
+   */
+  static async recordAttendanceStatus(params: {
+    appointmentId: string;
+    therapistAccountId: string;
+    attendanceStatus: 'attended' | 'client_no_show' | 'therapist_no_show';
+    notes?: string;
+  }) {
+    const { appointmentId, therapistAccountId, attendanceStatus, notes } = params;
+
+    if (this.activeNoShowLocks.has(appointmentId)) {
+      const err: any = new Error('Attendance update in progress for this appointment.');
+      err.code = 'CONCURRENT_OPERATION';
+      err.status = 409;
+      throw err;
+    }
+    this.activeNoShowLocks.add(appointmentId);
+
+    try {
+      const { data: appt, error } = await supabase
+        .from('therapist_clinical_appointments')
+        .select('*')
+        .eq('id', appointmentId)
+        .eq('therapist_account_id', therapistAccountId)
+        .maybeSingle();
+
+      if (error || !appt) {
+        const err: any = new Error('Appointment not found or unauthorized.');
+        err.code = 'SESSION_NOT_FOUND';
+        err.status = 404;
+        throw err;
+      }
+
+      if (appt.status === 'cancelled') {
+        const err: any = new Error('Cannot update attendance for a cancelled session.');
+        err.code = 'SESSION_CANCELLED';
+        err.status = 400;
+        throw err;
+      }
+
+      let refundStatus = appt.refund_status || 'none';
+      let refundId: string | null = appt.refund_id || null;
+      let newStatus = appt.status;
+
+      if (attendanceStatus === 'client_no_show') {
+        // Client missed: session counts as consumed, NO refund, therapist keeps earning
+        newStatus = 'completed';
+        refundStatus = 'denied';
+        await TherapistPayoutService.handleAppointmentNoShow(appointmentId, 'client');
+        await AdminAuditService.logAction({
+          action: 'client_no_show',
+          resourceType: 'appointment',
+          resourceId: appointmentId,
+          actorType: 'therapist',
+          actorId: therapistAccountId,
+          metadata: { notes },
+        });
+      } else if (attendanceStatus === 'therapist_no_show') {
+        // Clinician missed: 100% full refund to client, therapist earning voided
+        newStatus = 'cancelled';
+        refundStatus = 'eligible';
+
+        if (appt.payment_id) {
+          const rzp = BillingService.getRazorpayClient();
+          if (rzp) {
+            try {
+              const rzpRefund = await rzp.payments.refund(appt.payment_id, {
+                notes: {
+                  appointment_id: appointmentId,
+                  reason: 'therapist_no_show',
+                },
+              });
+              if (rzpRefund?.id) {
+                refundId = rzpRefund.id;
+                refundStatus = 'full';
+              } else {
+                refundStatus = 'failed';
+              }
+            } catch (rErr: any) {
+              console.warn('[SessionBookingService] Therapist no-show refund error:', rErr);
+              refundStatus = 'failed';
+              await AdminAuditService.logAction({
+                action: 'refund_failed',
+                resourceType: 'appointment',
+                resourceId: appointmentId,
+                actorType: 'therapist',
+                actorId: therapistAccountId,
+                metadata: {
+                  error: rErr?.message || String(rErr),
+                  paymentId: appt.payment_id,
+                  reason: 'therapist_no_show',
+                },
+              });
+            }
+          } else {
+            refundStatus = 'failed';
+          }
+        } else {
+          refundStatus = 'none';
+        }
+
+        // Void therapist earnings
+        await TherapistPayoutService.handleAppointmentNoShow(appointmentId, 'therapist');
+
+        await AdminAuditService.logAction({
+          action: 'therapist_no_show',
+          resourceType: 'appointment',
+          resourceId: appointmentId,
+          actorType: 'therapist',
+          actorId: therapistAccountId,
+          metadata: {
+            refundStatus,
+            refundId,
+            notes,
+          },
+        });
+      } else if (attendanceStatus === 'attended') {
+        newStatus = 'completed';
+        await AdminAuditService.logAction({
+          action: 'appointment_attended',
+          resourceType: 'appointment',
+          resourceId: appointmentId,
+          actorType: 'therapist',
+          actorId: therapistAccountId,
+          metadata: { notes },
+        });
+      }
+
+      const attendUpdate: Record<string, any> = {
+        attendance_status: attendanceStatus,
+        status: newStatus,
+        refund_status: refundStatus,
+        client_notes: notes || appt.client_notes,
+        updated_at: new Date().toISOString(),
+      };
+      if (refundId) {
+        attendUpdate.refund_id = refundId;
+      }
+
+      let { data: updatedAppt, error: attendErr } = await supabase
+        .from('therapist_clinical_appointments')
+        .update(attendUpdate)
+        .eq('id', appointmentId)
+        .select('*')
+        .single();
+
+      if (attendErr && (attendErr.message?.includes('refund_id') || attendErr.code === 'PGRST204')) {
+        delete attendUpdate.refund_id;
+        const fbRes = await supabase
+          .from('therapist_clinical_appointments')
+          .update(attendUpdate)
+          .eq('id', appointmentId)
+          .select('*')
+          .single();
+        updatedAppt = fbRes.data;
+      }
+
+      // CRITICAL INVARIANT: Mark first_session_completed ONLY IF attendanceStatus === 'attended'
+      if (attendanceStatus === 'attended' && appt.relationship_id) {
+        await supabase
+          .from('therapy_care_relationships')
+          .update({ first_session_completed: true })
+          .eq('id', appt.relationship_id);
+      }
+
+      // Send notifications if no-show
+      if (attendanceStatus === 'client_no_show' || attendanceStatus === 'therapist_no_show') {
+        const { data: clientUser } = await supabase
+          .from('users')
+          .select('email, full_name')
+          .eq('id', appt.user_id)
+          .maybeSingle();
+
+        const { data: therapistAccount } = await supabase
+          .from('therapist_accounts')
+          .select('email, full_name')
+          .eq('id', appt.therapist_account_id)
+          .maybeSingle();
+
+        await EmailService.notifyNoShow({
+          appointmentId,
+          scheduledStart: appt.scheduled_start,
+          clientEmail: clientUser?.email || 'client@ingresswithin.com',
+          therapistEmail: therapistAccount?.email || 'therapist@ingresswithin.com',
+          clientName: clientUser?.full_name || 'Client',
+          therapistName: therapistAccount?.full_name || 'Therapist',
+          attendanceStatus,
+        });
+
+        if (attendanceStatus === 'therapist_no_show' && refundStatus === 'full' && refundId) {
+          await EmailService.notifyRefundInitiated({
+            clientEmail: clientUser?.email || 'client@ingresswithin.com',
+            clientName: clientUser?.full_name || 'Client',
+            amountPaise: 177000,
+            refundId,
+            bookingId: appt.booking_id,
+          });
+        }
+      }
+
+      return updatedAppt;
+    } finally {
+      this.activeNoShowLocks.delete(appointmentId);
+    }
   }
 }
