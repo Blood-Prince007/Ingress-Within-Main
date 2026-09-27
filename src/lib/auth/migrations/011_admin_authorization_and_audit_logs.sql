@@ -56,7 +56,15 @@ EXCEPTION
     WHEN OTHERS THEN NULL;
 END $$;
 
--- 3. ROW LEVEL SECURITY (RLS) POLICIES
+-- 3. ENSURE ADMIN ATTRIBUTES EXIST ON PUBLIC.USERS
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'client';
+
+CREATE INDEX IF NOT EXISTS idx_users_admin_lookup 
+    ON public.users (id) 
+    WHERE is_admin = true OR role = 'admin';
+
+-- 4. ROW LEVEL SECURITY (RLS) POLICIES
 ALTER TABLE public.admin_audit_logs ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Service role manages admin audit logs" ON public.admin_audit_logs;
@@ -71,6 +79,8 @@ CREATE POLICY "Service role manages admin audit logs"
 CREATE POLICY "Admins can view admin audit logs"
     ON public.admin_audit_logs FOR SELECT
     USING (
+        (auth.jwt() ->> 'role' = 'service_role') OR
+        (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin') OR
         EXISTS (
             SELECT 1 FROM public.users
             WHERE id = auth.uid() AND (is_admin = true OR role = 'admin')

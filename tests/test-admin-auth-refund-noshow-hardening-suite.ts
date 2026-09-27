@@ -55,6 +55,14 @@ async function runHardeningSuite() {
     'Enforces explicit refund status check constraint on therapy bookings'
   );
   assert(
+    migration011.includes('ALTER TABLE public.users ADD COLUMN IF NOT EXISTS is_admin'),
+    'Adds is_admin column to public.users'
+  );
+  assert(
+    migration011.includes('ALTER TABLE public.users ADD COLUMN IF NOT EXISTS role'),
+    'Adds role column to public.users'
+  );
+  assert(
     migration011.includes('ENABLE ROW LEVEL SECURITY'),
     'Enables RLS on admin_audit_logs'
   );

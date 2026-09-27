@@ -26,11 +26,11 @@ export async function getAuthenticatedAdmin(request: NextRequest): Promise<Authe
     // Query user record in database to check admin status
     const { data: userRecord } = await supabase
       .from('users')
-      .select('id, is_admin, role')
+      .select('*')
       .eq('id', authUser.userId)
       .maybeSingle();
 
-    const isAdmin = userRecord?.is_admin === true || userRecord?.role === 'admin';
+    const isAdmin = (userRecord as any)?.is_admin === true || (userRecord as any)?.role === 'admin';
 
     if (!isAdmin) {
       return null;

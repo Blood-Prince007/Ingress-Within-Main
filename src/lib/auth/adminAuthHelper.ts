@@ -60,11 +60,11 @@ export async function requireAuthorizedAdmin(request: NextRequest): Promise<Admi
     if (authUser?.userId) {
       const { data: dbUser } = await supabase
         .from('users')
-        .select('id, email, is_admin, role')
+        .select('*')
         .eq('id', authUser.userId)
         .maybeSingle();
 
-      if (dbUser && (dbUser.is_admin === true || dbUser.role === 'admin')) {
+      if (dbUser && ((dbUser as any).is_admin === true || (dbUser as any).role === 'admin')) {
         return {
           adminId: dbUser.id,
           email: dbUser.email || undefined,
