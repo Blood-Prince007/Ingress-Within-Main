@@ -2,23 +2,23 @@
  * Card Emergence Scroll Animation Utility
  * STRICTLY SIDEWAYS (Pure Horizontal Translation - No vertical Y shift, No Skew, No Rotation)
  * 
- * Configured for a completely smooth, unified slide in ONE GO:
- * - 1 smooth ease-in-out motion ("easeInOut" curve, zero elastic bounce or snap)
- * - All cards in a section slide together in unison (delay: 0 for all cards)
- * - Pure sideways translation on the horizontal X axis
+ * Configured for an ultra-smooth, non-elastic slide emerging outward from center:
+ * - Pure tween interpolation with a luxury deceleration curve ([0.16, 1, 0.3, 1])
+ * - Zero elastic bounce, zero spring oscillations, zero snapping
+ * - Cards visibly appear from center sliding left or right into their columns in unison
  */
 
 export function getCardEmergence(index, total, is2D = false, cols = 3) {
-  // 1 smooth ease-in-out motion for a natural, silky, non-rubbery glide
-  const ease = 'easeInOut';
-  const duration = 0.75;
+  // Ultra-smooth, non-elastic deceleration curve (Cubic Bezier - no spring/bounce)
+  const ease = [0.16, 1, 0.3, 1];
+  const duration = 1.05;
 
   const hoverConfig = {
     y: -3,
-    transition: { duration: 0.2, ease: 'easeOut' }
+    transition: { type: 'tween', duration: 0.2, ease: 'easeOut' }
   };
 
-  // 2D Grid calculation (e.g. 6 cards in 2x3): animate ONLY sideways in one go
+  // 2D Grid calculation (e.g. 6 cards in 2x3): animate sideways outward from center column
   if (is2D && cols > 1) {
     const col = index % cols;
     const colCenter = (cols - 1) / 2;
@@ -27,12 +27,12 @@ export function getCardEmergence(index, total, is2D = false, cols = 3) {
 
     if (cols % 2 === 1) {
       if (colDiff < 0) {
-        xOffset = 38;
+        xOffset = 55; // Left column: starts toward center, slides left
       } else if (colDiff > 0) {
-        xOffset = -38;
+        xOffset = -55; // Right column: starts toward center, slides right
       }
     } else {
-      xOffset = colDiff < 0 ? 32 : -32;
+      xOffset = colDiff < 0 ? 50 : -50;
     }
 
     return {
@@ -46,22 +46,26 @@ export function getCardEmergence(index, total, is2D = false, cols = 3) {
       },
       viewport: { once: true, amount: 0.15 },
       transition: {
+        type: 'tween',
         duration,
         ease,
-        delay: 0 // In one go: all cards slide together
+        delay: 0
       },
       whileHover: hoverConfig
     };
   }
 
-  // EVEN TOTAL (e.g. 2 cards, 4 cards): split sideways in one go
+  // EVEN TOTAL (e.g. 2 cards, 4 cards): split sideways outward from center
   if (total % 2 === 0) {
     const center = (total - 1) / 2;
     const diff = index - center;
     const isLeft = diff < 0;
     const rank = Math.abs(diff);
 
-    const xOffset = isLeft ? 32 + (rank - 0.5) * 18 : -(32 + (rank - 0.5) * 18);
+    // Left cards start shifted right (+x) towards center and slide left to 0
+    // Right cards start shifted left (-x) towards center and slide right to 0
+    const distance = total === 2 ? 55 : 35 + (rank - 0.5) * 35;
+    const xOffset = isLeft ? distance : -distance;
 
     return {
       initial: {
@@ -72,21 +76,22 @@ export function getCardEmergence(index, total, is2D = false, cols = 3) {
         opacity: 1,
         x: 0
       },
-      viewport: { once: true, amount: 0.18 },
+      viewport: { once: true, amount: 0.15 },
       transition: {
+        type: 'tween',
         duration,
         ease,
-        delay: 0 // In one go: all cards slide together
+        delay: 0
       },
       whileHover: hoverConfig
     };
   }
 
-  // ODD TOTAL (e.g. 3 cards, 5 cards): emerge sideways in one go
+  // ODD TOTAL (e.g. 3 cards, 5 cards): emerge sideways outward from anchor center
   const centerIndex = Math.floor(total / 2);
 
   if (index === centerIndex) {
-    // Center Anchor Card: remains firmly in its resting place, smooth fade-in
+    // Center Anchor Card: remains firmly in its resting place, smoothly fades in
     return {
       initial: {
         opacity: 0,
@@ -96,20 +101,21 @@ export function getCardEmergence(index, total, is2D = false, cols = 3) {
         opacity: 1,
         x: 0
       },
-      viewport: { once: true, amount: 0.18 },
+      viewport: { once: true, amount: 0.15 },
       transition: {
+        type: 'tween',
         duration,
         ease,
-        delay: 0 // In one go: all cards slide together
+        delay: 0
       },
       whileHover: hoverConfig
     };
   }
 
-  // Outer cards: gentle horizontal glide outward from center in one go
+  // Outer cards: appear from center and slide left/right into position
   const isLeft = index < centerIndex;
   const dist = Math.abs(index - centerIndex);
-  const xOffset = isLeft ? dist * 36 : -dist * 36;
+  const xOffset = isLeft ? dist * 60 : -dist * 60;
 
   return {
     initial: {
@@ -120,11 +126,12 @@ export function getCardEmergence(index, total, is2D = false, cols = 3) {
       opacity: 1,
       x: 0
     },
-    viewport: { once: true, amount: 0.18 },
+    viewport: { once: true, amount: 0.15 },
     transition: {
+      type: 'tween',
       duration,
       ease,
-      delay: 0 // In one go: all cards slide together
+      delay: 0
     },
     whileHover: hoverConfig
   };

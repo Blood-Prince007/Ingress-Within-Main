@@ -7,14 +7,36 @@ import { useState, useEffect } from 'react';
  */
 export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isOverDark, setIsOverDark] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
+
+      // Check if navbar currently overlaps the dark footer or dark closing sections
+      const navHeight = 88;
+      const darkSections = Array.from(document.querySelectorAll('footer, section')).filter(
+        (el) => el.tagName.toLowerCase() === 'footer' || el.classList.contains('bg-[#011627]')
+      );
+      let overDark = false;
+      for (const el of darkSections) {
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= navHeight && rect.bottom >= 0) {
+          overDark = true;
+          break;
+        }
+      }
+      setIsOverDark(overDark);
     };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('resize', handleScroll, { passive: true });
+    handleScroll();
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
   }, []);
 
   const navItems = [
@@ -49,13 +71,24 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
 
   return (
     <header
+      style={{
+        backgroundColor: isOverDark
+          ? 'rgba(1, 22, 39, 0.82)'
+          : isScrolled
+          ? 'rgba(250, 247, 242, 0.45)'
+          : 'rgba(255, 255, 255, 0.12)',
+        backdropFilter: 'blur(8px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(8px) saturate(180%)',
+      }}
       className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-        isScrolled
-          ? 'bg-[#FAF7F2]/90 backdrop-blur-md shadow-[0_2px_16px_rgba(1,22,39,0.04)] border-b border-[#E7DECF]/70'
-          : 'bg-[#FAF7F2]/60 backdrop-blur-[2px] border-b border-[#E7DECF]/40'
+        isOverDark
+          ? 'shadow-[0_4px_30px_rgba(0,0,0,0.3)]'
+          : isScrolled
+          ? 'shadow-[0_4px_24px_rgba(22,39,35,0.035)]'
+          : ''
       }`}
     >
-      <div className="max-w-7xl mx-auto px-5 sm:px-8 h-20 sm:h-22 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 h-20 sm:h-22 flex items-center justify-between">
         
         {/* Brand Logo */}
         <a
@@ -65,16 +98,22 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
         >
           {/* Official Brand Logo */}
           <img
-            src="/logo-mark-transparent.png"
+            src={isOverDark ? '/logo-mark-light.png' : '/logo-mark-transparent.png'}
             alt="Ingress Within"
             className="w-8 h-8 sm:w-9 sm:h-9 object-contain flex-shrink-0 transition-transform duration-300 group-hover:scale-105"
           />
 
           <div>
-            <div className="font-editorial text-[21px] sm:text-[23px] text-[#162723] tracking-tight leading-none">
-              Ingress <span className="font-medium text-[#2E7A70]">Within</span>
+            <div className={`font-editorial text-[21px] sm:text-[23px] tracking-tight leading-none transition-colors duration-300 ${
+              isOverDark ? 'text-white' : 'text-[#162723]'
+            }`}>
+              Ingress <span className={`font-medium transition-colors duration-300 ${
+                isOverDark ? 'text-[#8AA688]' : 'text-[#2E7A70]'
+              }`}>Within</span>
             </div>
-            <div className="font-mono-code text-[8.5px] sm:text-[9px] tracking-[0.16em] uppercase text-[#7D8E87] mt-1">
+            <div className={`font-mono-code text-[8.5px] sm:text-[9px] tracking-[0.16em] uppercase mt-1 transition-colors duration-300 ${
+              isOverDark ? 'text-[#BFCAD7]' : 'text-[#7D8E87]'
+            }`}>
               Understand · Grow · Continue
             </div>
           </div>
@@ -89,17 +128,25 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
                 key={item.id}
                 href={item.path}
                 onClick={(e) => handleNavClick(item, e)}
-                className={`relative py-2 font-medium transition-colors cursor-pointer ${
+                className={`relative py-2 font-medium transition-colors duration-300 cursor-pointer ${
                   item.highlight
-                    ? 'text-[#9A4232] hover:text-[#7A2F22] font-semibold'
+                    ? isOverDark
+                      ? 'text-[#E0A898] hover:text-[#F4C5BA] font-semibold'
+                      : 'text-[#9A4232] hover:text-[#7A2F22] font-semibold'
                     : isActive
-                    ? 'text-[#162723] font-semibold'
+                    ? isOverDark
+                      ? 'text-white font-semibold'
+                      : 'text-[#162723] font-semibold'
+                    : isOverDark
+                    ? 'text-[#DCE2E7]/80 hover:text-white'
                     : 'text-[#4F635E] hover:text-[#162723]'
                 }`}
               >
                 {item.label}
                 {isActive && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#162723]" />
+                  <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                    isOverDark ? 'bg-white' : 'bg-[#162723]'
+                  }`} />
                 )}
               </a>
             );
@@ -111,14 +158,20 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
           <a
             href="/login"
             onClick={(e) => handleAuthClick('/login', e)}
-            className="text-xs sm:text-[13px] font-medium text-[#4F635E] hover:text-[#162723] px-3 py-2 transition-colors cursor-pointer"
+            className={`text-xs sm:text-[13px] font-medium px-3 py-2 transition-colors duration-300 cursor-pointer ${
+              isOverDark ? 'text-[#DCE2E7]/85 hover:text-white' : 'text-[#4F635E] hover:text-[#162723]'
+            }`}
           >
             Log in
           </a>
           <a
             href="/login"
             onClick={(e) => handleAuthClick('/login', e)}
-            className="inline-flex items-center gap-1.5 bg-[#162723] hover:bg-[#203631] text-[#FAF7F2] text-xs sm:text-[13px] font-medium px-5 py-2.5 rounded-full shadow-sm hover:shadow transition-all hover:scale-[1.02] cursor-pointer"
+            className={`inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-medium px-5 py-2.5 rounded-full shadow-sm hover:shadow transition-all duration-300 hover:scale-[1.02] cursor-pointer ${
+              isOverDark
+                ? 'bg-[#C5A880] hover:bg-[#D8BE9B] text-[#011627]'
+                : 'bg-[#162723] hover:bg-[#203631] text-[#FAF7F2]'
+            }`}
           >
             <span>Get Started</span>
             <span className="text-[14px]">→</span>
@@ -130,7 +183,9 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
           <a
             href="/login"
             onClick={(e) => handleAuthClick('/login', e)}
-            className="inline-flex items-center text-xs font-semibold bg-[#162723] text-white px-3.5 py-1.5 rounded-full"
+            className={`inline-flex items-center text-xs font-semibold px-3.5 py-1.5 rounded-full transition-colors duration-300 ${
+              isOverDark ? 'bg-[#C5A880] text-[#011627]' : 'bg-[#162723] text-white'
+            }`}
           >
             Log in
           </a>
@@ -139,12 +194,14 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
             aria-label="Toggle navigation menu"
             aria-expanded={mobileMenuOpen}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-[#162723] hover:bg-black/5 rounded-lg transition-colors"
+            className={`p-2 rounded-lg transition-colors ${
+              isOverDark ? 'text-white hover:bg-white/10' : 'text-[#162723] hover:bg-black/5'
+            }`}
           >
             <div className="w-5 h-4 flex flex-col justify-between">
-              <span className={`w-full h-0.5 bg-[#162723] rounded-full transition-transform ${mobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`} />
-              <span className={`w-full h-0.5 bg-[#162723] rounded-full transition-opacity ${mobileMenuOpen ? 'opacity-0' : ''}`} />
-              <span className={`w-full h-0.5 bg-[#162723] rounded-full transition-transform ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+              <span className={`w-full h-0.5 rounded-full transition-transform ${isOverDark ? 'bg-white' : 'bg-[#162723]'} ${mobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`} />
+              <span className={`w-full h-0.5 rounded-full transition-opacity ${isOverDark ? 'bg-white' : 'bg-[#162723]'} ${mobileMenuOpen ? 'opacity-0' : ''}`} />
+              <span className={`w-full h-0.5 rounded-full transition-transform ${isOverDark ? 'bg-white' : 'bg-[#162723]'} ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
             </div>
           </button>
         </div>
@@ -153,18 +210,35 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
 
       {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
-        <div className="sm:hidden bg-[#FAF7F2] border-b border-[#E7DECF] px-6 py-5 space-y-4 shadow-lg animate-fadeDown">
-          <div className="flex items-center gap-3 pb-3 border-b border-[#E7DECF]/60">
+        <div
+          style={{
+            backgroundColor: isOverDark ? 'rgba(1, 22, 39, 0.95)' : 'rgba(253, 251, 248, 0.75)',
+            backdropFilter: 'blur(36px) saturate(200%)',
+            WebkitBackdropFilter: 'blur(36px) saturate(200%)',
+          }}
+          className={`sm:hidden px-6 py-5 space-y-4 shadow-[0_16px_36px_rgba(22,39,35,0.06)] animate-fadeDown ${
+            isOverDark ? 'text-white border-b border-white/10' : 'text-[#162723]'
+          }`}
+        >
+          <div className={`flex items-center gap-3 pb-3 border-b ${
+            isOverDark ? 'border-white/10' : 'border-[#E7DECF]/40'
+          }`}>
             <img
-              src="/logo-mark-transparent.png"
+              src={isOverDark ? '/logo-mark-light.png' : '/logo-mark-transparent.png'}
               alt="Ingress Within"
               className="w-7 h-7 object-contain flex-shrink-0"
             />
             <div>
-              <div className="font-editorial text-lg text-[#162723] leading-none">
-                Ingress <span className="font-medium text-[#2E7A70]">Within</span>
+              <div className={`font-editorial text-lg leading-none ${
+                isOverDark ? 'text-white' : 'text-[#162723]'
+              }`}>
+                Ingress <span className={`font-medium ${
+                  isOverDark ? 'text-[#8AA688]' : 'text-[#2E7A70]'
+                }`}>Within</span>
               </div>
-              <div className="font-mono-code text-[8px] tracking-[0.14em] uppercase text-[#7D8E87] mt-1">
+              <div className={`font-mono-code text-[8px] tracking-[0.14em] uppercase mt-1 ${
+                isOverDark ? 'text-[#BFCAD7]' : 'text-[#7D8E87]'
+              }`}>
                 Understand · Grow · Continue
               </div>
             </div>
@@ -176,18 +250,30 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
                 href={item.path}
                 onClick={(e) => handleNavClick(item, e)}
                 className={`block py-2 text-sm ${
-                  activeTab === item.id ? 'font-bold text-[#162723]' : 'text-[#4F635E]'
-                } ${item.highlight ? 'text-[#9A4232]' : ''}`}
+                  activeTab === item.id
+                    ? isOverDark
+                      ? 'font-bold text-white'
+                      : 'font-bold text-[#162723]'
+                    : isOverDark
+                    ? 'text-[#DCE2E7]/80 hover:text-white'
+                    : 'text-[#4F635E]'
+                } ${item.highlight ? (isOverDark ? 'text-[#E0A898]' : 'text-[#9A4232]') : ''}`}
               >
                 {item.label}
               </a>
             ))}
           </div>
-          <div className="pt-4 border-t border-[#E7DECF] flex flex-col gap-2">
+          <div className={`pt-4 border-t flex flex-col gap-2 ${
+            isOverDark ? 'border-white/10' : 'border-[#E7DECF]'
+          }`}>
             <a
               href="/login"
               onClick={(e) => handleAuthClick('/login', e)}
-              className="w-full text-center py-2.5 text-xs font-semibold text-white bg-[#162723] rounded-full"
+              className={`w-full text-center py-2.5 text-xs font-semibold rounded-full ${
+                isOverDark
+                  ? 'bg-[#C5A880] text-[#011627] hover:bg-[#D8BE9B]'
+                  : 'text-white bg-[#162723]'
+              }`}
             >
               Get Started →
             </a>

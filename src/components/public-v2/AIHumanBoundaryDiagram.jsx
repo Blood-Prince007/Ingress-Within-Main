@@ -8,10 +8,10 @@ import { getCardEmergence } from '../../utils/cardEmergence';
  */
 export default function AIHumanBoundaryDiagram() {
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8">
+    <div className="w-full max-w-5xl mx-auto space-y-8">
       
       {/* Visual Boundary Diagram */}
-      <div className="paper-card rounded-2xl p-6 sm:p-10 relative overflow-hidden bg-[#FDFBF8]">
+      <div className="paper-card rounded-2xl py-10 sm:py-12 px-6 sm:px-10 relative overflow-hidden bg-[#FDFBF8]">
         <div className="grid grid-cols-1 md:grid-cols-[1.6fr_1fr] gap-8 items-stretch">
           
           {/* AI ZONE */}

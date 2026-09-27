@@ -70,83 +70,72 @@ export default function ThreeWaysSection({ onSelectTab }) {
   ];
 
   return (
-    <section className="relative py-20 md:py-28 px-5 sm:px-8 overflow-hidden">
-      <div className="max-w-6xl mx-auto text-center space-y-4">
+    <section className="relative py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      <div className="max-w-6xl mx-auto text-center space-y-3 sm:space-y-4">
         
         {/* Section Heading with smooth fade-up */}
         <motion.div
-          initial={{ opacity: 0, y: 25 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
-          className="space-y-4"
+          className="space-y-2.5 sm:space-y-3"
         >
-          {/* Section Eyebrow */}
-          <div className="font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase text-[#7D8E87] font-semibold">
-            02 · CHOOSE YOUR STARTING POINT
+          {/* Section Eyebrow with brand accent */}
+          <div className="flex flex-col items-center gap-2">
+            <span className="brand-rule-thistle mx-auto" />
+            <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723]">
+              02 · CHOOSE YOUR STARTING POINT
+            </div>
           </div>
 
           {/* Section Heading */}
-          <h2 className="font-editorial text-3xl sm:text-4xl md:text-5xl text-[#162723] font-normal tracking-tight max-w-2xl mx-auto leading-[1.18]">
-            Three ways to work on your mental health.
+          <h2 className="font-editorial text-3xl sm:text-4xl lg:text-[42px] text-[#162723] font-normal tracking-tight max-w-3xl lg:max-w-4xl mx-auto leading-[1.15]">
+            Three ways to work on your <span className="italic accent-thistle">mental health</span>.
           </h2>
 
           {/* Section Subtext */}
-          <p className="font-zen text-sm sm:text-base text-[#5C6873] max-w-2xl mx-auto leading-relaxed pt-1">
+          <p className="font-zen text-xs sm:text-sm md:text-[15px] text-[#5C6873] max-w-2xl lg:max-w-3xl mx-auto leading-relaxed">
             Different needs. A connected journey. Choose what works for you right now, or move between them whenever your life changes.
           </p>
         </motion.div>
 
         {/* Three Editorial Paper Cards with Splitting Animation */}
-        <div className="pt-10 sm:pt-14 grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr_auto_1fr] items-stretch gap-6 lg:gap-0 text-left">
+        <div className="pt-8 sm:pt-10 grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr_auto_1fr] items-stretch gap-5 lg:gap-0 text-left">
           {cards.map((card, idx) => (
             <React.Fragment key={card.number}>
               {/* Paper Card with Splitting Motion */}
               <motion.div
                 {...getCardEmergence(idx, 3)}
-                className="paper-card paper-card-hover rounded-2xl p-7 sm:p-8 flex flex-col justify-between relative bg-[#FDFBF8] shadow-xs hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => onSelectTab && onSelectTab(card.targetTab)}
+                className="group relative rounded-xl p-6 sm:p-7 min-h-[250px] sm:min-h-[270px] bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] hover:border-[#162723]/35 flex flex-col justify-between transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs hover:shadow-xs cursor-pointer"
               >
                 <div>
-                  {/* Top Bar: Icon Badge & Pinned Number */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center ${card.badgeBg} ${card.badgeColor}`}
-                    >
-                      {card.icon}
-                    </div>
-                    <span className="font-mono-code text-xs text-[#9AA59F] font-medium">
+                  {/* Top Bar: Minimal Tag Pill & Number */}
+                  <div className="flex items-center justify-between gap-2 mb-3.5">
+                    <span className="inline-flex items-center font-mono-code text-[9px] sm:text-[9.5px] tracking-[0.16em] uppercase font-semibold px-2.5 py-0.5 rounded-full border border-[#162723]/25 text-[#162723]/80 group-hover:border-[#162723]/60 group-hover:text-[#162723] transition-colors">
+                      {card.eyebrow}
+                    </span>
+                    <span className="font-mono-code text-[10px] tracking-wider text-[#8D98A3]">
                       {card.number}
                     </span>
                   </div>
 
-                  {/* Micro Eyebrow */}
-                  <div
-                    className={`font-mono-code text-[10px] tracking-[0.14em] uppercase font-semibold mb-2 ${card.eyebrowColor}`}
-                  >
-                    {card.eyebrow}
-                  </div>
-
                   {/* Card Title */}
-                  <h3 className="font-editorial text-2xl text-[#162723] font-normal mb-3 leading-snug">
+                  <h3 className="font-editorial text-xl sm:text-2xl text-[#162723] font-normal mb-2 leading-snug group-hover:text-[#795663] transition-colors">
                     {card.title}
                   </h3>
 
                   {/* Description */}
-                  <p className="font-zen text-[13.5px] text-[#5C6873] leading-relaxed">
+                  <p className="font-zen text-xs sm:text-[13px] text-[#5C6873] leading-relaxed">
                     {card.description}
                   </p>
                 </div>
 
-                {/* Card CTA Link */}
-                <div className="pt-6">
-                  <button
-                    type="button"
-                    onClick={() => onSelectTab && onSelectTab(card.targetTab)}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#162723] hover:text-[#795663] transition-colors cursor-pointer group"
-                  >
-                    <span>Learn more</span>
-                    <span className="transition-transform group-hover:translate-x-1">→</span>
-                  </button>
+                {/* Minimal Footer */}
+                <div className="pt-3 mt-4 border-t border-[#E7DECF]/60 flex items-center justify-between font-mono-code text-[11px] text-[#795663] group-hover:text-[#162723] transition-colors">
+                  <span className="font-medium">Learn more</span>
+                  <span className="text-xs transition-transform duration-200 group-hover:translate-x-1">→</span>
                 </div>
               </motion.div>
 
