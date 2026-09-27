@@ -1,5 +1,6 @@
 import { supabase } from '../db';
 import { EmailService } from '../email/emailService';
+import { TherapistPayoutService } from './therapistPayoutService';
 
 export class TherapistPlatformService {
   /**
@@ -2234,25 +2235,14 @@ export class TherapistPlatformService {
     const platformFee = Math.round((gross * (commRate / 100)) * 100) / 100;
     const net = Math.round((gross - platformFee) * 100) / 100;
 
-    // 4. Register collected earning if not already registered
-    const { data: existingEarning } = await supabase
-      .from('therapist_earnings')
-      .select('id')
-      .eq('appointment_id', appointmentId)
-      .eq('therapist_account_id', therapistAccountId)
-      .maybeSingle();
-
-    if (!existingEarning) {
-      await supabase.from('therapist_earnings').insert({
-        therapist_account_id: therapistAccountId,
-        appointment_id: appointmentId,
-        gross_amount: gross,
-        platform_fee: platformFee,
-        net_earnings: net,
-        payment_status: 'collected',
-        collected_at: new Date().toISOString(),
-      });
-    }
+    // 4. Register collected earning if not already registered (enforcing single earning per appointment)
+    await TherapistPayoutService.recordEarningForAppointment({
+      therapistAccountId,
+      appointmentId,
+      grossAmount: gross,
+      commissionRate: commRate,
+      initialStatus: 'collected',
+    });
 
     // 5. Update first_session_completed in care relationship
     if (appt.user_id) {
@@ -2673,7 +2663,7 @@ export class TherapistPlatformService {
    */
 
   /**
-   * Fetches real earnings summary strictly calculated from payment_status = 'collected'.
+   * Fetches real earnings summary strictly calculated from financial ledger and payout batches.
    */
   static async getEarningsSummary(therapistAccountId: string) {
     const { data: earnings, error } = await supabase
@@ -2701,40 +2691,48 @@ export class TherapistPlatformService {
       .eq('therapist_account_id', therapistAccountId)
       .order('collected_at', { ascending: false });
 
-    if (error) {
+    if (error && error.code !== 'PGRST205' && error.code !== '42P01') {
       console.error('[TherapistPlatformService] getEarningsSummary error:', error);
       throw new Error('Failed to calculate earnings.');
     }
 
+    const batches = await TherapistPayoutService.getPayoutBatchesForTherapist(therapistAccountId);
+    const batchMap = new Map(batches.map((b) => [b.id, b]));
+
     const now = new Date();
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
+    let currentPeriodCollected = 0;
     let totalCollected = 0;
-    let currentMonthCollected = 0;
     let pendingPayout = 0;
-    let paidOutTotal = 0;
+    let paidOut = 0;
 
     const transactions = (earnings || []).map((e: any) => {
       const net = Number(e.net_earnings) || 0;
       const gross = Number(e.gross_amount) || 0;
       const fee = Number(e.platform_fee) || 0;
-      const isCollected = e.payment_status === 'collected';
-      const isPaid = e.payment_status === 'paid';
-      const isPending = e.payment_status === 'pending';
+      const status = e.payment_status;
+
+      const isCollected = status === 'collected';
+      const isPaid = status === 'paid';
 
       if (isCollected || isPaid) {
         totalCollected += net;
-        if (e.collected_at && e.collected_at >= startOfCurrentMonth) {
-          currentMonthCollected += net;
+        if (e.collected_at && e.collected_at >= startOfCurrentMonth && isCollected) {
+          currentPeriodCollected += net;
         }
       }
 
       if (isCollected) {
-        pendingPayout += net;
+        // Pending payout if not yet paid (either unbatched or in pending/processing batch)
+        const batch = e.payout_batch_id ? batchMap.get(e.payout_batch_id) : null;
+        if (!batch || batch.status === 'pending' || batch.status === 'processing') {
+          pendingPayout += net;
+        }
       }
 
       if (isPaid) {
-        paidOutTotal += net;
+        paidOut += net;
       }
 
       const appt = Array.isArray(e.therapist_clinical_appointments)
@@ -2745,10 +2743,14 @@ export class TherapistPlatformService {
         id: e.id,
         appointmentId: e.appointment_id,
         date: e.collected_at || e.created_at,
+        gross,
         grossAmount: gross,
         platformFee: fee,
+        net,
         netAmount: net,
-        status: e.payment_status,
+        status,
+        financialStatus: status,
+        payoutBatch: e.payout_batch_id,
         payoutBatchId: e.payout_batch_id,
         payoutDate: e.payout_date,
         clientLabel: appt?.users?.name || `Client #${appt?.user_id?.substring(0, 6) || '---'}`,
@@ -2756,15 +2758,32 @@ export class TherapistPlatformService {
       };
     });
 
+    const payouts = batches.map((b) => ({
+      id: b.id,
+      batchId: b.id,
+      period: `${new Date(b.period_start).toLocaleDateString('en-IN')} - ${new Date(b.period_end).toLocaleDateString('en-IN')}`,
+      periodStart: b.period_start,
+      periodEnd: b.period_end,
+      amount: b.total_net,
+      status: b.status,
+      paidDate: b.paid_at,
+      bankReference: b.bank_reference,
+      failureReason: b.failure_reason,
+      reversalReason: b.reversal_reason,
+      createdAt: b.created_at,
+    }));
+
     return {
       summary: {
-        currentMonthCollected,
-        totalCollected,
-        pendingPayout,
-        paidOutTotal,
+        currentPeriodCollected: Math.round(currentPeriodCollected * 100) / 100,
+        totalCollected: Math.round(totalCollected * 100) / 100,
+        pendingPayout: Math.round(pendingPayout * 100) / 100,
+        paidOut: Math.round(paidOut * 100) / 100,
+        paidOutTotal: Math.round(paidOut * 100) / 100,
         currency: 'INR',
       },
       transactions,
+      payouts,
     };
   }
 

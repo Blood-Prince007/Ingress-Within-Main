@@ -4,6 +4,7 @@ import { BillingService } from '../billing/billingService';
 import { GoogleCalendarService } from '../calendar/googleCalendarService';
 import { EmailService } from '../email/emailService';
 import { EmailEvents } from '../email/emailEvents';
+import { TherapistPayoutService } from '../therapist/therapistPayoutService';
 
 export interface AuthoritativePricing {
   subtotalInr: number;
@@ -507,20 +508,17 @@ export class SessionBookingService {
       .select('*')
       .single();
 
-    // 7. Register therapist earnings
+    // 7. Register therapist earnings (enforcing single earning per appointment)
     try {
       const gross = Number(therapistAccount?.per_session_fee) || 1500;
       const commRate = Number(therapistAccount?.commission_rate) || 15;
-      const platformFee = Math.round((gross * (commRate / 100)) * 100) / 100;
-      const net = Math.round((gross - platformFee) * 100) / 100;
 
-      await supabase.from('therapist_earnings').insert({
-        therapist_account_id: booking.therapist_account_id,
-        appointment_id: newAppt.id,
-        gross_amount: gross,
-        platform_fee: platformFee,
-        net_amount: net,
-        status: 'pending',
+      await TherapistPayoutService.recordEarningForAppointment({
+        therapistAccountId: booking.therapist_account_id,
+        appointmentId: newAppt.id,
+        grossAmount: gross,
+        commissionRate: commRate,
+        initialStatus: 'collected',
       });
     } catch (earnErr) {
       console.warn('[SessionBookingService] Failed to record earnings (may already exist):', earnErr);
@@ -845,10 +843,7 @@ export class SessionBookingService {
 
     // 7. Adjust earnings if therapist cancelled or refunded
     if (refundStatus === 'full') {
-      await supabase
-        .from('therapist_earnings')
-        .update({ status: 'cancelled' })
-        .eq('appointment_id', appointmentId);
+      await TherapistPayoutService.handleAppointmentRefund(appointmentId);
     }
 
     // 8. Dispatch notification emails
@@ -935,6 +930,7 @@ export class SessionBookingService {
       // Client missed: session counts as consumed, NO refund
       newStatus = 'completed';
       refundStatus = 'denied';
+      await TherapistPayoutService.handleAppointmentNoShow(appointmentId, 'client');
     } else if (attendanceStatus === 'therapist_no_show') {
       // Clinician missed: 100% full refund to client
       newStatus = 'cancelled';
@@ -954,10 +950,7 @@ export class SessionBookingService {
       }
 
       // Void therapist earnings
-      await supabase
-        .from('therapist_earnings')
-        .update({ status: 'cancelled' })
-        .eq('appointment_id', appointmentId);
+      await TherapistPayoutService.handleAppointmentNoShow(appointmentId, 'therapist');
     } else if (attendanceStatus === 'attended') {
       newStatus = 'completed';
     }
