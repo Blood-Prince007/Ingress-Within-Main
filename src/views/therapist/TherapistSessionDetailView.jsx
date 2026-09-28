@@ -16,7 +16,8 @@ import {
   RotateCcw,
   Play,
   Lock,
-  Edit3
+  Edit3,
+  RefreshCw
 } from 'lucide-react';
 import TherapistRescheduleModal from './TherapistRescheduleModal';
 import TherapistSoapModal from './TherapistSoapModal';
@@ -38,7 +39,30 @@ export default function TherapistSessionDetailView({
   const [cancelling, setCancelling] = useState(false);
   const [starting, setStarting] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [syncRetrying, setSyncRetrying] = useState(false);
   const [actionNotice, setActionNotice] = useState('');
+
+  const handleRetryCalendarSync = async () => {
+    setSyncRetrying(true);
+    try {
+      const res = await fetch('/api/therapy/sessions/sync-calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId: sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error?.message || 'Sync retry failed');
+      }
+      setActionNotice('Calendar sync successful! Google Meet generated.');
+      setTimeout(() => setActionNotice(''), 4000);
+      await fetchSessionData();
+    } catch (err) {
+      alert(`Sync failed: ${err.message}`);
+    } finally {
+      setSyncRetrying(false);
+    }
+  };
 
   // 1. Fetch Session Details & SOAP note status
   const fetchSessionData = async () => {
@@ -229,6 +253,8 @@ export default function TherapistSessionDetailView({
   const isCompleted = session.status === 'completed';
   const isInProgress = session.status === 'in_progress';
   const isScheduled = session.status === 'scheduled' || session.status === 'confirmed' || session.status === 'rescheduled';
+  const meetUrl = session.google_meet_url || session.googleMeetUrl || session.meeting_link || session.meetingLink || null;
+  const calSyncStatus = session.calendar_sync_status || session.calendarSyncStatus || 'not_connected';
 
   return (
     <div className="space-y-6">
@@ -279,15 +305,15 @@ export default function TherapistSessionDetailView({
 
           {/* Clinical Workflow Actions by State */}
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Telehealth Call Link */}
-            {session.meetingLink && !isCancelled && (
+            {/* Google Meet Call Link */}
+            {meetUrl && !isCancelled && (
               <a
-                href={session.meetingLink}
+                href={meetUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#132A24] text-white text-xs font-semibold hover:bg-[#132A24]/90 transition-all cursor-pointer no-underline shadow-xs"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-all cursor-pointer no-underline shadow-xs"
               >
-                <Video size={14} /> Join Telehealth Call
+                <Video size={14} /> Join Google Meet
               </a>
             )}
 
@@ -382,6 +408,64 @@ export default function TherapistSessionDetailView({
             <span className="text-xs font-semibold text-[#132A24] capitalize">
               {(session.careStage || 'Active Care').replace(/_/g, ' ')}
             </span>
+          </div>
+        </div>
+
+        {/* Google Meet & Calendar Synchronization Card */}
+        <div className="p-5 rounded-xl border border-[#132A24]/10 bg-[#FAF9F5] space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Video size={18} />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#132A24]">
+                  Google Meet Telehealth
+                </h4>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[11px] text-[#132A24]/60">Google Calendar:</span>
+                  {calSyncStatus === 'synced' ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
+                      <CheckCircle2 size={12} /> Synced
+                    </span>
+                  ) : calSyncStatus === 'not_connected' ? (
+                    <span className="text-[11px] text-[#132A24]/50">Not Connected</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600">
+                      <AlertCircle size={12} /> Calendar sync failed
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {meetUrl ? (
+                <a
+                  href={meetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors inline-flex items-center gap-1.5 no-underline shadow-xs"
+                >
+                  <Video size={14} /> Join Google Meet
+                </a>
+              ) : (
+                <span className="text-xs text-[#132A24]/50 italic">
+                  Meet link not available yet
+                </span>
+              )}
+
+              {calSyncStatus === 'failed' && (
+                <button
+                  onClick={handleRetryCalendarSync}
+                  disabled={syncRetrying}
+                  className="px-3 py-2 rounded-lg border border-[#132A24]/15 bg-white text-xs font-medium text-[#132A24] hover:bg-[#132A24]/5 transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <RefreshCw size={12} className={syncRetrying ? 'animate-spin' : ''} />
+                  Try calendar sync again
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

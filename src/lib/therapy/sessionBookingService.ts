@@ -146,11 +146,26 @@ export class SessionBookingService {
       endDateIso
     );
 
-    // Generate potential slots (default 50-minute sessions with 10-minute breaks)
-    const availableSlots: Array<{ start: string; end: string }> = [];
+    // 4. Fetch pending unexpired slot reservations (15-min checkout holds)
+    const nowIso = new Date().toISOString();
+    const { data: pendingHolds } = await supabase
+      .from('therapy_session_bookings')
+      .select('slot_start, slot_end')
+      .eq('therapist_account_id', therapistAccountId)
+      .eq('booking_status', 'pending_payment')
+      .gt('expires_at', nowIso)
+      .gte('slot_end', startDateIso)
+      .lte('slot_start', endDateIso);
 
-    // Simple slot generation for demo/testing across date range
+    // Generate potential slots (50-minute sessions with 10-minute breaks)
+    const availableSlots: Array<{ start: string; end: string; available: boolean }> = [];
+
     let currentCursor = new Date(start);
+    // Align to the nearest top of the hour
+    currentCursor.setMinutes(0, 0, 0);
+
+    const minLeadTimeMs = Date.now() + 60 * 60 * 1000; // 1 hour lead time
+
     while (currentCursor < end) {
       const slotStart = new Date(currentCursor);
       const slotEnd = new Date(slotStart.getTime() + 50 * 60 * 1000);
@@ -168,10 +183,12 @@ export class SessionBookingService {
           const [startH] = dayBlock.start_time.split(':').map(Number);
           const [endH] = dayBlock.end_time.split(':').map(Number);
           withinWorkingHours = hour >= startH && hour < endH;
+        } else if (dayBlock && !dayBlock.is_available) {
+          withinWorkingHours = false;
         }
       }
 
-      if (withinWorkingHours) {
+      if (withinWorkingHours && slotStart.getTime() > minLeadTimeMs) {
         const isConflict =
           appointments?.some((appt: any) => {
             const aStart = new Date(appt.scheduled_start).getTime();
@@ -182,17 +199,23 @@ export class SessionBookingService {
             const bStart = new Date(gb.start).getTime();
             const bEnd = new Date(gb.end).getTime();
             return slotStart.getTime() < bEnd && slotEnd.getTime() > bStart;
+          }) ||
+          pendingHolds?.some((hold: any) => {
+            const hStart = new Date(hold.slot_start).getTime();
+            const hEnd = new Date(hold.slot_end).getTime();
+            return slotStart.getTime() < hEnd && slotEnd.getTime() > hStart;
           });
 
-        if (!isConflict && slotStart.getTime() > Date.now()) {
+        if (!isConflict) {
           availableSlots.push({
             start: slotStart.toISOString(),
             end: slotEnd.toISOString(),
+            available: true,
           });
         }
       }
 
-      // Advance by 1 hour
+      // Advance by 1 hour (50 min session + 10 min buffer)
       currentCursor = new Date(currentCursor.getTime() + 60 * 60 * 1000);
     }
 
@@ -215,17 +238,46 @@ export class SessionBookingService {
   }) {
     const { userId, therapistAccountId, slotStart, slotEnd } = params;
 
-    // 1. Eligibility guard
+    // 1. Eligibility guard & care relationship resolution
     let relationshipId: string | null = null;
+    let isFirstSession = false;
+
     if (!params.isFirstSessionCoordination) {
-      const eligibility = await this.verifyClientBookingEligibility(userId, therapistAccountId);
-      if (!eligibility.eligible) {
-        const err: any = new Error(eligibility.message || 'Client ineligible for self-booking.');
-        err.code = eligibility.reason || 'INELIGIBLE';
-        err.status = 403;
-        throw err;
+      // Find or initialize relationship
+      const { data: rel } = await supabase
+        .from('therapy_care_relationships')
+        .select('id, status, care_stage, first_session_completed')
+        .eq('therapist_account_id', therapistAccountId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (rel) {
+        if (rel.status !== 'active') {
+          const err: any = new Error('This therapy care relationship is not active.');
+          err.code = 'RELATIONSHIP_INACTIVE';
+          err.status = 403;
+          throw err;
+        }
+        relationshipId = rel.id;
+        isFirstSession = !rel.first_session_completed;
+      } else {
+        // Direct booking: initialize active care relationship for client and therapist
+        const { data: newRel } = await supabase
+          .from('therapy_care_relationships')
+          .insert({
+            therapist_account_id: therapistAccountId,
+            user_id: userId,
+            status: 'active',
+            care_stage: 'intake',
+            first_session_completed: false,
+            started_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+
+        relationshipId = newRel?.id || null;
+        isFirstSession = true;
       }
-      relationshipId = eligibility.relationshipId || null;
     } else {
       // Find relationship
       const { data: rel } = await supabase
@@ -235,20 +287,42 @@ export class SessionBookingService {
         .eq('user_id', userId)
         .maybeSingle();
       relationshipId = rel?.id || null;
+      isFirstSession = true;
     }
 
-    // 2. Conflict verification
+    // 2. Conflict verification (Appointments + Google Calendar FreeBusy + Pending Holds)
     const { data: conflict } = await supabase
       .from('therapist_clinical_appointments')
       .select('id')
       .eq('therapist_account_id', therapistAccountId)
-      .in('status', ['scheduled', 'confirmed', 'in_progress'])
+      .in('status', ['scheduled', 'confirmed', 'in_progress', 'rescheduled'])
       .lt('scheduled_start', slotEnd)
       .gt('scheduled_end', slotStart)
       .maybeSingle();
 
     if (conflict) {
       const err: any = new Error('Selected time slot conflicts with an existing appointment.');
+      err.code = 'SLOT_UNAVAILABLE';
+      err.status = 409;
+      throw err;
+    }
+
+    // Check Google Calendar conflict
+    const googleBusy = await GoogleCalendarService.getBusySlots(
+      therapistAccountId,
+      slotStart,
+      slotEnd
+    );
+    const hasGoogleConflict = googleBusy.some((gb) => {
+      const bStart = new Date(gb.start).getTime();
+      const bEnd = new Date(gb.end).getTime();
+      const sStart = new Date(slotStart).getTime();
+      const sEnd = new Date(slotEnd).getTime();
+      return sStart < bEnd && sEnd > bStart;
+    });
+
+    if (hasGoogleConflict) {
+      const err: any = new Error('Selected time slot conflicts with therapist Google Calendar.');
       err.code = 'SLOT_UNAVAILABLE';
       err.status = 409;
       throw err;
@@ -920,10 +994,16 @@ export class SessionBookingService {
 
       // 6. Delete Google Calendar event
       if (appt.google_calendar_event_id) {
-        await GoogleCalendarService.deleteEvent(
+        const delResult = await GoogleCalendarService.deleteEvent(
           appt.therapist_account_id,
           appt.google_calendar_event_id
         );
+        if (!delResult.success) {
+          await supabase
+            .from('therapist_clinical_appointments')
+            .update({ calendar_sync_status: 'failed' })
+            .eq('id', appointmentId);
+        }
       }
 
       // 7. Adjust earnings ONLY IF refund confirmed
@@ -1333,5 +1413,100 @@ export class SessionBookingService {
     } finally {
       this.activeNoShowLocks.delete(appointmentId);
     }
+  }
+
+  /**
+   * Safely retries Google Calendar synchronization and Meet creation for an appointment.
+   * Invoked via POST /api/therapy/sessions/sync-calendar
+   */
+  static async retryCalendarSync(
+    appointmentId: string,
+    caller: { accountType: 'user' | 'therapist'; accountId: string }
+  ) {
+    const { data: appt, error } = await supabase
+      .from('therapist_clinical_appointments')
+      .select('*')
+      .eq('id', appointmentId)
+      .maybeSingle();
+
+    if (error || !appt) {
+      const err: any = new Error('Appointment not found.');
+      err.code = 'APPOINTMENT_NOT_FOUND';
+      err.status = 404;
+      throw err;
+    }
+
+    // Ownership check
+    if (caller.accountType === 'user' && appt.user_id !== caller.accountId) {
+      const err: any = new Error('Unauthorized.');
+      err.code = 'UNAUTHORIZED';
+      err.status = 403;
+      throw err;
+    }
+    if (caller.accountType === 'therapist' && appt.therapist_account_id !== caller.accountId) {
+      const err: any = new Error('Unauthorized.');
+      err.code = 'UNAUTHORIZED';
+      err.status = 403;
+      throw err;
+    }
+
+    if (appt.status === 'cancelled') {
+      const err: any = new Error('Cannot sync a cancelled appointment.');
+      err.code = 'APPOINTMENT_CANCELLED';
+      err.status = 400;
+      throw err;
+    }
+
+    const { data: clientUser } = await supabase
+      .from('users')
+      .select('email, full_name')
+      .eq('id', appt.user_id)
+      .maybeSingle();
+
+    const { data: therapistAccount } = await supabase
+      .from('therapist_accounts')
+      .select('email, full_name')
+      .eq('id', appt.therapist_account_id)
+      .maybeSingle();
+
+    const calendarEventResult = await GoogleCalendarService.createEventWithMeet({
+      therapistAccountId: appt.therapist_account_id,
+      userId: appt.user_id,
+      appointmentId: appt.id,
+      summary: `Ingress Within: Session with ${clientUser?.full_name || 'Client'}`,
+      description: `Ingress Within confidential therapy session.`,
+      startTime: appt.scheduled_start,
+      endTime: appt.scheduled_end,
+      attendees: [therapistAccount?.email, clientUser?.email].filter(Boolean) as string[],
+    });
+
+    const meetUrl = calendarEventResult.meetUrl || null;
+    const meetStatus = meetUrl
+      ? 'created'
+      : calendarEventResult.syncStatus === 'not_connected'
+      ? 'not_connected'
+      : 'failed';
+
+    const { data: updatedAppt } = await supabase
+      .from('therapist_clinical_appointments')
+      .update({
+        google_calendar_event_id: calendarEventResult.eventId || appt.google_calendar_event_id,
+        google_meet_url: meetUrl || appt.google_meet_url,
+        google_meet_conference_id: calendarEventResult.conferenceId || appt.google_meet_conference_id,
+        google_meet_status: meetStatus,
+        calendar_sync_status: calendarEventResult.syncStatus,
+        meeting_link: meetUrl || appt.meeting_link,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', appt.id)
+      .select('*')
+      .single();
+
+    return {
+      success: calendarEventResult.syncStatus === 'synced',
+      appointment: updatedAppt,
+      syncStatus: calendarEventResult.syncStatus,
+      meetUrl,
+    };
   }
 }

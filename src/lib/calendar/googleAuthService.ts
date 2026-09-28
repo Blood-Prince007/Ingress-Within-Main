@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { supabase } from '../db';
 import { encryptToken, decryptToken } from '../../utils/encryption';
+import { GoogleCalendarConfigService } from './googleCalendarConfig';
 
 export interface OAuthStatePayload {
   accountType: 'user' | 'therapist';
@@ -48,18 +49,15 @@ export class GoogleAuthService {
   private static inMemoryConnections: Map<string, any> = new Map();
 
   private static getClientId(): string {
-    return process.env.GOOGLE_CLIENT_ID || '';
+    return GoogleCalendarConfigService.getConfig().clientId;
   }
 
   private static getClientSecret(): string {
-    return process.env.GOOGLE_CLIENT_SECRET || '';
+    return GoogleCalendarConfigService.getConfig().clientSecret;
   }
 
   private static getRedirectUri(): string {
-    return (
-      process.env.GOOGLE_REDIRECT_URI ||
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/calendar/google/callback`
-    );
+    return GoogleCalendarConfigService.getConfig().redirectUri;
   }
 
   /**
@@ -76,6 +74,8 @@ export class GoogleAuthService {
     if (accountType === 'therapist' && (!therapistAccountId || userId)) {
       throw new Error('INVALID_OAUTH_OWNERSHIP: Therapist OAuth must specify therapistAccountId and no userId.');
     }
+
+    const config = GoogleCalendarConfigService.assertConfigured();
 
     // 1. Generate opaque cryptographically random state token (64 hex characters)
     const rawState = crypto.randomBytes(32).toString('hex');

@@ -25,6 +25,8 @@ export default function TherapistCalendarView({
   onOpenSoap
 }) {
   const [sessions, setSessions] = useState([]);
+  const [externalBusy, setExternalBusy] = useState([]);
+  const [googleCalendarStatus, setGoogleCalendarStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('month'); // 'month' | 'day'
@@ -68,6 +70,8 @@ export default function TherapistCalendarView({
       const json = await res.json();
       const list = json.sessions || json.appointments || [];
       setSessions(list);
+      setExternalBusy(json.externalBusy || []);
+      setGoogleCalendarStatus(json.googleCalendarStatus || null);
     } catch (err) {
       console.error('Calendar error:', err);
       setError(err.message || 'Failed to load calendar events.');
@@ -147,6 +151,24 @@ export default function TherapistCalendarView({
   const selectedDaySessions = useMemo(() => {
     return sessionsByDay.get(selectedDayKey) || [];
   }, [sessionsByDay, selectedDayKey]);
+
+  // Group external busy periods by day (YYYY-MM-DD)
+  const externalBusyByDay = useMemo(() => {
+    const map = new Map();
+    externalBusy.forEach((b) => {
+      if (!b.start) return;
+      const dayKey = new Date(b.start).toLocaleDateString('en-CA');
+      if (!map.has(dayKey)) {
+        map.set(dayKey, []);
+      }
+      map.get(dayKey).push(b);
+    });
+    return map;
+  }, [externalBusy]);
+
+  const selectedDayExternalBusy = useMemo(() => {
+    return externalBusyByDay.get(selectedDayKey) || [];
+  }, [externalBusyByDay, selectedDayKey]);
 
   // Actions
   const handleCancelSession = async (appointmentId) => {
@@ -268,6 +290,56 @@ export default function TherapistCalendarView({
           </button>
         </div>
       )}
+
+      {/* Google Calendar Synchronization Banner */}
+      <div className="bg-[#FAF9F5] border border-[#132A24]/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#4E7A66]/10 text-[#4E7A66] flex items-center justify-center shrink-0">
+            <CalendarIcon size={16} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-[#132A24]">Google Calendar</span>
+              {googleCalendarStatus?.connected ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#4E7A66]/10 text-[#4E7A66]">
+                  <CheckCircle2 size={11} /> Connected ({googleCalendarStatus.googleEmail || 'Primary'})
+                </span>
+              ) : googleCalendarStatus?.syncStatus === 'revoked' || googleCalendarStatus?.syncStatus === 'expired' ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
+                  <AlertCircle size={11} /> Authorization Expired
+                </span>
+              ) : (
+                <span className="text-[11px] text-[#132A24]/50">Not Connected</span>
+              )}
+            </div>
+            <p className="text-[11px] text-[#132A24]/60 mt-0.5">
+              {googleCalendarStatus?.connected
+                ? 'External commitments are automatically blocked from client booking and appointments stay synchronized.'
+                : 'Connect your Google Calendar to automatically block external busy hours and generate real Google Meet links.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {googleCalendarStatus?.connected ? (
+            <button
+              onClick={fetchCalendar}
+              className="px-3 py-1.5 rounded-lg border border-[#132A24]/15 bg-white text-[#132A24] font-medium hover:bg-[#132A24]/5 transition-colors cursor-pointer inline-flex items-center gap-1.5"
+            >
+              <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+              Sync Now
+            </button>
+          ) : (
+            <a
+              href="/api/calendar/google/connect?type=therapist&returnTo=/therapist/calendar"
+              className="px-3.5 py-1.5 rounded-lg bg-[#132A24] text-white font-medium hover:bg-[#132A24]/90 transition-colors cursor-pointer no-underline inline-flex items-center gap-1.5 shadow-2xs"
+            >
+              <CalendarIcon size={12} />
+              Connect Calendar
+            </a>
+          )}
+        </div>
+      </div>
 
       {/* Calendar Controls & Month Navigation */}
       <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs flex items-center justify-between">
@@ -421,9 +493,9 @@ export default function TherapistCalendarView({
               </span>
             </div>
 
-            {selectedDaySessions.length === 0 ? (
+            {selectedDaySessions.length === 0 && selectedDayExternalBusy.length === 0 ? (
               <div className="bg-white border border-[#132A24]/10 rounded-xl p-8 text-center space-y-2">
-                <p className="text-sm font-medium text-[#132A24]">No sessions scheduled for this day.</p>
+                <p className="text-sm font-medium text-[#132A24]">No commitments scheduled for this day.</p>
                 <p className="text-xs text-[#132A24]/50 max-w-sm mx-auto">
                   Click "Schedule Session" above to book a clinical encounter on this date.
                 </p>
@@ -431,6 +503,7 @@ export default function TherapistCalendarView({
             ) : (
               <div className="space-y-3">
                 {selectedDaySessions.map(renderSessionCard)}
+                {selectedDayExternalBusy.map(renderExternalBusyCard)}
               </div>
             )}
           </div>
@@ -442,24 +515,32 @@ export default function TherapistCalendarView({
             <h3 className="font-serif text-xl font-normal text-[#132A24]">
               {selectedDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </h3>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#132A24]/5 text-[#132A24]/70">
-              {selectedDaySessions.length} {selectedDaySessions.length === 1 ? 'session' : 'sessions'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#132A24]/5 text-[#132A24]/70">
+                {selectedDaySessions.length} {selectedDaySessions.length === 1 ? 'session' : 'sessions'}
+              </span>
+              {selectedDayExternalBusy.length > 0 && (
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800">
+                  {selectedDayExternalBusy.length} external busy
+                </span>
+              )}
+            </div>
           </div>
 
-          {selectedDaySessions.length === 0 ? (
+          {selectedDaySessions.length === 0 && selectedDayExternalBusy.length === 0 ? (
             <div className="bg-white border border-[#132A24]/10 rounded-2xl p-12 text-center space-y-3">
               <CalendarIcon size={36} className="mx-auto text-[#132A24]/30" />
               <h3 className="font-serif text-xl font-normal text-[#132A24]">
-                No sessions scheduled for this day.
+                No commitments scheduled for this day.
               </h3>
               <p className="text-xs text-[#132A24]/60 max-w-sm mx-auto">
-                No clinical consultations are booked for this date.
+                No clinical consultations or external Google Calendar commitments are recorded for this date.
               </p>
             </div>
           ) : (
             <div className="space-y-3">
               {selectedDaySessions.map(renderSessionCard)}
+              {selectedDayExternalBusy.map(renderExternalBusyCard)}
             </div>
           )}
         </div>
@@ -483,6 +564,46 @@ export default function TherapistCalendarView({
       )}
     </div>
   );
+
+  // Render external Google Calendar busy block (strictly privacy-sanitized: no titles, descriptions, or attendees)
+  function renderExternalBusyCard(busyItem, idx) {
+    const startStr = new Date(busyItem.start).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+    const endStr = new Date(busyItem.end).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    return (
+      <div
+        key={`external-busy-${idx}-${busyItem.start}`}
+        className="bg-[#FAFAF8] border border-dashed border-[#132A24]/15 rounded-xl p-4 flex items-center justify-between gap-4 transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-[#132A24]/5 border border-[#132A24]/10 flex flex-col items-center justify-center shrink-0 text-[#132A24]/60">
+            <Clock size={16} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-[#132A24]">
+                {startStr} – {endStr}
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#132A24]/5 text-[#132A24]/70 uppercase tracking-wider">
+                Busy
+              </span>
+            </div>
+            <p className="text-[11px] text-[#132A24]/50 mt-0.5">
+              Google Calendar Commitment &bull; Client self-booking slots blocked during this period
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Render individual session card
   function renderSessionCard(appt) {

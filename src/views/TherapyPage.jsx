@@ -2,6 +2,7 @@ import React, {useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
+  Calendar as CalendarIcon,
   Check,
   ClipboardList,
   MessageCircle,
@@ -9,6 +10,7 @@ import {
   ShieldCheck,
   Users,
 } from 'lucide-react';
+import TherapyBookingFlow from '../components/therapy/TherapyBookingFlow';
 
 /*
  * Ingress Within — Therapy intake
@@ -1038,7 +1040,7 @@ function Conversation({ exit }) {
   );
 }
 
-function Guided({ exit }) {
+function Guided({ exit, onBookSession }) {
   const total = 17;
   const [step, setStep] = useState(1);
   const [selectedTherapist, setSelectedTherapist] = useState(null);
@@ -1516,6 +1518,16 @@ function Guided({ exit }) {
                 <div className="iw-row"><span>Availability</span><strong>{selectedTherapist.availability}</strong></div>
                 <div className="iw-row"><span>Fee</span><strong>₹{selectedTherapist.fee}/session</strong></div>
               </div>
+              {onBookSession && (
+                <button
+                  type="button"
+                  className="iw-primary"
+                  style={{ marginTop: 14, width: '100%', justifyContent: 'center' }}
+                  onClick={() => onBookSession(selectedTherapist)}
+                >
+                  Schedule &amp; Book Session with {selectedTherapist.name} &rarr;
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -1527,9 +1539,9 @@ function Guided({ exit }) {
             </>
           )}
           <div className="iw-note">
-            Prototype only: final booking, therapist communication and clinical review must be handled by the production backend/team.
+            Your consultation is held securely via Google Meet and synced automatically with Google Calendar upon booking.
           </div>
-          <button type="button" className="iw-primary" onClick={exit}>Back to Therapy</button>
+          <button type="button" className="iw-secondary" onClick={exit}>Back to Therapy</button>
         </div>
       </div>
     );
@@ -2322,6 +2334,13 @@ function Team({ exit }) {
 
 export default function TherapyPage({ user, profile, onSignOut }) {
   const [journey, setJourney] = useState(null);
+  const [bookingFlowOpen, setBookingFlowOpen] = useState(false);
+  const [bookingTherapist, setBookingTherapist] = useState(null);
+
+  const handleStartBooking = (therapist = null) => {
+    setBookingTherapist(therapist);
+    setBookingFlowOpen(true);
+  };
 
   const dashboard = () => {
     if (typeof window !== 'undefined' && window.navigateTo) window.navigateTo('/dashboard');
@@ -2344,11 +2363,26 @@ export default function TherapyPage({ user, profile, onSignOut }) {
           <div className="iw-k">Support, at your pace</div>
           <h1>Let’s find the right way in.</h1>
           <p className="iw-lede">
-            Choose how you’d like to begin. You can talk it through, answer a guided set of
-            questions, or speak with the team directly.
+            Choose how you’d like to begin. You can book directly with a clinician, talk it through, answer a guided set of
+            questions, or speak with the team.
           </p>
 
           <div className="iw-grid">
+            <div className="iw-card iw-journey" style={{ border: '1.5px solid #064e3b' }}>
+              <div className="iw-icon" style={{ backgroundColor: '#ecfdf5', color: '#064e3b' }}><CalendarIcon /></div>
+              <div className="iw-k" style={{ color: '#064e3b' }}>Direct Booking</div>
+              <h3>Schedule a Consultation</h3>
+              <p>Book directly with a licensed clinician based on their real-time Google Calendar availability.</p>
+              <button
+                type="button"
+                className="iw-primary"
+                style={{ backgroundColor: '#064e3b' }}
+                onClick={() => handleStartBooking(null)}
+              >
+                Book a Session <ArrowRight size={15} />
+              </button>
+            </div>
+
             <div className="iw-card iw-journey">
               <div className="iw-icon"><MessageCircle /></div>
               <div className="iw-k">Talk it through</div>
@@ -2381,16 +2415,21 @@ export default function TherapyPage({ user, profile, onSignOut }) {
           </div>
 
           <div className="iw-note">
-            <strong>Prototype status:</strong> the three journeys now follow the supplied intake
-            structure more closely. Production AI, persistence, clinical triage and booking remain
-            server-side integration work.
+            Ingress Within therapy appointments are conducted securely via Google Meet and synchronized automatically with your Google Calendar upon confirmation.
           </div>
         </div>
       )}
 
       {journey === 'conversation' && <Conversation exit={() => setJourney(null)} />}
-      {journey === 'guided' && <Guided exit={() => setJourney(null)} />}
+      {journey === 'guided' && <Guided exit={() => setJourney(null)} onBookSession={handleStartBooking} />}
       {journey === 'team' && <Team exit={() => setJourney(null)} />}
+
+      <TherapyBookingFlow
+        isOpen={bookingFlowOpen}
+        onClose={() => setBookingFlowOpen(false)}
+        initialTherapist={bookingTherapist}
+        user={user}
+      />
     </div>
   );
 }

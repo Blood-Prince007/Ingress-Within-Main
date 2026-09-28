@@ -1,6 +1,8 @@
 import { supabase } from '../db';
 import { EmailService } from '../email/emailService';
 import { TherapistPayoutService } from './therapistPayoutService';
+import { GoogleCalendarService } from '../calendar/googleCalendarService';
+import { GoogleAuthService } from '../calendar/googleAuthService';
 
 export class TherapistPlatformService {
   /**
@@ -2116,6 +2118,57 @@ export class TherapistPlatformService {
       throw new Error('Failed to update appointment.');
     }
 
+    // 6. Update Google Calendar event if exists
+    if (appt.google_calendar_event_id) {
+      await GoogleCalendarService.updateEventTimes(
+        therapistAccountId,
+        appt.google_calendar_event_id,
+        newStartIso,
+        newEndIso
+      );
+    }
+
+    // 7. Update linked booking if exists
+    if (appt.booking_id) {
+      await supabase
+        .from('therapy_session_bookings')
+        .update({
+          slot_start: newStartIso,
+          slot_end: newEndIso,
+          booking_status: 'rescheduled',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', appt.booking_id);
+    }
+
+    // 8. Dispatch notification emails
+    try {
+      const { data: clientUser } = await supabase
+        .from('users')
+        .select('email, full_name')
+        .eq('id', appt.user_id)
+        .maybeSingle();
+
+      const { data: therapistAccount } = await supabase
+        .from('therapist_accounts')
+        .select('email, full_name')
+        .eq('id', therapistAccountId)
+        .maybeSingle();
+
+      await EmailService.notifySessionRescheduled({
+        appointmentId,
+        previousStart: appt.scheduled_start,
+        newStart: newStartIso,
+        clientEmail: clientUser?.email || 'client@ingresswithin.com',
+        therapistEmail: therapistAccount?.email || 'therapist@ingresswithin.com',
+        clientName: clientUser?.full_name || 'Client',
+        therapistName: therapistAccount?.full_name || 'Therapist',
+        googleMeetUrl: appt.google_meet_url || appt.meeting_link,
+      });
+    } catch (mailErr) {
+      console.warn('[TherapistPlatformService] Email notification error:', mailErr);
+    }
+
     return updated;
   }
 
@@ -2694,10 +2747,25 @@ export class TherapistPlatformService {
       .select('*')
       .eq('therapist_account_id', therapistAccountId);
 
+    // 3. Google Calendar busy slots
+    const externalBusy = await GoogleCalendarService.getBusySlots(
+      therapistAccountId,
+      startDateIso,
+      endDateIso
+    );
+
+    // 4. Google Calendar connection status
+    const googleCalendarStatus = await GoogleAuthService.getConnectionStatus(
+      'therapist',
+      therapistAccountId
+    );
+
     return {
       sessions: appointments,
       appointments,
       availabilityBlocks: blocks || [],
+      externalBusy,
+      googleCalendarStatus,
     };
   }
 

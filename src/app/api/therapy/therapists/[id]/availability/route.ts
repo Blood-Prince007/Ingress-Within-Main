@@ -9,10 +9,10 @@ export async function GET(
     const { id: therapistId } = await params;
     const searchParams = request.nextUrl.searchParams;
 
-    const startDate = searchParams.get('startDate') || new Date().toISOString();
+    const startDate = searchParams.get('start') || searchParams.get('startDate') || new Date().toISOString();
     // Default to 14 days ahead
     const defaultEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-    const endDate = searchParams.get('endDate') || defaultEnd;
+    const endDate = searchParams.get('end') || searchParams.get('endDate') || defaultEnd;
 
     const [slots, pricing] = await Promise.all([
       SessionBookingService.getTherapistAvailability(therapistId, startDate, endDate),
