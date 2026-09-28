@@ -96,24 +96,63 @@ export class TherapistPlatformService {
    * Formally submits the completed onboarding application for administrative review.
    * STRICT: sets application_status = 'submitted', can_practice remains false.
    */
-  static async submitApplication(therapistAccountId: string, answers: Record<string, any>) {
+  static async submitApplication(therapistAccountId: string, answers: Record<string, any>, documents: any[] = []) {
     const existing = await this.getOnboardingState(therapistAccountId);
     const mergedAnswers = {
       ...(existing.application?.answers || {}),
       ...answers,
     };
 
+    const requiredChecks = [
+      ['fullName', Boolean(mergedAnswers.fullName)],
+      ['credentials', Boolean(mergedAnswers.credentials)],
+      ['city', Boolean(mergedAnswers.city)],
+      ['bio', Boolean(mergedAnswers.bio)],
+      ['specialties', Array.isArray(mergedAnswers.specialties) && mergedAnswers.specialties.length > 0 && mergedAnswers.specialties.length <= 5],
+      ['modalities', (Array.isArray(mergedAnswers.modalities) && mergedAnswers.modalities.length > 0) || (Array.isArray(mergedAnswers.customModalities) && mergedAnswers.customModalities.length > 0)],
+      ['primaryModalities', Array.isArray(mergedAnswers.primaryModalities) && mergedAnswers.primaryModalities.length > 0 && mergedAnswers.primaryModalities.length <= 5],
+      ['vignetteAnswers', Object.keys(mergedAnswers.vignetteAnswers || {}).length === 3],
+      ['licenseNumber', Boolean(mergedAnswers.licenseNumber)],
+      ['issuingBody', Boolean(mergedAnswers.issuingBody)],
+      ['degreeCertificate', Boolean(mergedAnswers.degreeCertificate)],
+      ['backgroundCheckConsent', mergedAnswers.backgroundCheckConsent !== undefined && mergedAnswers.backgroundCheckConsent !== null],
+      ['higherAcuityInterest', mergedAnswers.higherAcuityInterest !== undefined && mergedAnswers.higherAcuityInterest !== null],
+      ['ethicsDeclaration', mergedAnswers.ethicsDeclaration !== undefined && mergedAnswers.ethicsDeclaration !== null],
+      ['truthfulnessConfirmed', mergedAnswers.truthfulnessConfirmed !== undefined && mergedAnswers.truthfulnessConfirmed !== null],
+    ];
+    const missing = requiredChecks.filter(([, ok]) => !ok).map(([key]) => key);
+    if (missing.length) {
+      const error: any = new Error(`Complete the required onboarding fields before submitting: ${missing.join(', ')}`);
+      error.status = 400;
+      error.code = 'ONBOARDING_INCOMPLETE';
+      throw error;
+    }
+    if (mergedAnswers.traumaListed === 'Yes' && !mergedAnswers.traumaCertification) {
+      const error: any = new Error('Trauma certification is required when requesting a trauma-informed listing.');
+      error.status = 400; error.code = 'TRAUMA_CERTIFICATE_REQUIRED'; throw error;
+    }
+
     const now = new Date().toISOString();
 
-    // 1. Update therapist_applications
+    const persistedDocuments = documents.length > 0 ? documents : (Array.isArray((existing.application as any)?.documents) ? (existing.application as any).documents : []);
+    const onboardingStage = 'credentialing_in_review';
+    const supervisionStatus = mergedAnswers?.supervision?.status || null;
+    const backgroundCheckStatus = mergedAnswers?.backgroundCheckConsent ? 'pending' : 'flagged';
+
+    // 1. Persist the complete application as a credentialing-review snapshot.
     const { data: app, error: appError } = await supabase
       .from('therapist_applications')
       .upsert(
         {
           therapist_account_id: therapistAccountId,
-          step: 11,
+          step: 10,
           answers: mergedAnswers,
+          documents: persistedDocuments,
           submitted_at: now,
+          onboarding_stage: onboardingStage,
+          acuity_clearance_level: 'none',
+          background_check_status: backgroundCheckStatus,
+          supervision_status: supervisionStatus,
           updated_at: now,
         },
         { onConflict: 'therapist_account_id' }
@@ -133,29 +172,60 @@ export class TherapistPlatformService {
         application_status: 'submitted',
         can_practice: false,
         verification_status: 'pending',
-        rci_registered: Boolean(mergedAnswers.rciRegistered),
-        rci_number: mergedAnswers.rciNumber || null,
+        rci_registered: String(mergedAnswers.issuingBody || '').trim().toLowerCase().includes('rehabilitation council of india') || String(mergedAnswers.issuingBody || '').trim().toLowerCase() === 'rci',
+        rci_number: mergedAnswers.licenseNumber || null,
         updated_at: now,
       })
       .eq('id', therapistAccountId);
 
     // 3. Update therapist_profiles with basic identity/credential details from application
-    await supabase
+    const broadSpecialtyTags = Array.isArray(mergedAnswers.broadSpecialtyTags) && mergedAnswers.broadSpecialtyTags.length
+      ? mergedAnswers.broadSpecialtyTags.slice(0, 5)
+      : (Array.isArray(mergedAnswers.specialties) ? mergedAnswers.specialties.slice(0, 5) : []);
+    const modalities = Array.isArray(mergedAnswers.modalities) ? [...mergedAnswers.modalities, ...(Array.isArray(mergedAnswers.customModalities) ? mergedAnswers.customModalities : [])] : [];
+    const maxCapacity = Number(mergedAnswers.maxCapacity);
+    const currentCapacity = Number(mergedAnswers.currentCapacity);
+    const soonestOpeningDays = Number(mergedAnswers.soonestOpeningDays);
+    const severityCeiling = Number(mergedAnswers.severityCeiling);
+
+    const profilePayload = {
+      therapist_account_id: therapistAccountId,
+      phone: existing.account?.phone_number || existing.profile?.phone || mergedAnswers.phone || null,
+      full_name: mergedAnswers.fullName || existing.profile?.full_name,
+      title: mergedAnswers.credentials || 'Clinical Psychologist',
+      bio: mergedAnswers.bio || '',
+      qualification: mergedAnswers.credentials || '',
+      experience_years: Number(mergedAnswers.yearsOfExperience) || 0,
+      specializations: Array.isArray(mergedAnswers.specialties) ? mergedAnswers.specialties : [],
+      broad_specialty_tags: broadSpecialtyTags,
+      modalities,
+      languages: Array.isArray(mergedAnswers.languages) ? mergedAnswers.languages : [],
+      session_formats: Array.isArray(mergedAnswers.sessionFormats) ? mergedAnswers.sessionFormats : [],
+      profile_image_url: mergedAnswers.photo?.path || existing.profile?.profile_image_url || null,
+      city: mergedAnswers.city || null,
+      state: mergedAnswers.state || null,
+      capacity_current: Number.isFinite(currentCapacity) ? currentCapacity : null,
+      capacity_max: Number.isFinite(maxCapacity) ? maxCapacity : null,
+      soonest_opening_days: Number.isFinite(soonestOpeningDays) ? soonestOpeningDays : null,
+      concern_severity_ceiling: Number.isFinite(severityCeiling) ? severityCeiling : null,
+      licensure_state_region: mergedAnswers.state || null,
+      gender: mergedAnswers.gender || null,
+      age_group_specialization: Array.isArray(mergedAnswers.ageGroups) ? mergedAnswers.ageGroups : [],
+      style_axes: {},
+      style_axes_review_flags: mergedAnswers.calibration || {},
+      capacity_last_updated_at: now,
+      data_freshness_flags: {},
+      updated_at: now,
+    };
+
+    const { error: profileError } = await supabase
       .from('therapist_profiles')
-      .update({
-        full_name: mergedAnswers.fullName || existing.profile?.full_name,
-        title: mergedAnswers.professionalTitle || 'Consultant Psychologist',
-        bio: mergedAnswers.bio || '',
-        qualification: mergedAnswers.qualification || '',
-        experience_years: Number(mergedAnswers.experienceYears) || 0,
-        specializations: Array.isArray(mergedAnswers.specializations) ? mergedAnswers.specializations : [],
-        languages: Array.isArray(mergedAnswers.languages) ? mergedAnswers.languages : ['English', 'Hindi'],
-        session_formats: Array.isArray(mergedAnswers.sessionFormats) ? mergedAnswers.sessionFormats : ['telehealth'],
-        city: mergedAnswers.city || null,
-        state: mergedAnswers.state || null,
-        updated_at: now,
-      })
-      .eq('therapist_account_id', therapistAccountId);
+      .upsert(profilePayload, { onConflict: 'therapist_account_id' });
+
+    if (profileError) {
+      console.error('[TherapistPlatformService] submitApplication profile error:', profileError);
+      throw new Error('Failed to update therapist profile.');
+    }
 
     return {
       success: true,

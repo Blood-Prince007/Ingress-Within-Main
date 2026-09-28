@@ -6,9 +6,9 @@ export async function POST(request: NextRequest) {
   try {
     const { account } = await requireTherapistApplicant(request);
     const body = await request.json().catch(() => ({}));
-    const { answers } = body;
+    const { answers, documents } = body;
 
-    const result = await TherapistPlatformService.submitApplication(account.id, answers || {});
+    const result = await TherapistPlatformService.submitApplication(account.id, answers || {}, Array.isArray(documents) ? documents : []);
 
     return NextResponse.json({
       message: 'Application submitted successfully for clinical review.',
