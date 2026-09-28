@@ -69,12 +69,6 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       
       {/* 1. HERO SECTION & DASHBOARD PREVIEW */}
       <section className="relative w-full">
-        {/* Ambient multi-color hero gradient blobs */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-          <div className="absolute -top-32 -right-32 w-[520px] h-[520px] rounded-full bg-[#C49A8F]/10 blur-[100px]" />
-          <div className="absolute top-1/3 -left-40 w-[480px] h-[480px] rounded-full bg-[#8AA688]/8 blur-[90px]" />
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-[#B8964A]/6 blur-[80px]" />
-        </div>
 
         {/* Hero Header Container (Centered vertically and horizontally in initial viewport) */}
         <div className="relative z-10 min-h-[calc(100vh-5rem)] sm:min-h-[calc(100vh-5.5rem)] flex flex-col justify-center items-center text-center px-6 sm:px-10 max-w-5xl 2xl:max-w-[1340px] mx-auto py-12 space-y-6 pointer-events-auto">
@@ -128,10 +122,9 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
           transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-5xl mx-auto text-center space-y-6"
         >
-          <div className="flex flex-col items-center gap-2">
-            <span className="brand-rule-thistle mx-auto" />
+          <div className="flex flex-col items-center">
             <div className="badge-thistle inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
-              01 · SOUND FAMILIAR?
+              SOUND FAMILIAR?
             </div>
           </div>
           <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal leading-snug">
@@ -211,10 +204,9 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
             transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
             className="text-center space-y-3"
           >
-            <div className="flex flex-col items-center gap-2">
-              <span className="brand-rule-rose mx-auto" />
+            <div className="flex flex-col items-center">
               <div className="badge-rose inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
-                02 · WHY PEOPLE START HERE
+                WHY PEOPLE START HERE
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal">
@@ -312,10 +304,9 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
             transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
             className="space-y-3"
           >
-            <div className="flex flex-col items-center gap-2">
-              <span className="brand-rule-gold mx-auto" />
+            <div className="flex flex-col items-center">
               <div className="badge-gold inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
-                03 · A QUICK LOOK
+                A QUICK LOOK
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal">
@@ -417,10 +408,9 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
             transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
             className="text-center space-y-3"
           >
-            <div className="flex flex-col items-center gap-2">
-              <span className="brand-rule-gold mx-auto" />
+            <div className="flex flex-col items-center">
               <div className="badge-gold inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
-                04 · PRICING, IN SHORT
+                PRICING, IN SHORT
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal">
@@ -580,8 +570,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <stop offset="100%" stopColor="#FAF7F2" stopOpacity="0" />
             </radialGradient>
             <filter id="sol-bleed-1" x="-20%" y="-20%" width="140%" height="140%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" />
+              <feGaussianBlur stdDeviation="10" />
             </filter>
           </defs>
           <path
@@ -621,7 +610,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
         <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10 w-full my-auto flex flex-col items-center justify-center">
           <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-            01 · OUR SOLUTION
+            OUR SOLUTION
           </div>
           
           <h1 className="font-editorial text-4xl sm:text-5xl lg:text-6xl text-[#162723] font-normal leading-[1.12] max-w-3xl sm:max-w-4xl mx-auto">
@@ -659,9 +648,6 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
       {/* 2. SECTION 01: INDEPENDENT INQUIRY (Subtle Warm Paper with Sage Wash) */}
       <section id="sol-independent" className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
-        {/* Subtle watercolor accent bleed */}
-        <div className="absolute top-1/2 -right-24 w-80 h-80 rounded-full bg-[#8AA688]/10 blur-3xl pointer-events-none" />
-
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -671,7 +657,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
             className="text-center max-w-3xl sm:max-w-4xl mx-auto space-y-2.5 sm:space-y-3"
           >
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-              02 · INDEPENDENT INQUIRY
+              INDEPENDENT INQUIRY
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-[40px] text-[#162723] font-normal leading-[1.18] mx-auto">
               Write it down. Let the platform show you what you can't see day to day.
@@ -751,15 +737,12 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
       {/* 3. SECTION 02: THE GUIDED JOURNAL & PROGRESS TIMELINE (Subtle Warm Sand with Rose Wash) */}
       <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
-        {/* Subtle watercolor bleed blob */}
-        <div className="absolute -bottom-16 -left-20 w-96 h-96 rounded-full bg-[#C49A8F]/10 blur-3xl pointer-events-none" />
-
         <div className="max-w-5xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           {/* The 5 Prompts */}
           <div className="space-y-5">
             <div className="text-center max-w-3xl sm:max-w-4xl mx-auto space-y-2">
               <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-                03 · THE GUIDED JOURNAL
+                THE GUIDED JOURNAL
               </div>
               <h3 className="font-editorial text-2xl sm:text-3xl text-[#162723] pt-1">
                 Five short prompts, so you're not staring at a blank page.
@@ -809,69 +792,185 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
             </p>
           </div>
 
-          {/* How a suggestion forms diagram with enhanced watercolor glow */}
-          <div className="paper-card rounded-2xl p-6 sm:p-8 bg-white border border-[#E7DECF] shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <div className="font-mono-code text-[11px] uppercase tracking-wider text-[#795663] font-bold">
-                HOW A SUGGESTION FORMS
+          {/* How a suggestion forms diagram matching SAMPLE WEEKLY REPORT card dimensions */}
+          <div className="paper-card rounded-2xl p-6 sm:p-7 bg-[#FAF8F5] border border-[#E7DECF] shadow-xs relative overflow-hidden">
+            
+            {/* Top Bar: Eyebrow with dash & Longitudinal pill badge */}
+            <div className="flex flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-6 h-[1.5px] bg-[#8C5F6D] rounded-full inline-block" />
+                <span className="font-mono-code text-[10px] sm:text-[10.5px] uppercase tracking-[0.2em] font-semibold text-[#8C7A77]">
+                  HOW A <span className="text-[#6A3D4E] font-bold">SUGGESTION</span> FORMS
+                </span>
               </div>
-              <span className="font-mono-code text-xs text-[#2E7A70] bg-[#EAF2ED] px-3 py-0.5 rounded-full font-medium">
-                100% Free longitudinal tracking
-              </span>
+              <div className="inline-flex items-center gap-1.5 bg-[#E3ECE5] px-3.5 py-1 rounded-full">
+                <svg width="16" height="8" viewBox="0 0 20 10" fill="none" className="text-[#56795A]">
+                  <path d="M1 5C4 2 6 8 10 5C14 2 16 8 19 5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                </svg>
+                <span className="font-mono-code text-[10px] sm:text-[10.5px] text-[#4A6B4F] font-semibold tracking-wide">
+                  100% From longitudinal tracking
+                </span>
+              </div>
             </div>
             
-            <h3 className="font-editorial text-2xl sm:text-3xl text-[#162723]">
-              Free the whole way, until one point.
+            {/* Heading */}
+            <h3 className="font-editorial text-2xl sm:text-[32px] md:text-[35px] text-[#162723] font-normal leading-[1.12] tracking-tight mt-4 mb-2">
+              Free the whole way, until <span className="italic text-[#6A3D4E]">one point.</span>
             </h3>
 
-            <div className="w-full overflow-x-auto pt-2">
-              <svg viewBox="0 0 720 230" role="img" aria-label="Chart showing a pattern appearing gently in week one with a free explanation, repeating through week eight, at which point one paid module is suggested" className="w-full min-w-[560px] h-auto">
+            {/* Visual SVG Journey Chart scaled to match full card width */}
+            <div className="w-full overflow-x-auto pt-1 pb-0">
+              <svg
+                viewBox="0 0 823 241"
+                role="img"
+                aria-label="How a suggestion forms chart showing a pattern appearing in week 1, repeating through week 8, where one module is offered"
+                className="w-full min-w-[620px] h-auto select-none"
+              >
                 <defs>
-                  <linearGradient id="chart-line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#7E9E82" />
-                    <stop offset="65%" stopColor="#795663" />
-                    <stop offset="100%" stopColor="#B8964A" />
+                  {/* Smooth multi-stop curve stroke gradient aligned to exact reference colors */}
+                  <linearGradient id="sol-curve-grad" x1="84" y1="0" x2="747" y2="0" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#526A56" />
+                    <stop offset="18%" stopColor="#556E5A" />
+                    <stop offset="35%" stopColor="#6D4754" />
+                    <stop offset="68%" stopColor="#654C5F" />
+                    <stop offset="85%" stopColor="#9A693E" />
+                    <stop offset="100%" stopColor="#C4963C" />
                   </linearGradient>
-                  <linearGradient id="chart-glow-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#7E9E82" stopOpacity="0.12" />
-                    <stop offset="65%" stopColor="#795663" stopOpacity="0.15" />
-                    <stop offset="100%" stopColor="#B8964A" stopOpacity="0.25" />
+
+                  {/* Horizontal baseline gradient matching reference transition across weeks */}
+                  <linearGradient id="sol-baseline-grad" x1="29" y1="0" x2="803" y2="0" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#8E998B" />
+                    <stop offset="25%" stopColor="#937A82" />
+                    <stop offset="60%" stopColor="#998A91" />
+                    <stop offset="100%" stopColor="#C39859" />
                   </linearGradient>
                 </defs>
 
-                {/* Soft watercolor curve fill */}
-                <path d="M50,175 C130,168 180,150 260,140 C340,130 400,110 470,95 C540,80 600,65 650,55 L650,190 L50,190 Z" fill="url(#chart-glow-gradient)"/>
+                {/* --- Exact Physical Watercolor Wash Extracted From Reference --- */}
+                <image
+                  href="/chart-watercolor-wash.png"
+                  x="0"
+                  y="0"
+                  width="823"
+                  height="241"
+                  preserveAspectRatio="none"
+                  style={{ mixBlendMode: 'multiply' }}
+                  className="pointer-events-none select-none opacity-95"
+                />
 
-                <line x1="50" y1="190" x2="670" y2="190" stroke="#E7DECF" strokeWidth="1.5"/>
-                <path d="M50,175 C130,168 180,150 260,140 C340,130 400,110 470,95 C540,80 600,65 650,55" fill="none" stroke="url(#chart-line-gradient)" strokeWidth="3.5" strokeLinecap="round"/>
-                
-                <circle cx="50" cy="175" r="5.5" fill="#7E9E82"/>
-                <circle cx="260" cy="140" r="5.5" fill="#795663"/>
-                <circle cx="470" cy="95" r="5.5" fill="#795663"/>
-                <circle cx="650" cy="55" r="7.5" fill="#B8964A" stroke="#fff" strokeWidth="2"/>
+                {/* Horizontal Baseline */}
+                <line x1="29" y1="197" x2="803" y2="197" stroke="url(#sol-baseline-grad)" strokeWidth="1.2" />
 
-                <text x="50" y="210" textAnchor="middle" fontFamily="sans-serif" fontSize="11" fill="#795663" fontWeight="bold">WEEK 1</text>
-                <text x="260" y="210" textAnchor="middle" fontFamily="sans-serif" fontSize="11" fill="#7D8E87">WEEK 3</text>
-                <text x="470" y="210" textAnchor="middle" fontFamily="sans-serif" fontSize="11" fill="#7D8E87">WEEK 6</text>
-                <text x="650" y="210" textAnchor="middle" fontFamily="sans-serif" fontSize="11" fill="#B8964A" fontWeight="bold">WEEK 8</text>
+                {/* Baseline Tick Marks */}
+                <line x1="84" y1="194" x2="84" y2="200" stroke="#8E998B" strokeWidth="1.2" />
+                <line x1="313" y1="194" x2="313" y2="200" stroke="#937A82" strokeWidth="1.2" />
+                <line x1="538" y1="194" x2="538" y2="200" stroke="#998A91" strokeWidth="1.2" />
+                <line x1="747" y1="194" x2="747" y2="200" stroke="#C39859" strokeWidth="1.2" />
 
-                <text x="50" y="155" textAnchor="middle" fontFamily="Georgia, serif" fontSize="11" fill="#162723" fontStyle="italic">First noticed</text>
-                <text x="260" y="120" textAnchor="middle" fontFamily="Georgia, serif" fontSize="11" fill="#162723" fontStyle="italic">Repeating</text>
-                <text x="470" y="75" textAnchor="middle" fontFamily="Georgia, serif" fontSize="11" fill="#162723" fontStyle="italic">Intervention shown</text>
-                <text x="650" y="35" textAnchor="middle" fontFamily="Georgia, serif" fontSize="11.5" fill="#795663" fontWeight="bold">1 module offered</text>
+                {/* Ascending Main S-Curve Line matching reference trajectory exactly */}
+                <path
+                  d="M 84,165 C 160,165 245,148 313,130 C 390,127 465,102 538,90 C 615,84 675,66 747,46"
+                  fill="none"
+                  stroke="url(#sol-curve-grad)"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                />
+
+                {/* --- 01. WEEK 1 (Green) --- */}
+                {/* Dashed vertical indicator line */}
+                <line x1="84" y1="165" x2="84" y2="197" stroke="#7E9E82" strokeWidth="1.2" strokeDasharray="3 3" />
+                {/* Dot with authentic white halo ring */}
+                <circle cx="84" cy="165" r="6.5" fill="#587560" stroke="#FFFFFF" strokeWidth="1.8" />
+                {/* Baseline Label */}
+                <text x="84" y="215" textAnchor="middle" className="font-mono-code" fontFamily="monospace" fontSize="10" fontWeight="700" fill="#4B6353" letterSpacing="0.14em">
+                  WEEK 1
+                </text>
+                {/* Handwritten Annotation: First noticed */}
+                <text x="88" y="130" textAnchor="middle" className="font-handwriting" fontFamily="var(--font-hand, 'Kalam', cursive)" fontSize="14" fill="#3E5445" transform="rotate(-6 88 130)">
+                  First noticed
+                </text>
+                {/* Curved Arrow pointing down into green dot */}
+                <path d="M 96,138 Q 103,150 91,158" fill="none" stroke="#3E5445" strokeWidth="1.2" strokeLinecap="round" />
+                <path d="M 89,152 L 91,158 L 98,155" fill="none" stroke="#3E5445" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+
+                {/* --- 02. WEEK 3 (Plum) --- */}
+                {/* Dashed vertical indicator line */}
+                <line x1="313" y1="130" x2="313" y2="197" stroke="#8A5B68" strokeWidth="1.2" strokeDasharray="3 3" />
+                {/* Dot with authentic white halo ring */}
+                <circle cx="313" cy="130" r="6.5" fill="#6E4354" stroke="#FFFFFF" strokeWidth="1.8" />
+                {/* Baseline Label */}
+                <text x="313" y="215" textAnchor="middle" className="font-mono-code" fontFamily="monospace" fontSize="10" fontWeight="700" fill="#6E4354" letterSpacing="0.14em">
+                  WEEK 3
+                </text>
+                {/* Handwritten Annotation: Repeating */}
+                <text x="322" y="103" textAnchor="middle" className="font-handwriting" fontFamily="var(--font-hand, 'Kalam', cursive)" fontSize="14" fill="#6E4354" transform="rotate(-5 322 103)">
+                  Repeating
+                </text>
+                {/* Curved Arrow pointing down into plum dot */}
+                <path d="M 326,110 Q 333,121 321,126" fill="none" stroke="#6E4354" strokeWidth="1.2" strokeLinecap="round" />
+                <path d="M 319,120 L 321,126 L 328,123" fill="none" stroke="#6E4354" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+
+                {/* --- 03. WEEK 6 (Mauve / Slate) --- */}
+                {/* Dashed vertical indicator line */}
+                <line x1="538" y1="90" x2="538" y2="197" stroke="#8A5B68" strokeWidth="1.2" strokeDasharray="3 3" />
+                {/* Dot with authentic white halo ring */}
+                <circle cx="538" cy="90" r="6.5" fill="#63485A" stroke="#FFFFFF" strokeWidth="1.8" />
+                {/* Baseline Label */}
+                <text x="538" y="215" textAnchor="middle" className="font-mono-code" fontFamily="monospace" fontSize="10" fontWeight="700" fill="#4A5C66" letterSpacing="0.14em">
+                  WEEK 6
+                </text>
+                {/* Handwritten Annotation: Intervention shown */}
+                <text x="555" y="58" textAnchor="middle" className="font-handwriting" fontFamily="var(--font-hand, 'Kalam', cursive)" fontSize="14" fill="#3D505D" transform="rotate(-3 555 58)">
+                  Intervention shown
+                </text>
+                {/* Curved Arrow pointing down into slate dot */}
+                <path d="M 561,66 Q 568,77 546,85" fill="none" stroke="#3D505D" strokeWidth="1.2" strokeLinecap="round" />
+                <path d="M 545,79 L 546,85 L 553,83" fill="none" stroke="#3D505D" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+
+                {/* --- 04. WEEK 8 (Gold Sunburst Point) --- */}
+                {/* Dashed vertical indicator line */}
+                <line x1="747" y1="46" x2="747" y2="197" stroke="#C4963C" strokeWidth="1.2" strokeDasharray="3 3" />
+                {/* Gold Sunburst Rays matching reference angles and lengths */}
+                <line x1="760" y1="34" x2="771" y2="25" stroke="#C4963C" strokeWidth="1.8" strokeLinecap="round" />
+                <line x1="766" y1="46" x2="778" y2="46" stroke="#C4963C" strokeWidth="1.8" strokeLinecap="round" />
+                <line x1="761" y1="58" x2="771" y2="67" stroke="#C4963C" strokeWidth="1.8" strokeLinecap="round" />
+                <line x1="747" y1="28" x2="747" y2="18" stroke="#C4963C" strokeWidth="1.8" strokeLinecap="round" />
+                <line x1="764" y1="71" x2="769" y2="81" stroke="#C4963C" strokeWidth="1.8" strokeLinecap="round" />
+                {/* Main Gold Dot with white halo ring */}
+                <circle cx="747" cy="46" r="7" fill="#C4963C" stroke="#FFFFFF" strokeWidth="1.8" />
+                {/* Baseline Label */}
+                <text x="747" y="215" textAnchor="middle" className="font-mono-code" fontFamily="monospace" fontSize="10" fontWeight="700" fill="#BD8F48" letterSpacing="0.14em">
+                  WEEK 8
+                </text>
+                {/* Handwritten Annotation: 1 module offered */}
+                <text x="728" y="16" textAnchor="middle" className="font-handwriting" fontFamily="var(--font-hand, 'Kalam', cursive)" fontSize="14.5" fontWeight="bold" fill="#794255" transform="rotate(-4 728 16)">
+                  1 module offered
+                </text>
+                {/* Curved Arrow pointing down into gold dot */}
+                <path d="M 732,22 Q 741,31 743,39" fill="none" stroke="#794255" strokeWidth="1.3" strokeLinecap="round" />
+                <path d="M 737,34 L 743,39 L 747,32" fill="none" stroke="#794255" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
 
-            <p className="font-editorial italic text-xs sm:text-sm text-[#7D8E87] pt-2 border-t border-[#E7DECF]/70">
-              Everything on the line is included with your ₹499/month subscription. Only the single point at the end, the module, is a separate, optional purchase.
-            </p>
+            {/* Divider Line */}
+            <div className="w-full h-px bg-[#EADFCF]/70 mt-3.5 mb-3" />
 
-            {/* Dual Contextual CTAs for Guided Journal & Pattern Line */}
-            <div className="pt-8 sm:pt-10 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 w-full border-t border-[#E7DECF]/60">
+            {/* Info Box Callout with circular 'i' icon */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-4 h-4 rounded-full border border-[#B8964A]/80 flex items-center justify-center text-[#B8964A] text-[10px] font-editorial italic flex-shrink-0">
+                i
+              </div>
+              <p className="font-editorial italic text-xs sm:text-[12.5px] text-[#5C6873] leading-snug">
+                Everything on the line is included with your <strong className="text-[#162723] font-semibold not-italic">₹499/month subscription</strong>. Only the single point at the end, the module, is a separate, optional purchase.
+              </p>
+            </div>
+
+            {/* Dual Contextual CTAs matching exact reference proportions */}
+            <div className="mt-4 flex flex-row items-center justify-center gap-3 w-full">
               <a
                 href="/login"
                 onClick={handleAuthRedirect}
-                className="w-full sm:w-auto min-w-[260px] inline-flex items-center justify-center gap-2 bg-[#162723] hover:bg-[#203631] text-white font-zen text-xs sm:text-sm font-semibold px-6 sm:px-7 py-3 rounded-full shadow-xs hover:shadow transition-all cursor-pointer text-center whitespace-nowrap"
+                className="h-[38px] px-5 inline-flex items-center justify-center gap-2 bg-[#162723] hover:bg-[#203631] text-white font-zen text-xs font-medium rounded-full shadow-xs hover:shadow transition-all cursor-pointer text-center whitespace-nowrap"
               >
                 <span>Start guided daily journaling</span>
                 <span>→</span>
@@ -879,10 +978,10 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <button
                 type="button"
                 onClick={() => handleSelectTab('start')}
-                className="w-full sm:w-auto min-w-[260px] inline-flex items-center justify-center gap-2 bg-[#FAF7F2] hover:bg-[#F2ECE1] text-[#162723] border border-[#795663]/30 hover:border-[#795663]/60 font-zen text-xs sm:text-sm font-semibold px-6 sm:px-7 py-3 rounded-full shadow-xs hover:shadow transition-all cursor-pointer text-center whitespace-nowrap"
+                className="h-[38px] px-5 inline-flex items-center justify-center gap-2 bg-[#FAF8F5] hover:bg-[#F3ECE0] text-[#162723] border border-[#D9CEBF] hover:border-[#162723]/40 font-zen text-xs font-medium rounded-full shadow-xs hover:shadow transition-all cursor-pointer text-center whitespace-nowrap"
               >
                 <span>Bring your journal into therapy</span>
-                <span className="text-[#795663]">→</span>
+                <span className="text-[#B8964A]">→</span>
               </button>
             </div>
           </div>
@@ -891,9 +990,6 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
       {/* 4. SECTION 03: COLLABORATIVE CARE (Subtle Warm Paper with Brushstroke) */}
       <section id="sol-collaborative" className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
-        {/* Subtle watercolor splash */}
-        <div className="absolute top-12 -left-20 w-72 h-72 rounded-full bg-[#8AA688]/10 blur-3xl pointer-events-none" />
-
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -903,7 +999,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
             className="text-center max-w-3xl sm:max-w-4xl mx-auto space-y-2.5 sm:space-y-3"
           >
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-              04 · COLLABORATIVE CARE
+              COLLABORATIVE CARE
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-[40px] text-[#162723] font-normal leading-[1.18] mx-auto">
               Not just the session, but a dashboard that shows the work between sessions too.
@@ -989,7 +1085,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
         <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 relative z-10">
           <div className="text-center max-w-3xl sm:max-w-4xl mx-auto space-y-2 sm:space-y-2.5">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-              05 · A LOOK AT THE DASHBOARD
+              A LOOK AT THE DASHBOARD
             </div>
             <h2 className="font-editorial text-2xl sm:text-3xl lg:text-[34px] text-[#162723] mx-auto leading-snug">
               What you and your therapist both see.
@@ -1100,7 +1196,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           <div className="text-center max-w-3xl sm:max-w-4xl mx-auto space-y-2 sm:space-y-2.5">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-              06 · PSYCHOEDUCATION LIBRARY
+              PSYCHOEDUCATION LIBRARY
             </div>
             <h2 className="font-editorial text-2xl sm:text-3xl lg:text-[34px] text-[#162723] mx-auto leading-snug">
               A few examples of what a module actually covers.
@@ -1205,7 +1301,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           <div className="text-center max-w-3xl sm:max-w-4xl mx-auto space-y-2 sm:space-y-2.5">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-              07 · WHAT PEOPLE ACTUALLY BRING IN
+              WHAT PEOPLE ACTUALLY BRING IN
             </div>
             <h2 className="font-editorial text-2xl sm:text-3xl lg:text-[34px] text-[#162723] mx-auto leading-snug">
               A few examples of what this looks like in practice.
@@ -1340,8 +1436,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <stop offset="100%" stopColor="#FAF7F2" stopOpacity="0" />
             </radialGradient>
             <filter id="how-bleed" x="-20%" y="-20%" width="140%" height="140%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" />
+              <feGaussianBlur stdDeviation="10" />
             </filter>
           </defs>
           <path
@@ -1379,7 +1474,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
         <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10 w-full my-auto flex flex-col items-center justify-center">
           <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-            01 · HOW IT WORKS
+            HOW IT WORKS
           </div>
           <h1 className="font-editorial text-4xl sm:text-5xl lg:text-6xl text-[#162723] font-normal leading-[1.12] max-w-3xl sm:max-w-4xl mx-auto">
             Different entry points. Shared capabilities.
@@ -1414,7 +1509,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10">
           <div className="text-center max-w-3xl mx-auto space-y-2.5 sm:space-y-3">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-              02 · CORE PHILOSOPHY
+              CORE PHILOSOPHY
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-[42px] text-[#162723] font-normal leading-[1.18] mx-auto">
               Clarity comes from truth, not comfort.
@@ -1514,10 +1609,9 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10">
           <div className="text-center max-w-3xl mx-auto space-y-2.5 sm:space-y-3">
-            <div className="flex flex-col items-center gap-2">
-              <span className="brand-rule-thistle mx-auto" />
+            <div className="flex flex-col items-center">
               <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723]">
-                03 · DAY ONE: WHAT HAPPENS
+                DAY ONE: WHAT HAPPENS
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-[42px] text-[#162723] font-normal leading-[1.18] mx-auto">
@@ -1625,10 +1719,9 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-fog">
         <div className="max-w-5xl mx-auto space-y-12 sm:space-y-16">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="flex flex-col items-center gap-2">
-              <span className="brand-rule-fog mx-auto" />
+            <div className="flex flex-col items-center">
               <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723]">
-                04 · SIDE BY SIDE
+                SIDE BY SIDE
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-5xl text-[#162723] font-normal leading-tight mx-auto">
@@ -1717,10 +1810,9 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       <section id="walkthrough-self" className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
         <div className="max-w-6xl mx-auto space-y-12 sm:space-y-16">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="flex flex-col items-center gap-2">
-              <span className="brand-rule-rose mx-auto" />
+            <div className="flex flex-col items-center">
               <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723]">
-                05 · WORKING ON YOURSELF
+                WORKING ON YOURSELF
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-5xl text-[#162723] font-normal leading-tight mx-auto">
@@ -1869,10 +1961,9 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
         <div className="max-w-6xl mx-auto space-y-12 sm:space-y-16">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="flex flex-col items-center gap-2">
-              <span className="brand-rule-thistle mx-auto" />
+            <div className="flex flex-col items-center">
               <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723]">
-                06 · WITH A THERAPIST
+                WITH A THERAPIST
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-5xl text-[#162723] font-normal leading-tight mx-auto">
@@ -1990,10 +2081,9 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
         <div className="max-w-5xl mx-auto space-y-12 sm:space-y-16">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="flex flex-col items-center gap-2">
-              <span className="brand-rule-gold mx-auto" />
+            <div className="flex flex-col items-center">
               <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723]">
-                07 · USE BOTH
+                USE BOTH
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-5xl text-[#162723] font-normal leading-tight mx-auto">
@@ -2076,10 +2166,9 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
         <div className="max-w-4xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <div className="flex flex-col items-center gap-2">
-              <span className="brand-rule-fog mx-auto" />
+            <div className="flex flex-col items-center">
               <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723]">
-                08 · COMMON QUESTIONS
+                COMMON QUESTIONS
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-5xl text-[#162723] font-normal leading-tight mx-auto">
@@ -2186,8 +2275,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <stop offset="100%" stopColor="#FAF7F2" stopOpacity="0" />
             </radialGradient>
             <filter id="price-bleed" x="-20%" y="-20%" width="140%" height="140%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" />
+              <feGaussianBlur stdDeviation="10" />
             </filter>
           </defs>
           <path
@@ -2225,7 +2313,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
         <div className="max-w-5xl mx-auto space-y-8 relative z-10 text-center w-full my-auto flex flex-col items-center justify-center">
           <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-            01 · PRICING & MEMBERSHIP
+            PRICING & MEMBERSHIP
           </div>
 
           <h1 className="font-editorial text-4xl sm:text-5xl lg:text-6xl text-[#162723] font-normal leading-[1.12] max-w-3xl sm:max-w-4xl mx-auto">
@@ -2255,9 +2343,6 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
       {/* 2. THE TWO CORE OPTIONS (Subtle Warm Paper with Distinct Cards) */}
       <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
-        {/* Subtle watercolor blur */}
-        <div className="absolute top-1/2 -left-20 w-80 h-80 rounded-full bg-[#8AA688]/10 blur-3xl pointer-events-none" />
-
         <div className="max-w-6xl mx-auto space-y-12 sm:space-y-16 relative z-10">
           {/* Two Core Pricing Cards: Even total (2) -> Both split smoothly from center line */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
@@ -2378,13 +2463,10 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
       {/* 3. PSYCHOEDUCATION MODULES (MATCHING EXACT SCREENSHOT FROM USER) */}
       <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
-        {/* Subtle watercolor accent bleed */}
-        <div className="absolute top-1/2 -right-24 w-80 h-80 rounded-full bg-[#C49A8F]/10 blur-3xl pointer-events-none" />
-
         <div className="max-w-6xl mx-auto space-y-12 sm:space-y-16 relative z-10">
           <div className="text-center max-w-3xl sm:max-w-4xl mx-auto space-y-3">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-              02 · PSYCHOEDUCATION MODULES
+              PSYCHOEDUCATION MODULES
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-[42px] text-[#162723] font-normal leading-tight pt-1 mx-auto">
               Bought one at a time, only when it's relevant.
@@ -2464,7 +2546,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
         <div className="max-w-4xl mx-auto space-y-12 relative z-10">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-              03 · PRICING FAQS
+              PRICING FAQS
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] mx-auto">
               Clear answers, zero fine print.
@@ -2566,8 +2648,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <stop offset="100%" stopColor="#FAF7F2" stopOpacity="0" />
             </radialGradient>
             <filter id="ai-bleed" x="-20%" y="-20%" width="140%" height="140%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" />
+              <feGaussianBlur stdDeviation="10" />
             </filter>
           </defs>
           <path
@@ -2605,7 +2686,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
         <div className="max-w-5xl mx-auto space-y-8 relative z-10 text-center w-full my-auto flex flex-col items-center justify-center">
           <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-            01 · AI & DATA PRINCIPLES
+            AI & DATA PRINCIPLES
           </div>
 
           <h1 className="font-editorial text-4xl sm:text-5xl lg:text-6xl text-[#162723] font-normal leading-[1.12] max-w-3xl sm:max-w-4xl mx-auto">
@@ -2620,9 +2701,6 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
       {/* 2. THE THREE CAPABILITY CARDS */}
       <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
-        {/* Subtle watercolor blur */}
-        <div className="absolute top-1/2 -right-24 w-80 h-80 rounded-full bg-[#8AA688]/10 blur-3xl pointer-events-none" />
-
         <div className="max-w-6xl mx-auto relative z-10">
           {/* 3 Capability Cards: Odd total (3) -> Center card anchors, left/right emerge outward */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
@@ -2751,13 +2829,10 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
       {/* 3. WHERE THE LINE SITS (AI ZONE VS HUMAN ZONE) */}
       <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
-        {/* Subtle watercolor bleed */}
-        <div className="absolute top-1/3 -left-20 w-80 h-80 rounded-full bg-[#C49A8F]/10 blur-3xl pointer-events-none" />
-
         <div className="max-w-6xl mx-auto space-y-12 sm:space-y-16 relative z-10">
           <div className="text-center max-w-4xl mx-auto space-y-4">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-              02 · WHERE THE LINE SITS
+              WHERE THE LINE SITS
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-[42px] text-[#162723] font-normal leading-tight mx-auto">
               AI organises the information. A person decides what it means.
@@ -2791,9 +2866,6 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
       {/* 4. DATA & PRIVACY */}
       <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
-        {/* Subtle watercolor blur */}
-        <div className="absolute bottom-12 -right-20 w-72 h-72 rounded-full bg-[#8AA688]/10 blur-3xl pointer-events-none" />
-
         <div className="max-w-4xl mx-auto space-y-12 sm:space-y-16 relative z-10">
           <div className="text-center max-w-3xl mx-auto space-y-4">
             <span className="inline-block px-3.5 py-1 rounded-full bg-[#F7EFE9] font-mono-code text-[11px] uppercase tracking-wider text-[#795663] font-semibold border border-[#C49A8F]/30 mx-auto">
@@ -2901,8 +2973,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <stop offset="100%" stopColor="#FAF7F2" stopOpacity="0" />
             </radialGradient>
             <filter id="ev-bleed" x="-20%" y="-20%" width="140%" height="140%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" />
+              <feGaussianBlur stdDeviation="10" />
             </filter>
           </defs>
           <path
@@ -2940,7 +3011,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
         <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10 w-full my-auto flex flex-col items-center justify-center">
           <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-            03 · EVIDENCE & RESEARCH
+            EVIDENCE & RESEARCH
           </div>
           <h1 className="font-editorial text-4xl sm:text-5xl lg:text-6xl text-[#162723] font-normal leading-[1.12] max-w-3xl sm:max-w-4xl mx-auto">
             Why these building blocks make sense.
@@ -3164,7 +3235,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
         <div className="max-w-5xl mx-auto space-y-8 relative z-10 text-center w-full my-auto flex flex-col items-center justify-center">
           <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-            01 · ABOUT INGRESS WITHIN
+            ABOUT INGRESS WITHIN
           </div>
 
           <h1 className="font-editorial text-4xl sm:text-5xl lg:text-6xl text-[#162723] font-normal leading-[1.12] max-w-3xl sm:max-w-4xl mx-auto">
@@ -3182,7 +3253,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
         <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto space-y-2 sm:space-y-2.5">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-              02 · BUILT FOR INDIA
+              BUILT FOR INDIA
             </div>
             <h2 className="font-editorial text-2xl sm:text-3xl lg:text-[36px] text-[#162723] font-normal leading-[1.18] mx-auto">
               People often start with life, not clinical terminology.
@@ -3252,7 +3323,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           <div className="text-center max-w-3xl mx-auto space-y-2.5 sm:space-y-3">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-              03 · WHO'S BEHIND THIS
+              WHO'S BEHIND THIS
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-[40px] text-[#162723] font-normal leading-[1.18] mx-auto">
               Care from qualified professionals.
@@ -3407,7 +3478,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <div>
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <span className="inline-flex items-center font-mono-code text-[9px] sm:text-[9.5px] tracking-[0.16em] uppercase font-semibold px-2.5 py-0.5 rounded-full border border-[#2E7A70]/30 text-[#2E7A70] group-hover:border-[#2E7A70]/60 transition-colors">
-                    01 · PRIVACY
+                    PRIVACY
                   </span>
                   <span className="font-mono-code text-[9.5px] sm:text-[10px] tracking-wider text-[#8D98A3]">
                     BY DEFAULT
@@ -3433,7 +3504,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <div>
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <span className="inline-flex items-center font-mono-code text-[9px] sm:text-[9.5px] tracking-[0.16em] uppercase font-semibold px-2.5 py-0.5 rounded-full border border-[#795663]/30 text-[#795663] group-hover:border-[#795663]/60 transition-colors">
-                    02 · SELECTION
+                    SELECTION
                   </span>
                   <span className="font-mono-code text-[9.5px] sm:text-[10px] tracking-wider text-[#8D98A3]">
                     CONTROLLED
@@ -3459,7 +3530,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <div>
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <span className="inline-flex items-center font-mono-code text-[9px] sm:text-[9.5px] tracking-[0.16em] uppercase font-semibold px-2.5 py-0.5 rounded-full border border-[#3D5265]/30 text-[#3D5265] group-hover:border-[#3D5265]/60 transition-colors">
-                    03 · DPDP ACT
+                    DPDP ACT
                   </span>
                   <span className="font-mono-code text-[9.5px] sm:text-[10px] tracking-wider text-[#8D98A3]">
                     COMPLIANT
@@ -3609,8 +3680,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <stop offset="100%" stopColor="#FAF7F2" stopOpacity="0" />
             </radialGradient>
             <filter id="pol-bleed" x="-20%" y="-20%" width="140%" height="140%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" />
+              <feGaussianBlur stdDeviation="10" />
             </filter>
           </defs>
           <path
@@ -3646,7 +3716,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
         <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10 w-full my-auto flex flex-col items-center justify-center">
           <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-            01 · POLICIES & LEGAL
+            POLICIES & LEGAL
           </div>
           <h1 className="font-editorial text-4xl sm:text-5xl lg:text-6xl text-[#162723] font-normal leading-[1.12] max-w-3xl sm:max-w-4xl mx-auto">
             Privacy, terms & refunds.
@@ -3742,8 +3812,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <stop offset="100%" stopColor="#FAF7F2" stopOpacity="0" />
             </radialGradient>
             <filter id="start-bleed" x="-20%" y="-20%" width="140%" height="140%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" />
+              <feGaussianBlur stdDeviation="10" />
             </filter>
           </defs>
           <path
@@ -3779,7 +3848,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
         <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10 w-full my-auto flex flex-col items-center justify-center">
           <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-            01 · START HERE
+            START HERE
           </div>
           <h1 className="font-editorial text-4xl sm:text-5xl lg:text-6xl text-[#162723] font-normal leading-[1.12] max-w-3xl sm:max-w-4xl mx-auto">
             What would be useful to you right now?
@@ -3987,8 +4056,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <stop offset="100%" stopColor="#FAF7F2" stopOpacity="0" />
             </radialGradient>
             <filter id="crisis-bleed" x="-20%" y="-20%" width="140%" height="140%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" />
+              <feGaussianBlur stdDeviation="10" />
             </filter>
           </defs>
           <path
@@ -4119,7 +4187,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] text-[#162723] font-zen selection:bg-[#EFE3E4] selection:text-[#795663] relative">
+    <div className="min-h-screen bg-[#FAF7F2] text-[#162723] font-zen selection:bg-[#EFE3E4] selection:text-[#795663] relative" style={{ zoom: 0.9 }}>
       {/* 1. Ambient SVG Watercolor Bleeds */}
       <WatercolorBackground />
 

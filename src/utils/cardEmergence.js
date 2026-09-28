@@ -11,11 +11,11 @@
 export function getCardEmergence(index, total, is2D = false, cols = 3) {
   // Ultra-smooth, non-elastic deceleration curve (Cubic Bezier - no spring/bounce)
   const ease = [0.16, 1, 0.3, 1];
-  const duration = 1.05;
+  const duration = 0.65;
 
   const hoverConfig = {
     y: -3,
-    transition: { type: 'tween', duration: 0.2, ease: 'easeOut' }
+    transition: { type: 'tween', duration: 0.18, ease: 'easeOut' }
   };
 
   // 2D Grid calculation (e.g. 6 cards in 2x3): animate sideways outward from center column

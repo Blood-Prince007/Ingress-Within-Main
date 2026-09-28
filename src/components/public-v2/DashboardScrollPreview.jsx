@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Home,
   BookOpen,
@@ -19,61 +19,86 @@ import {
 
 export default function DashboardScrollPreview({ onActionClick }) {
   const containerRef = useRef(null);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const cardRef = useRef(null);
 
   useEffect(() => {
-    let ticking = false;
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          if (containerRef.current) {
-            const rect = containerRef.current.getBoundingClientRect();
-            const windowHeight = window.innerHeight || 800;
+    let targetProgress = 0;
+    let currentProgress = 0;
+    let isRunning = false;
+    let rafId = null;
 
-            // Start rising when container approaches viewport bottom
-            // Reach full upright position when container top reaches 30% from the viewport top
-            const start = windowHeight * 0.95;
-            const end = windowHeight * 0.25;
-            const progress = Math.min(Math.max((start - rect.top) / (start - end), 0), 1);
-            setScrollProgress(progress);
-          }
-          ticking = false;
-        });
-        ticking = true;
+    const tick = () => {
+      // Smooth momentum easing (lerp) for silky fluid motion without lag
+      currentProgress += (targetProgress - currentProgress) * 0.09;
+
+      if (cardRef.current) {
+        const translateY = ((1 - currentProgress) * 55).toFixed(1);
+        const rotateX = ((1 - currentProgress) * 7.5).toFixed(2);
+        const scale = (0.97 + 0.03 * currentProgress).toFixed(4);
+        cardRef.current.style.transform = `perspective(1400px) translateY(${translateY}px) rotateX(${rotateX}deg) scale(${scale})`;
+      }
+
+      if (Math.abs(targetProgress - currentProgress) > 0.0005) {
+        rafId = window.requestAnimationFrame(tick);
+      } else {
+        currentProgress = targetProgress;
+        if (cardRef.current) {
+          const translateY = ((1 - currentProgress) * 55).toFixed(1);
+          const rotateX = ((1 - currentProgress) * 7.5).toFixed(2);
+          const scale = (0.97 + 0.03 * currentProgress).toFixed(4);
+          cardRef.current.style.transform = `perspective(1400px) translateY(${translateY}px) rotateX(${rotateX}deg) scale(${scale})`;
+        }
+        isRunning = false;
       }
     };
 
-    handleScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll, { passive: true });
+    const startLoop = () => {
+      if (!isRunning) {
+        isRunning = true;
+        rafId = window.requestAnimationFrame(tick);
+      }
+    };
+
+    const calculateTarget = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const windowHeight = window.innerHeight || 800;
+
+      // Skip calculation when far outside viewport
+      if (rect.bottom < -150 || rect.top > windowHeight + 150) return;
+
+      const start = windowHeight * 0.95;
+      const end = windowHeight * 0.25;
+      targetProgress = Math.min(Math.max((start - rect.top) / (start - end), 0), 1);
+      startLoop();
+    };
+
+    calculateTarget();
+    window.addEventListener('scroll', calculateTarget, { passive: true });
+    window.addEventListener('resize', calculateTarget, { passive: true });
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
+      window.removeEventListener('scroll', calculateTarget);
+      window.removeEventListener('resize', calculateTarget);
+      if (rafId) window.cancelAnimationFrame(rafId);
     };
   }, []);
-
-  // Smooth transform values calculated directly from scroll position
-  const translateY = Math.round((1 - scrollProgress) * 55);
-  const rotateX = ((1 - scrollProgress) * 7.5).toFixed(1);
-  const scale = (0.97 + 0.03 * scrollProgress).toFixed(3);
-  const shadowSpread = Math.round(30 + scrollProgress * 40);
-  const shadowOpacity = (0.12 + scrollProgress * 0.08).toFixed(2);
 
   return (
     <div
       ref={containerRef}
       className="w-full [perspective:1400px] select-none relative"
     >
-      {/* Soft ambient watercolor glow behind the dashboard */}
-      <div className="absolute -inset-4 sm:-inset-8 bg-gradient-to-b from-[#8AA688]/20 via-[#795663]/10 to-transparent rounded-[36px] blur-2xl pointer-events-none -z-10" />
 
-      {/* Outer frame: solid opaque background and upward shadow to physically cover text beneath */}
+      {/* Outer frame: exact original aesthetic with butter-smooth GPU hardware acceleration */}
       <div
+        ref={cardRef}
         style={{
-          transform: `perspective(1400px) translateY(${translateY}px) rotateX(${rotateX}deg) scale(${scale})`,
-          boxShadow: `0 -18px 45px -10px rgba(22, 39, 35, 0.16), 0 28px ${shadowSpread}px -12px rgba(22, 39, 35, ${shadowOpacity})`,
-          transition: 'box-shadow 0.3s ease-out'
+          transform: 'perspective(1400px) translateY(55px) rotateX(7.5deg) scale(0.97)',
+          boxShadow: '0 -18px 45px -10px rgba(22, 39, 35, 0.16), 0 28px 50px -12px rgba(22, 39, 35, 0.16)',
+          willChange: 'transform',
+          transformStyle: 'preserve-3d',
+          backfaceVisibility: 'hidden'
         }}
         className="w-full p-2 sm:p-3 rounded-[28px] sm:rounded-[36px] bg-[#FAF7F2] border border-[#D5CBC0] text-left relative"
       >

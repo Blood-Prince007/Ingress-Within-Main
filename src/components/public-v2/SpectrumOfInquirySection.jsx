@@ -12,20 +12,11 @@ import React from 'react';
 export default function SpectrumOfInquirySection() {
   return (
     <section className="relative py-20 md:py-28 px-4 sm:px-6 overflow-hidden bg-[#FAF6F0]">
-      {/* SVG Filters for Deckled Paper Edges */}
-      <svg className="absolute w-0 h-0 pointer-events-none" aria-hidden="true">
-        <defs>
-          <filter id="deckle-edge" x="-5%" y="-5%" width="110%" height="110%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </defs>
-      </svg>
 
       <div className="max-w-7xl mx-auto text-center space-y-4">
         {/* Eyebrow */}
         <div className="font-mono-code text-[11px] sm:text-[11.5px] tracking-[0.24em] uppercase text-[#7A8580] font-semibold">
-          04 • THE SPECTRUM OF INQUIRY
+          THE SPECTRUM OF INQUIRY
         </div>
 
         {/* Heading */}
@@ -113,7 +104,6 @@ export default function SpectrumOfInquirySection() {
             {/* Paper Card */}
             <div
               className="relative p-6 bg-[#F9F6F0] rounded-xs border border-[#E8E0D2]/70 shadow-[0_8px_25px_rgba(40,30,20,0.08),0_2px_6px_rgba(40,30,20,0.04)]"
-              style={{ filter: 'url(#deckle-edge)' }}
             >
               {/* Brass Pushpin at (85px, 20px) inside card */}
               <div
@@ -163,7 +153,6 @@ export default function SpectrumOfInquirySection() {
             {/* Paper Card */}
             <div
               className="relative p-6 bg-[#F5EBE6] rounded-xs border border-[#E8D6CE]/80 shadow-[0_8px_25px_rgba(40,30,20,0.08),0_2px_6px_rgba(40,30,20,0.04)]"
-              style={{ filter: 'url(#deckle-edge)' }}
             >
               {/* Brass Pushpin at (140px, 16px) inside card */}
               <div
@@ -219,7 +208,6 @@ export default function SpectrumOfInquirySection() {
             {/* Paper Card */}
             <div
               className="relative p-6 bg-[#E3ECF1] rounded-xs border border-[#CDDCE4]/80 shadow-[0_8px_25px_rgba(40,30,20,0.08),0_2px_6px_rgba(40,30,20,0.04)]"
-              style={{ filter: 'url(#deckle-edge)' }}
             >
               {/* Brass Pushpin at (135px, 18px) inside card */}
               <div
@@ -280,7 +268,6 @@ export default function SpectrumOfInquirySection() {
             {/* Paper Card */}
             <div
               className="relative p-6 bg-[#DFE8DC] rounded-xs border border-[#CCDBC8]/80 shadow-[0_8px_25px_rgba(40,30,20,0.08),0_2px_6px_rgba(40,30,20,0.04)]"
-              style={{ filter: 'url(#deckle-edge)' }}
             >
               {/* Brass Pushpin at (145px, 23px) inside card */}
               <div
@@ -347,7 +334,6 @@ export default function SpectrumOfInquirySection() {
             {/* Paper Card */}
             <div
               className="relative p-6 bg-[#F7F2E4] rounded-xs border border-[#E8DFC9]/80 shadow-[0_8px_25px_rgba(40,30,20,0.08),0_2px_6px_rgba(40,30,20,0.04)]"
-              style={{ filter: 'url(#deckle-edge)' }}
             >
               {/* Brass Pushpin at (145px, 17px) inside card */}
               <div
@@ -412,7 +398,6 @@ export default function SpectrumOfInquirySection() {
             {/* Paper Card with Dog-Eared Bottom Right */}
             <div
               className="relative p-6 bg-[#ECE8F0] rounded-xs border border-[#DDD6E4]/80 shadow-[0_8px_25px_rgba(40,30,20,0.08),0_2px_6px_rgba(40,30,20,0.04)] overflow-hidden"
-              style={{ filter: 'url(#deckle-edge)' }}
             >
               {/* Realistic Dog-Eared Fold on Bottom Right */}
               <div

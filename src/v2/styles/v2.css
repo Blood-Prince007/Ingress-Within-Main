@@ -80,6 +80,7 @@
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   text-rendering: optimizeLegibility;
+  zoom: 0.9;
 }
 
 .v2-wrapper * {
@@ -116,13 +117,13 @@
   justify-content: space-between;
   position: sticky;
   top: 0;
-  background: rgba(250, 247, 242, 0.45);
-  backdrop-filter: blur(8px) saturate(180%);
-  -webkit-backdrop-filter: blur(8px) saturate(180%);
+  background: rgba(253, 251, 247, 0.60);
+  backdrop-filter: blur(24px) saturate(110%);
+  -webkit-backdrop-filter: blur(24px) saturate(110%);
   z-index: 100;
   padding: 0 24px;
-  border-bottom: none;
-  box-shadow: 0 4px 24px rgba(22, 39, 35, 0.035);
+  border-bottom: 1px solid rgba(230, 220, 205, 0.45);
+  box-shadow: 0 10px 30px -10px rgba(40, 30, 20, 0.04);
   transition: all 0.3s ease;
 }
 
@@ -1231,40 +1232,11 @@
 }
 
 /* Thin decorative accent rule — used as a section header top line */
-.v2-wrapper .brand-rule-rose {
-  display: block;
-  width: 32px;
-  height: 2px;
-  background: #C49A8F;
-  border-radius: 2px;
-  margin-bottom: 16px;
-}
-
-.v2-wrapper .brand-rule-thistle {
-  display: block;
-  width: 32px;
-  height: 2px;
-  background: #66876A;
-  border-radius: 2px;
-  margin-bottom: 16px;
-}
-
-.v2-wrapper .brand-rule-gold {
-  display: block;
-  width: 32px;
-  height: 2px;
-  background: #A77C38;
-  border-radius: 2px;
-  margin-bottom: 16px;
-}
-
+.v2-wrapper .brand-rule-rose,
+.v2-wrapper .brand-rule-thistle,
+.v2-wrapper .brand-rule-gold,
 .v2-wrapper .brand-rule-fog {
-  display: block;
-  width: 32px;
-  height: 2px;
-  background: #7C9BAA;
-  border-radius: 2px;
-  margin-bottom: 16px;
+  display: none !important;
 }
 
 /* Card accent: thin colored top border for editorial hierarchy */

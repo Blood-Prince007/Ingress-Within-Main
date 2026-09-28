@@ -204,40 +204,12 @@
 /* =========================================================================
    BRAND RULES — Colored horizontal decorative lines above section headers
    ========================================================================= */
-.brand-rule-rose {
-  display: block;
-  width: 36px;
-  height: 2px;
-  border-radius: 9999px;
-  background: linear-gradient(90deg, #C49A8F, #D9BCAF 60%, transparent);
-}
-.brand-rule-thistle {
-  display: block;
-  width: 36px;
-  height: 2px;
-  border-radius: 9999px;
-  background: linear-gradient(90deg, #66876A, #8AA688 60%, transparent);
-}
-.brand-rule-gold {
-  display: block;
-  width: 36px;
-  height: 2px;
-  border-radius: 9999px;
-  background: linear-gradient(90deg, #A77C38, #B8964A 60%, transparent);
-}
-.brand-rule-fog {
-  display: block;
-  width: 36px;
-  height: 2px;
-  border-radius: 9999px;
-  background: linear-gradient(90deg, #6A8FA0, #9BB0A8 60%, transparent);
-}
+.brand-rule-rose,
+.brand-rule-thistle,
+.brand-rule-gold,
+.brand-rule-fog,
 .brand-rule-ink {
-  display: block;
-  width: 36px;
-  height: 2px;
-  border-radius: 9999px;
-  background: linear-gradient(90deg, #162723, #283D38 60%, transparent);
+  display: none !important;
 }
 
 /* =========================================================================
@@ -254,44 +226,13 @@
    Each tint uses a two-stop radial gradient for depth without being flat
    ========================================================================= */
 
-/* Rose Tint — warm dusty pink ambient wash */
-.section-tint-rose {
-  background:
-    radial-gradient(ellipse 70% 55% at 8% 15%, rgba(196, 154, 143, 0.13) 0%, transparent 70%),
-    radial-gradient(ellipse 55% 45% at 92% 85%, rgba(217, 188, 175, 0.10) 0%, transparent 65%),
-    #FAF7F2;
-}
-
-/* Thistle Tint — sage green atmospheric wash */
-.section-tint-thistle {
-  background:
-    radial-gradient(ellipse 65% 50% at 5% 20%, rgba(102, 135, 106, 0.11) 0%, transparent 68%),
-    radial-gradient(ellipse 50% 40% at 95% 80%, rgba(138, 166, 136, 0.09) 0%, transparent 60%),
-    #F7FAF7;
-}
-
-/* Gold Tint — warm amber scholarly wash */
-.section-tint-gold {
-  background:
-    radial-gradient(ellipse 60% 50% at 90% 10%, rgba(184, 150, 74, 0.11) 0%, transparent 65%),
-    radial-gradient(ellipse 55% 45% at 10% 90%, rgba(167, 124, 56, 0.08) 0%, transparent 60%),
-    #FAF8F3;
-}
-
-/* Fog Tint — cool blue-grey atmospheric wash */
-.section-tint-fog {
-  background:
-    radial-gradient(ellipse 65% 50% at 15% 10%, rgba(155, 176, 168, 0.12) 0%, transparent 68%),
-    radial-gradient(ellipse 50% 40% at 88% 90%, rgba(106, 143, 160, 0.09) 0%, transparent 60%),
-    #F5F8F8;
-}
-
-/* Sand Tint — neutral warm paper with depth */
+/* Section Tints — Transparent so the fixed physical watercolor background remains visible across all sections */
+.section-tint-rose,
+.section-tint-thistle,
+.section-tint-gold,
+.section-tint-fog,
 .section-tint-sand {
-  background:
-    radial-gradient(ellipse 70% 55% at 50% 0%, rgba(184, 150, 74, 0.06) 0%, transparent 65%),
-    radial-gradient(ellipse 55% 40% at 50% 100%, rgba(196, 154, 143, 0.07) 0%, transparent 60%),
-    #F4F0EA;
+  background: transparent;
 }
 
 /* =========================================================================
@@ -330,4 +271,38 @@
 .card-hover-thistle:hover { border-color: rgba(86, 121, 90, 0.45) !important; box-shadow: 0 4px 20px -4px rgba(86, 121, 90, 0.18) !important; }
 .card-hover-gold:hover  { border-color: rgba(167, 124, 56, 0.50) !important; box-shadow: 0 4px 20px -4px rgba(167, 124, 56, 0.18) !important; }
 .card-hover-fog:hover   { border-color: rgba(106, 143, 160, 0.50) !important; box-shadow: 0 4px 20px -4px rgba(106, 143, 160, 0.18) !important; }
+
+/* =========================================================================
+   HIGH-FPS COMPOSITING & SCROLL OPTIMIZATIONS
+   ========================================================================= */
+
+/* Content visibility: skips offscreen DOM painting & recalculation until approaching viewport */
+.section-tint-rose,
+.section-tint-thistle,
+.section-tint-gold,
+.section-tint-fog,
+.section-tint-sand {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 750px;
+}
+
+/* GPU hardware acceleration for backdrop blurs and heavy ambient elements */
+.blur-2xl,
+.blur-3xl,
+.blur-\[80px\],
+.blur-\[90px\],
+.blur-\[100px\] {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+/* Smooth layer compositing for emergence cards */
+.card-hover-rose,
+.card-hover-thistle,
+.card-hover-gold,
+.card-hover-fog {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
 
