@@ -71,36 +71,41 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       <section className="relative w-full">
 
         {/* Hero Header Container (Centered vertically and horizontally in initial viewport) */}
-        <div className="relative z-10 min-h-[calc(100vh-5rem)] sm:min-h-[calc(100vh-5.5rem)] flex flex-col justify-center items-center text-center px-6 sm:px-10 max-w-5xl 2xl:max-w-[1340px] mx-auto py-12 space-y-6 pointer-events-auto">
-          {/* Headline matching user reference image */}
-          <h1 className="font-editorial text-4xl sm:text-6xl md:text-[68px] text-[#162723] font-normal tracking-tight leading-[1.08] max-w-4xl mx-auto">
-            Whatever brings you here, <br className="hidden sm:inline" />
-            <span className="italic text-[#795663]">you can start there.</span>
-          </h1>
+        <div
+          className="relative z-10 flex flex-col justify-center items-center text-center px-6 sm:px-10 max-w-5xl 2xl:max-w-[1340px] mx-auto pointer-events-auto"
+          style={{ minHeight: 'calc(100vh / 0.9 - 5.5rem)' }}
+        >
+          <div className="w-full flex flex-col items-center justify-center text-center my-auto py-8 sm:py-12 space-y-6">
+            {/* Headline matching user reference image */}
+            <h1 className="font-editorial text-4xl sm:text-6xl md:text-[68px] text-[#162723] font-normal tracking-tight leading-[1.08] max-w-4xl mx-auto text-center">
+              Whatever brings you here, <br className="hidden sm:inline" />
+              <span className="italic text-[#795663]">you can start there.</span>
+            </h1>
 
-          {/* Subtitle from user reference */}
-          <p className="font-zen text-base sm:text-lg md:text-xl text-[#5C6873] max-w-2xl sm:max-w-3xl mx-auto leading-relaxed pt-2">
-            A continuous psychological growth ecosystem that brings together self-guided learning, therapist support and AI guidance, all in one place.
-          </p>
+            {/* Subtitle from user reference */}
+            <p className="font-zen text-base sm:text-lg md:text-xl text-[#5C6873] max-w-2xl sm:max-w-3xl mx-auto leading-relaxed text-center">
+              A continuous psychological growth ecosystem that brings together self-guided learning, therapist support and AI guidance, all in one place.
+            </p>
 
-          {/* Dual Action CTAs: 2 Types Only */}
-          <div className="pt-6 sm:pt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 w-full">
-            <a
-              href="/login"
-              onClick={handleAuthRedirect}
-              className="w-full sm:w-auto min-w-[270px] inline-flex items-center justify-center gap-2.5 bg-[#162723] hover:bg-[#203631] text-white font-zen text-sm sm:text-[15px] font-semibold px-7 sm:px-8 py-3.5 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer text-center whitespace-nowrap"
-            >
-              <span>Start your independent journey</span>
-              <span className="text-base">→</span>
-            </a>
-            <button
-              type="button"
-              onClick={() => handleSelectTab('start')}
-              className="w-full sm:w-auto min-w-[270px] inline-flex items-center justify-center gap-2.5 bg-[#FAF7F2] hover:bg-white text-[#162723] border border-[#795663]/30 hover:border-[#795663]/60 font-zen text-sm sm:text-[15px] font-semibold px-7 sm:px-8 py-3.5 rounded-full shadow-xs hover:shadow-md transition-all cursor-pointer hover:scale-[1.02] text-center whitespace-nowrap"
-            >
-              <span>Start with a professional</span>
-              <span className="text-base text-[#795663]">→</span>
-            </button>
+            {/* Dual Action CTAs: 2 Types Only */}
+            <div className="pt-4 sm:pt-6 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 w-full mx-auto">
+              <a
+                href="/login"
+                onClick={handleAuthRedirect}
+                className="w-full sm:w-auto min-w-[270px] inline-flex items-center justify-center gap-2.5 bg-[#162723] hover:bg-[#203631] text-white font-zen text-sm sm:text-[15px] font-semibold px-7 sm:px-8 py-3.5 rounded-full shadow-md hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer text-center whitespace-nowrap"
+              >
+                <span>Start your independent journey</span>
+                <span className="text-base">→</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => handleSelectTab('start')}
+                className="w-full sm:w-auto min-w-[270px] inline-flex items-center justify-center gap-2.5 bg-[#FAF7F2] hover:bg-white text-[#162723] border border-[#795663]/30 hover:border-[#795663]/60 font-zen text-sm sm:text-[15px] font-semibold px-7 sm:px-8 py-3.5 rounded-full shadow-xs hover:shadow-md transition-all cursor-pointer hover:scale-[1.02] text-center whitespace-nowrap"
+              >
+                <span>Start with a professional</span>
+                <span className="text-base text-[#795663]">→</span>
+              </button>
+            </div>
           </div>
         </div>
 
