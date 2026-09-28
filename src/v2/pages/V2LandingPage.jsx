@@ -89,7 +89,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
           <section className="hero">
             <div className="wrap grid">
               <div>
-                <div className="ey">MENTAL HEALTH, YOUR WAY</div>
+                <div className="ey">01 · START WHERE YOU ARE</div>
                 <h1>Whatever brings you here, you can start there.</h1>
                 <p className="lede">
                   Most of what brings people here isn't a disorder — it's feelings that got pushed aside for too long. You may want to work on something yourself. You may want a therapist. You may want both. Ingress Within brings those ways of working on your mental health into one platform.
@@ -250,8 +250,8 @@ export default function V2LandingPage({ initialTab = 'home' }) {
               <h2>The philosophy behind the platform — not a sequence you have to follow.</h2>
               <p className="lede muted">You might start with therapy. You might start by practising. You might just want to know what's going on. Ingress Within meets you where you are.</p>
               <div className="actions" style={{ justifyContent: 'center', marginTop: '26px' }}>
-                <button className="btn primary" onClick={() => go('signup')}>Walk your own path first →</button>
-                <button className="btn secondary" onClick={() => go('intake')}>Begin with therapist guidance →</button>
+                <button className="btn primary" onClick={() => go('signup')}>Walk your own path first</button>
+                <button className="btn secondary" onClick={() => go('intake')}>Begin with therapist guidance</button>
               </div>
             </div>
           </section>
@@ -263,7 +263,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="solution" className={`page ${activeTab === 'solution' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">OUR SOLUTION</div>
+              <div className="ey">01 · OUR SOLUTION</div>
               <h1>One platform. Different ways to work on your mental health.</h1>
               <p className="lede">Some people just want to understand themselves better. Some want a therapist. Some want both, at different times. Here's what each looks like.</p>
             </div>
@@ -482,7 +482,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="how" className={`page ${activeTab === 'how' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">OUR APPROACH & HOW IT WORKS</div>
+              <div className="ey">02 · HOW IT WORKS</div>
               <h1>Different entry points. Shared capabilities.</h1>
               <div className="actions" style={{ justifyContent: 'center', marginTop: '24px' }}>
                 <button className="btn primary" onClick={() => go('signup')}>Start your independent journey</button>
@@ -687,7 +687,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="pricing" className={`page ${activeTab === 'pricing' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">PRICING</div>
+              <div className="ey">03 · PRICING & PLANS</div>
               <h1>A monthly plan for self-work. Pay per session for therapy.</h1>
               <p className="lede">Prices shown in ₹ (INR). Pay by UPI, card or netbanking. No hidden charges.</p>
             </div>
@@ -763,7 +763,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="ai" className={`page ${activeTab === 'ai' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">AI & DATA</div>
+              <div className="ey">04 · AI & DATA PRINCIPLES</div>
               <h1>AI helps connect the information. It does not become the authority.</h1>
               <p className="lede">AI can organise information, surface possible patterns and connect relevant learning. In therapist-supported care, it can help structure information for professional review.</p>
             </div>
@@ -885,7 +885,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="evidence" className={`page ${activeTab === 'evidence' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">EVIDENCE & RESEARCH</div>
+              <div className="ey">05 · EVIDENCE & RESEARCH</div>
               <h1>Why these building blocks make sense.</h1>
               <p className="lede">Ingress Within combines several evidence-informed mechanisms rather than presenting one feature as a complete answer.</p>
             </div>
@@ -937,7 +937,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="about" className={`page ${activeTab === 'about' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">ABOUT INGRESS WITHIN</div>
+              <div className="ey">06 · ABOUT INGRESS WITHIN</div>
               <h1>One place for the different ways people work on their psychological health.</h1>
               <p className="lede">Sometimes you want to work on something yourself. Sometimes you want a therapist. Sometimes you want both. Ingress Within is built around that reality rather than forcing one route.</p>
             </div>
@@ -1011,7 +1011,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="policies" className={`page ${activeTab === 'policies' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">POLICIES</div>
+              <div className="ey">07 · POLICIES & LEGAL</div>
               <h1>Privacy, terms & refunds.</h1>
               <p className="lede">These are working drafts, shared for transparency ahead of launch. Final versions will be reviewed by legal counsel and linked here before the platform goes live.</p>
             </div>
@@ -1054,7 +1054,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="contact" className={`page ${activeTab === 'contact' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap center">
-              <div className="ey">START HERE</div>
+              <div className="ey">08 · START HERE</div>
               <h1>What would be useful to you right now?</h1>
               <p className="lede">Choose the kind of work or support you want today — no required order.</p>
             </div>
@@ -1235,7 +1235,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="crisis" className={`page ${activeTab === 'crisis' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap center">
-              <div className="ey">RIGHT NOW</div>
+              <div className="ey" style={{ borderColor: 'rgba(154, 66, 50, 0.55)', color: '#9A4232' }}>EMERGENCY RESOURCES · 24×7</div>
               <h1>If you're in crisis, start here — not on the rest of this site.</h1>
               <p className="lede">Ingress Within is a self-work and therapist-booking platform. It is not built or staffed to respond in real time, so it can't be your safety net in an emergency. The services below can.</p>
             </div>

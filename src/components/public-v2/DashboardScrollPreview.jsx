@@ -22,17 +22,25 @@ export default function DashboardScrollPreview({ onActionClick }) {
   const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const windowHeight = window.innerHeight || 800;
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            const windowHeight = window.innerHeight || 800;
 
-      // Start rising when container approaches viewport bottom
-      // Reach full upright position when container top reaches 30% from the viewport top
-      const start = windowHeight * 0.95;
-      const end = windowHeight * 0.25;
-      const progress = Math.min(Math.max((start - rect.top) / (start - end), 0), 1);
-      setScrollProgress(progress);
+            // Start rising when container approaches viewport bottom
+            // Reach full upright position when container top reaches 30% from the viewport top
+            const start = windowHeight * 0.95;
+            const end = windowHeight * 0.25;
+            const progress = Math.min(Math.max((start - rect.top) / (start - end), 0), 1);
+            setScrollProgress(progress);
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
     handleScroll();
@@ -45,8 +53,7 @@ export default function DashboardScrollPreview({ onActionClick }) {
     };
   }, []);
 
-  // Smooth transform values calculated from scroll position
-  // Starts visibly peeking with a gentle 3D tilt, then floats up and levels out smoothly as the user scrolls
+  // Smooth transform values calculated directly from scroll position
   const translateY = Math.round((1 - scrollProgress) * 55);
   const rotateX = ((1 - scrollProgress) * 7.5).toFixed(1);
   const scale = (0.97 + 0.03 * scrollProgress).toFixed(3);
@@ -66,7 +73,7 @@ export default function DashboardScrollPreview({ onActionClick }) {
         style={{
           transform: `perspective(1400px) translateY(${translateY}px) rotateX(${rotateX}deg) scale(${scale})`,
           boxShadow: `0 -18px 45px -10px rgba(22, 39, 35, 0.16), 0 28px ${shadowSpread}px -12px rgba(22, 39, 35, ${shadowOpacity})`,
-          transition: 'transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease-out'
+          transition: 'box-shadow 0.3s ease-out'
         }}
         className="w-full p-2 sm:p-3 rounded-[28px] sm:rounded-[36px] bg-[#FAF7F2] border border-[#D5CBC0] text-left relative"
       >
