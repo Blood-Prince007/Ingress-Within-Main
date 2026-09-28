@@ -233,7 +233,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
                   <div className="ey">THERAPY</div>
                   <div className="amt">From ₹999 <small>/ session</small></div>
                   <p className="muted">Licensed, verified therapists. No lock-in packages.</p>
-                  <button className="btn primary" style={{ marginTop: '16px', width: '100%' }} onClick={() => go('intake')}>Book therapist session →</button>
+                  <button className="btn secondary" style={{ marginTop: '16px', width: '100%' }} onClick={() => go('intake')}>Book therapist session →</button>
                 </div>
               </div>
               <p className="note" style={{ marginTop: '20px' }}>

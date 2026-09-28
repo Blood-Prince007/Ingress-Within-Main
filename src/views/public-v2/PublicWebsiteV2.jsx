@@ -459,11 +459,11 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
             {/* Plan 2 */}
             <motion.div
               {...getCardEmergence(1, 2)}
-              className="group relative rounded-xl p-7 sm:p-8 min-h-[290px] bg-[#FDFBF8] hover:bg-white border-2 border-[#795663]/40 hover:border-[#795663] flex flex-col justify-between space-y-6 transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs hover:shadow-xs cursor-pointer"
+              className="group relative rounded-xl p-7 sm:p-8 min-h-[290px] bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] hover:border-[#162723]/35 flex flex-col justify-between space-y-6 transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs hover:shadow-xs cursor-pointer"
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-3.5">
-                  <span className="inline-flex items-center font-mono-code text-[9px] sm:text-[9.5px] tracking-[0.16em] uppercase font-semibold px-2.5 py-0.5 rounded-full border border-[#795663]/30 text-[#795663] group-hover:border-[#795663] transition-colors">
+                  <span className="inline-flex items-center font-mono-code text-[9px] sm:text-[9.5px] tracking-[0.16em] uppercase font-semibold px-2.5 py-0.5 rounded-full border border-[#162723]/25 text-[#162723]/80 group-hover:border-[#162723]/60 group-hover:text-[#162723] transition-colors">
                     WITH A THERAPIST
                   </span>
                   <span className="font-mono-code text-[10px] tracking-wider text-[#8D98A3]">
@@ -481,7 +481,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <button
                 type="button"
                 onClick={() => handleSelectTab('start')}
-                className="w-full text-center py-3 bg-[#795663] hover:bg-[#654652] text-white rounded-full text-xs font-semibold cursor-pointer shadow-xs transition-colors font-zen"
+                className="w-full text-center py-3 bg-[#FAF7F2] hover:bg-[#162723] hover:text-white text-[#162723] border border-[#E7DECF] rounded-full text-xs font-semibold cursor-pointer transition-all font-zen"
               >
                 Book therapist session →
               </button>
