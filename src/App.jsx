@@ -50,6 +50,8 @@ const FounderTestPage = (process.env.NODE_ENV === 'development' || process.env.N
 
 const PsychoeducationLabPage = lazy(() => import('./views/PsychoeducationLabPage'));
 const NotFoundPage = lazy(() => import('./views/NotFoundPage'));
+const PrivacyPolicyView = lazy(() => import('./views/PrivacyPolicyView'));
+const TermsOfServiceView = lazy(() => import('./views/TermsOfServiceView'));
 
 // Ingress Within V2 Public Website & Design System
 const PublicWebsiteV2 = lazy(() => import('./views/public-v2/PublicWebsiteV2'));
@@ -506,6 +508,12 @@ export default function App({ initialRoute = 'home' }) {
       } else if (path === '/v2/how-to-practice-self-reflection' || path === '/v2/how-to-practice-self-reflection/') {
         setCurrentRoute('v2-how-to-practice-self-reflection');
         window.scrollTo(0, 0);
+      } else if (path === '/privacy-policy' || path === '/privacy-policy/' || path === '/privacy' || path === '/privacy/') {
+        setCurrentRoute('privacy-policy');
+        window.scrollTo(0, 0);
+      } else if (path === '/terms' || path === '/terms/' || path === '/terms-of-service' || path === '/terms-of-service/') {
+        setCurrentRoute('terms');
+        window.scrollTo(0, 0);
       } else if (path === '/' || path === '') {
         setCurrentRoute('home');
         // Handle section scroll deep link (e.g. /#auth -> scroll to auth section)
@@ -604,6 +612,12 @@ export default function App({ initialRoute = 'home' }) {
         return <PublicWebsiteV2 initialTab="evidence" onOpenPolicy={handleOpenPolicy} />;
       case 'policies':
         return <PublicWebsiteV2 initialTab="policies" onOpenPolicy={handleOpenPolicy} />;
+      case 'privacy-policy':
+      case 'privacy':
+        return <PrivacyPolicyView />;
+      case 'terms':
+      case 'terms-of-service':
+        return <TermsOfServiceView />;
       case 'start':
       case 'contact':
         return <PublicWebsiteV2 initialTab="start" onOpenPolicy={handleOpenPolicy} />;
