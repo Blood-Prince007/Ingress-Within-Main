@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import WatercolorBackground from '../../components/public-v2/WatercolorBackground';
 import '../styles/v2.css';
 
 export default function V2LandingPage({ initialTab = 'home' }) {
@@ -28,8 +29,9 @@ export default function V2LandingPage({ initialTab = 'home' }) {
   };
 
   return (
-    <div className="v2-wrapper">
-      <div className="wrap">
+    <div className="v2-wrapper relative">
+      <WatercolorBackground activeTab={activeTab} />
+      <div className="wrap relative z-10">
         <nav>
           <div className="logo" onClick={() => go('home')}>
             <svg className="mark" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">

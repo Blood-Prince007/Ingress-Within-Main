@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import WatercolorBackground from '../../components/public-v2/WatercolorBackground';
 import EditorialNavbar from '../../components/public-v2/EditorialNavbar';
 import ThreeWaysSection from '../../components/public-v2/ThreeWaysSection';
@@ -4194,23 +4194,33 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#162723] font-zen selection:bg-[#EFE3E4] selection:text-[#795663] relative" style={{ zoom: 0.9 }}>
       {/* 1. Ambient SVG Watercolor Bleeds */}
-      <WatercolorBackground />
+      <WatercolorBackground activeTab={activeTab} />
 
       {/* 2. Editorial Top Navbar */}
       <EditorialNavbar activeTab={activeTab} onSelectTab={handleSelectTab} />
 
       {/* 3. Main Content Area */}
       <main className="relative z-10">
-        {activeTab === 'home' && renderHome()}
-        {activeTab === 'solution' && renderSolution()}
-        {activeTab === 'how' && renderHowItWorks()}
-        {activeTab === 'pricing' && renderPricing()}
-        {activeTab === 'ai' && renderAiData()}
-        {activeTab === 'evidence' && renderEvidence()}
-        {activeTab === 'about' && renderAbout()}
-        {activeTab === 'policies' && renderPolicies()}
-        {activeTab === 'start' && renderStart()}
-        {activeTab === 'crisis' && renderCrisis()}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            transition={{ duration: 0.85, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {activeTab === 'home' && renderHome()}
+            {activeTab === 'solution' && renderSolution()}
+            {activeTab === 'how' && renderHowItWorks()}
+            {activeTab === 'pricing' && renderPricing()}
+            {activeTab === 'ai' && renderAiData()}
+            {activeTab === 'evidence' && renderEvidence()}
+            {activeTab === 'about' && renderAbout()}
+            {activeTab === 'policies' && renderPolicies()}
+            {activeTab === 'start' && renderStart()}
+            {activeTab === 'crisis' && renderCrisis()}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* 4. Editorial Dark Ink Footer */}

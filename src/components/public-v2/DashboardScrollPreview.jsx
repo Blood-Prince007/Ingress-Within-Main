@@ -73,13 +73,24 @@ export default function DashboardScrollPreview({ onActionClick }) {
       startLoop();
     };
 
+    let scrollTicking = false;
+    const handleScroll = () => {
+      if (!scrollTicking) {
+        window.requestAnimationFrame(() => {
+          calculateTarget();
+          scrollTicking = false;
+        });
+        scrollTicking = true;
+      }
+    };
+
     calculateTarget();
-    window.addEventListener('scroll', calculateTarget, { passive: true });
-    window.addEventListener('resize', calculateTarget, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll, { passive: true });
 
     return () => {
-      window.removeEventListener('scroll', calculateTarget);
-      window.removeEventListener('resize', calculateTarget);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
       if (rafId) window.cancelAnimationFrame(rafId);
     };
   }, []);

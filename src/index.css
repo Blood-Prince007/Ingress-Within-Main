@@ -81,23 +81,23 @@
     letter-spacing: -0.01em;
   }
 
-  /* Custom scrollbar matching brand theme */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  /* Hide scrollbar completely across all browsers while keeping smooth scrolling */
+  html,
+  body,
+  #root,
+  .v2-wrapper {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
 
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: rgba(40, 61, 56, 0.2);
-    border-radius: 3px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(121, 86, 99, 0.4);
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  #root::-webkit-scrollbar,
+  .v2-wrapper::-webkit-scrollbar {
+    display: none !important;
+    width: 0px !important;
+    height: 0px !important;
+    background: transparent !important;
   }
 }
 
