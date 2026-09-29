@@ -9,7 +9,7 @@ export const getCookieOptions = (maxAgeSeconds: number) => {
   return {
     httpOnly: true,
     secure: isProd, // require HTTPS in production, allow HTTP in dev (needed for 127.0.0.1 / IP testing)
-    sameSite: 'strict' as const,
+    sameSite: 'lax' as const,
     path: '/',
     maxAge: maxAgeSeconds
   };

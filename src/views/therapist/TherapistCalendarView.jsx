@@ -44,6 +44,25 @@ export default function TherapistCalendarView({
   const [cancellingId, setCancellingId] = useState(null);
   const [completingId, setCompletingId] = useState(null);
   const [connectingCalendar, setConnectingCalendar] = useState(false);
+  const [successBanner, setSuccessBanner] = useState(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('google_calendar_connected') === 'true') {
+        setSuccessBanner('Google Calendar connected successfully! External commitments are synced.');
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (params.get('error')) {
+        const errParam = params.get('error');
+        if (errParam === 'access_denied') {
+          setError('Google authorization was cancelled or access denied. Ensure your Google account is added as an approved test user.');
+        } else {
+          setError(`Google Calendar connection failed: ${decodeURIComponent(errParam)}`);
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, []);
 
   // Compute month window: from first day to last day of current month
   const { monthStartIso, monthEndIso, monthTitle } = useMemo(() => {
@@ -294,6 +313,22 @@ export default function TherapistCalendarView({
           </button>
         </div>
       </div>
+
+      {/* Success Notification Banner */}
+      {successBanner && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
+            <span>{successBanner}</span>
+          </div>
+          <button
+            onClick={() => setSuccessBanner(null)}
+            className="text-emerald-700 hover:text-emerald-900 text-xs font-semibold cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Recoverable Error Banner */}
       {error && (
