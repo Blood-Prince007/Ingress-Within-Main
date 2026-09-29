@@ -23,9 +23,12 @@ export default function ClientTherapySessionsView() {
 
   // Reschedule state
   const [rescheduleModalAppt, setRescheduleModalAppt] = useState(null);
-  const [newSlotStart, setNewSlotStart] = useState('');
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [rescheduleReason, setRescheduleReason] = useState('');
   const [rescheduling, setRescheduling] = useState(false);
+  const [syncingAppointmentId, setSyncingAppointmentId] = useState(null);
 
   // Cancel state
   const [cancelModalAppt, setCancelModalAppt] = useState(null);
@@ -61,6 +64,26 @@ export default function ClientTherapySessionsView() {
     fetchSessions();
   }, []);
 
+  // Fetch real therapist availability slots when reschedule modal opens
+  useEffect(() => {
+    if (!rescheduleModalAppt) {
+      setAvailableSlots([]);
+      setSelectedSlot(null);
+      return;
+    }
+    const therapistId = rescheduleModalAppt.therapist?.id || rescheduleModalAppt.therapistAccountId;
+    if (!therapistId) return;
+
+    setLoadingSlots(true);
+    fetch(`/api/therapy/therapists/${therapistId}/availability`)
+      .then((res) => res.json())
+      .then((data) => {
+        setAvailableSlots(data.slots || []);
+      })
+      .catch(() => setAvailableSlots([]))
+      .finally(() => setLoadingSlots(false));
+  }, [rescheduleModalAppt]);
+
   const handleConnectGoogleCal = async () => {
     try {
       const res = await fetch('/api/calendar/google/connect');
@@ -73,22 +96,40 @@ export default function ClientTherapySessionsView() {
     }
   };
 
+  const handleRetryCalendarSync = async (appointmentId) => {
+    setSyncingAppointmentId(appointmentId);
+    try {
+      const res = await fetch('/api/therapy/sessions/sync-calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error?.message || 'Sync failed');
+      }
+      alert('Calendar synchronization successful! Google Meet generated.');
+      await fetchSessions();
+    } catch (err) {
+      alert(`Sync failed: ${err.message}`);
+    } finally {
+      setSyncingAppointmentId(null);
+    }
+  };
+
   const handleRescheduleSubmit = async (e) => {
     e.preventDefault();
-    if (!rescheduleModalAppt || !newSlotStart) return;
+    if (!rescheduleModalAppt || !selectedSlot) return;
 
     setRescheduling(true);
     try {
-      const start = new Date(newSlotStart);
-      const end = new Date(start.getTime() + 50 * 60 * 1000); // 50 mins
-
       const res = await fetch('/api/therapy/sessions/reschedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           appointmentId: rescheduleModalAppt.id,
-          newStart: start.toISOString(),
-          newEnd: end.toISOString(),
+          newStart: selectedSlot.start,
+          newEnd: selectedSlot.end,
           reason: rescheduleReason || 'Client requested reschedule',
         }),
       });
@@ -99,6 +140,7 @@ export default function ClientTherapySessionsView() {
       }
 
       setRescheduleModalAppt(null);
+      setSelectedSlot(null);
       await fetchSessions();
     } catch (err) {
       alert(err.message);
@@ -244,6 +286,11 @@ export default function ClientTherapySessionsView() {
                         <CheckCircle2 size={10} /> Calendar Synced
                       </span>
                     )}
+                    {session.calendarSyncStatus === 'failed' && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 flex items-center gap-1">
+                        <AlertCircle size={10} /> Calendar Sync Failed
+                      </span>
+                    )}
                   </div>
 
                   <p className="text-xs text-gray-600">
@@ -263,6 +310,27 @@ export default function ClientTherapySessionsView() {
                     >
                       <Video size={13} /> Join Google Meet
                     </a>
+                  )}
+
+                  {isUpcoming && !session.googleMeetUrl && session.googleMeetStatus === 'generating' && (
+                    <span className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-medium inline-flex items-center gap-1.5">
+                      <RefreshCw size={12} className="animate-spin" /> Generating Meet...
+                    </span>
+                  )}
+
+                  {isUpcoming && (!session.googleMeetUrl || session.calendarSyncStatus === 'failed') && (
+                    <button
+                      onClick={() => handleRetryCalendarSync(session.id)}
+                      disabled={syncingAppointmentId === session.id}
+                      className="px-3 py-1.5 rounded-lg border border-amber-300 text-xs font-medium text-amber-800 hover:bg-amber-50 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+                      title="Sync calendar and generate Google Meet"
+                    >
+                      <RefreshCw
+                        size={12}
+                        className={syncingAppointmentId === session.id ? 'animate-spin' : ''}
+                      />
+                      {syncingAppointmentId === session.id ? 'Syncing...' : 'Retry Calendar Sync'}
+                    </button>
                   )}
 
                   {isUpcoming && session.policy?.canReschedule && (
@@ -304,26 +372,93 @@ export default function ClientTherapySessionsView() {
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
             <h3 className="font-serif text-lg font-medium text-gray-900">Reschedule Therapy Session</h3>
             <p className="text-xs text-gray-500">
-              Select a new date and time. Must be at least 24 hours in advance.
+              Select an available time slot with {rescheduleModalAppt.therapist?.name || 'your clinician'}. Appointments must be rescheduled at least 24 hours in advance.
             </p>
 
             <form onSubmit={handleRescheduleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">New Date & Time</label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={newSlotStart}
-                  onChange={(e) => setNewSlotStart(e.target.value)}
-                  className="w-full text-xs p-2.5 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-600"
-                />
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Available Time Slots
+                </label>
+                {loadingSlots ? (
+                  <div className="py-8 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                    <RefreshCw size={14} className="animate-spin text-emerald-600" />
+                    <span>Checking clinician Google Calendar & availability...</span>
+                  </div>
+                ) : availableSlots.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-600 text-center space-y-1">
+                    <p className="font-medium text-gray-800">No open slots in the upcoming schedule</p>
+                    <p className="text-[11px] text-gray-500">
+                      Please contact care coordination to find alternative times.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="max-h-60 overflow-y-auto space-y-3 p-1 border border-gray-100 rounded-xl">
+                    {Object.entries(
+                      availableSlots.reduce((acc, slot) => {
+                        const d = new Date(slot.start);
+                        const dayKey = d.toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                        });
+                        if (!acc[dayKey]) acc[dayKey] = [];
+                        acc[dayKey].push(slot);
+                        return acc;
+                      }, {})
+                    ).map(([day, slots]) => (
+                      <div key={day} className="space-y-1.5">
+                        <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-1">
+                          {day}
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {slots.map((slot) => {
+                            const isSelected = selectedSlot?.start === slot.start;
+                            const timeStr = new Date(slot.start).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true,
+                            });
+                            return (
+                              <button
+                                key={slot.start}
+                                type="button"
+                                onClick={() => setSelectedSlot(slot)}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border text-center transition-all ${
+                                  isSelected
+                                    ? 'bg-emerald-800 border-emerald-800 text-white shadow-2xs'
+                                    : 'bg-white border-gray-200 text-gray-700 hover:border-emerald-600 hover:bg-emerald-50/50'
+                                }`}
+                              >
+                                {timeStr}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {selectedSlot && (
+                  <p className="mt-2 text-xs text-emerald-800 font-medium flex items-center gap-1.5">
+                    <CheckCircle2 size={13} className="text-emerald-600" />
+                    Selected:{' '}
+                    {new Date(selectedSlot.start).toLocaleString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Reason (Optional)</label>
                 <input
                   type="text"
-                  placeholder="e.g. Schedule conflict"
+                  placeholder="e.g. Schedule conflict, personal reasons"
                   value={rescheduleReason}
                   onChange={(e) => setRescheduleReason(e.target.value)}
                   className="w-full text-xs p-2.5 border border-gray-300 rounded-lg focus:outline-hidden"
@@ -333,14 +468,17 @@ export default function ClientTherapySessionsView() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setRescheduleModalAppt(null)}
+                  onClick={() => {
+                    setRescheduleModalAppt(null);
+                    setSelectedSlot(null);
+                  }}
                   className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={rescheduling}
+                  disabled={rescheduling || !selectedSlot}
                   className="px-4 py-1.5 text-xs bg-emerald-800 text-white rounded-lg font-medium hover:bg-emerald-900 disabled:opacity-50"
                 >
                   {rescheduling ? 'Updating...' : 'Confirm Reschedule'}

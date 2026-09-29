@@ -222,12 +222,30 @@ export class GoogleCalendarService {
    * NEVER returns event titles, descriptions, attendees, organizer, location, or Google event IDs.
    */
   static async getBusySlots(
-    therapistAccountId: string,
-    timeMin: string,
-    timeMax: string
+    accountTypeOrId: 'therapist' | 'user' | string,
+    idOrTimeMin: string,
+    timeMinOrMax: string,
+    timeMaxOptional?: string
   ): Promise<Array<{ start: string; end: string }>> {
+    let accountType: 'therapist' | 'user' = 'therapist';
+    let accountId = '';
+    let timeMin = '';
+    let timeMax = '';
+
+    if (accountTypeOrId === 'therapist' || accountTypeOrId === 'user') {
+      accountType = accountTypeOrId;
+      accountId = idOrTimeMin;
+      timeMin = timeMinOrMax;
+      timeMax = timeMaxOptional || '';
+    } else {
+      accountType = 'therapist';
+      accountId = accountTypeOrId;
+      timeMin = idOrTimeMin;
+      timeMax = timeMinOrMax;
+    }
+
     try {
-      const accessToken = await GoogleAuthService.getValidAccessToken('therapist', therapistAccountId);
+      const accessToken = await GoogleAuthService.getValidAccessToken(accountType, accountId);
       if (!accessToken) {
         return [];
       }

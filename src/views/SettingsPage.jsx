@@ -14,10 +14,11 @@ import {
   X
 } from 'lucide-react';
 import { DashboardService } from '../services/dashboardService';
+import ClientCalendarIntegrationCard from '../components/client/ClientCalendarIntegrationCard';
 
 export default function SettingsPage({ user, profile, onSignOut }) {
   // Navigation & UI States
-  const [activeTab, setActiveTab] = useState('profile'); // profile, notifications, subscription, billing, payment, how, ai, privacy, delete
+  const [activeTab, setActiveTab] = useState('profile'); // profile, notifications, calendar, subscription, billing, payment, how, ai, privacy, delete
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openEditPanel, setOpenEditPanel] = useState(null); // 'name' | 'phone' | 'email' | null
   
@@ -796,6 +797,19 @@ export default function SettingsPage({ user, profile, onSignOut }) {
     </div>
   );
 
+  // Calendar Integration Tab
+  const renderCalendarIntegration = () => (
+    <div className="pad animate-fadeUp">
+      <p className="pg-ey">Integrations</p>
+      <h1 className="pg-h font-serif text-3xl font-normal">Google Calendar</h1>
+      <p className="pg-sub text-[13.5px] text-mid mb-8 max-w-[480px] leading-relaxed">
+        Connect your Google Calendar to synchronize your telehealth sessions and check availability seamlessly.
+      </p>
+
+      <ClientCalendarIntegrationCard />
+    </div>
+  );
+
   // 3. Subscription Tab (Real dynamic state from database & Razorpay)
   const renderSubscription = () => {
     if (isBillingLoading) {
@@ -1537,6 +1551,7 @@ export default function SettingsPage({ user, profile, onSignOut }) {
           <span className="sb-group-label text-[10px] tracking-wider uppercase font-bold text-[#4A6A64]/38 px-[18px] py-3.5 pb-1 block">Account</span>
           <button className={`sb-btn w-full text-left py-2 px-[18px] font-sans text-[13px] font-medium border-l-[3px] border-transparent transition-colors hover:text-primary hover:bg-[#1E2A2E]/3 cursor-pointer ${activeTab === 'profile' ? 'on' : 'text-[#4A6A64]'}`} onClick={() => handleTabSwitch('profile')}>Profile</button>
           <button className={`sb-btn w-full text-left py-2 px-[18px] font-sans text-[13px] font-medium border-l-[3px] border-transparent transition-colors hover:text-primary hover:bg-[#1E2A2E]/3 cursor-pointer ${activeTab === 'notifications' ? 'on' : 'text-[#4A6A64]'}`} onClick={() => handleTabSwitch('notifications')}>Notifications</button>
+          <button className={`sb-btn w-full text-left py-2 px-[18px] font-sans text-[13px] font-medium border-l-[3px] border-transparent transition-colors hover:text-primary hover:bg-[#1E2A2E]/3 cursor-pointer ${activeTab === 'calendar' ? 'on' : 'text-[#4A6A64]'}`} onClick={() => handleTabSwitch('calendar')}>Google Calendar</button>
           
           <div className="h-[1px] bg-[#1E2A2E]/8 my-2 mx-3" />
           
@@ -1563,6 +1578,7 @@ export default function SettingsPage({ user, profile, onSignOut }) {
         <div className="content flex-1 overflow-y-auto h-full" id="content-panel">
           {activeTab === 'profile' && renderProfile()}
           {activeTab === 'notifications' && renderNotifications()}
+          {activeTab === 'calendar' && renderCalendarIntegration()}
           {activeTab === 'subscription' && renderSubscription()}
           {activeTab === 'billing' && renderBilling()}
           {activeTab === 'payment' && renderPayment()}

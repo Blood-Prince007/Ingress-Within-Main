@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { User, ShieldCheck, Save, Award, Globe, DollarSign, CheckCircle2, AlertCircle, Lock } from 'lucide-react';
+import TherapistCalendarIntegrationCard from '../../components/therapist/TherapistCalendarIntegrationCard';
 
 export default function TherapistProfileView() {
   const [profile, setProfile] = useState(null);
@@ -135,6 +136,14 @@ export default function TherapistProfileView() {
           <div><span className="font-medium text-[#132A24]">Phone: </span>{account?.phone_number}</div>
           <div><span className="font-medium text-[#132A24]">RCI Registration: </span>{account?.rci_registered ? account.rci_number || 'Yes' : 'Not RCI'}</div>
         </div>
+      </div>
+
+      {/* Calendar & Meetings Integration */}
+      <div className="space-y-3">
+        <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-[#4E7A66] block">
+          Calendar & Meetings Integration
+        </span>
+        <TherapistCalendarIntegrationCard />
       </div>
 
       {/* Editable Form */}
