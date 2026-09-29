@@ -10,6 +10,7 @@ export interface CreateEventOptions {
   startTime: string; // ISO string
   endTime: string;   // ISO string
   attendees: string[]; // Email addresses
+  createMeetConference?: boolean;
 }
 
 export interface GoogleCalendarEventResult {
@@ -17,7 +18,7 @@ export interface GoogleCalendarEventResult {
   meetUrl: string | null;
   conferenceId: string | null;
   syncStatus: 'synced' | 'pending' | 'failed' | 'not_connected';
-  meetStatus: 'created' | 'generating' | 'failed' | 'not_connected';
+  meetStatus: 'created' | 'generating' | 'failed' | 'not_connected' | 'none';
   error?: string;
 }
 
@@ -182,28 +183,35 @@ export class GoogleCalendarService {
         }
       }
 
-      // 3. Prepare deterministic conference request ID derived from appointment ID
-      const sanitizedApptId = options.appointmentId.replace(/[^a-zA-Z0-9]/g, '');
-      const requestId = `ingress_${sanitizedApptId.slice(0, 32)}`;
+      const createMeet = options.createMeetConference !== false;
 
-      const eventPayload = {
+      // 3. Prepare event payload (attaching conferenceData only if createMeet is true)
+      const eventPayload: any = {
         summary: options.summary || 'Ingress Within Therapy Session',
         description: options.description || 'Confidential clinical therapy session scheduled via Ingress Within.',
         start: { dateTime: options.startTime },
         end: { dateTime: options.endTime },
         attendees: options.attendees.filter(Boolean).map((email) => ({ email })),
-        conferenceData: {
+      };
+
+      if (createMeet) {
+        const sanitizedApptId = options.appointmentId.replace(/[^a-zA-Z0-9]/g, '');
+        const requestId = `ingress_${sanitizedApptId.slice(0, 32)}`;
+        eventPayload.conferenceData = {
           createRequest: {
             requestId,
             conferenceSolutionKey: {
               type: 'hangoutsMeet',
             },
           },
-        },
-      };
+        };
+      }
 
-      // 4. Google Calendar API events.insert with conferenceDataVersion=1
-      const url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1';
+      // 4. Google Calendar API events.insert
+      const url = createMeet
+        ? 'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1'
+        : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+
       const res = await fetch(url, {
         method: 'POST',
         headers: {
@@ -221,7 +229,7 @@ export class GoogleCalendarService {
           meetUrl: null,
           conferenceId: null,
           syncStatus: 'failed',
-          meetStatus: 'failed',
+          meetStatus: createMeet ? 'failed' : 'none',
           error: `HTTP_${status}`,
         };
       }
@@ -229,8 +237,8 @@ export class GoogleCalendarService {
       const event = await res.json();
       let { meetUrl, conferenceId } = this.extractMeetDetails(event);
 
-      // 5. If conference creation is still pending, poll boundedly
-      if (!meetUrl && event.id) {
+      // 5. If conference creation is still pending for telehealth, poll boundedly
+      if (createMeet && !meetUrl && event.id) {
         const pollResult = await this.pollConferenceCreation(accessToken, event.id, 3);
         if (pollResult.meetUrl) {
           meetUrl = pollResult.meetUrl;
@@ -253,7 +261,7 @@ export class GoogleCalendarService {
         meetUrl,
         conferenceId,
         syncStatus: 'synced',
-        meetStatus: isMeetReady ? 'created' : 'failed',
+        meetStatus: createMeet ? (isMeetReady ? 'created' : 'failed') : 'none',
       };
     } catch (err: any) {
       console.error('[GoogleCalendarService] Safe failure during event creation:', err.message || 'unknown');
@@ -281,7 +289,7 @@ export class GoogleCalendarService {
    */
   static async syncAppointmentToGoogle(
     appointmentId: string,
-    options: { summary?: string; description?: string } = {}
+    options: { summary?: string; description?: string; createMeetConference?: boolean } = {}
   ): Promise<SyncAppointmentResult> {
     try {
       if (!appointmentId) {
@@ -346,8 +354,13 @@ export class GoogleCalendarService {
       const clientName = clientUser?.full_name || 'Client';
       const therapistName = therapistAccount?.full_name || 'Therapist';
 
+      const isTelehealth = appt.modality !== 'in_person' && appt.session_type !== 'in_person';
+      const shouldCreateMeet = options.createMeetConference ?? isTelehealth;
+
       const summary = options.summary || `Ingress Within Therapy Session: ${clientName} & ${therapistName}`;
-      const description = options.description || `Confidential clinical telehealth session scheduled via Ingress Within.\nClient: ${clientName}\nTherapist: ${therapistName}`;
+      const description = options.description || (isTelehealth
+        ? `Confidential clinical telehealth session scheduled via Ingress Within.\nClient: ${clientName}\nTherapist: ${therapistName}`
+        : `Confidential clinical in-person therapy session scheduled via Ingress Within.\nClient: ${clientName}\nTherapist: ${therapistName}`);
 
       const attendees = [therapistAccount?.email, clientUser?.email].filter(Boolean) as string[];
 
@@ -361,6 +374,7 @@ export class GoogleCalendarService {
         startTime: appt.scheduled_start,
         endTime: appt.scheduled_end,
         attendees,
+        createMeetConference: shouldCreateMeet,
       });
 
       // 4. Update appointment in database with real results
