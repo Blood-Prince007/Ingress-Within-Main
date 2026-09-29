@@ -66,7 +66,7 @@ export default function FourStageRhythmSection() {
 
         {/* Eyebrow */}
         <div className="text-center font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase text-[#7D8E87] font-semibold">
-          05 · THE 4-STAGE RHYTHM
+          THE 4-STAGE RHYTHM
         </div>
 
         {/* Heading */}

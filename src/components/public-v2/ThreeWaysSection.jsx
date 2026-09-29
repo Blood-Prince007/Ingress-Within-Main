@@ -81,11 +81,10 @@ export default function ThreeWaysSection({ onSelectTab }) {
           transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
           className="space-y-2.5 sm:space-y-3"
         >
-          {/* Section Eyebrow with brand accent */}
-          <div className="flex flex-col items-center gap-2">
-            <span className="brand-rule-thistle mx-auto" />
+          {/* Section Eyebrow */}
+          <div className="flex flex-col items-center">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723]">
-              02 · CHOOSE YOUR STARTING POINT
+              CHOOSE YOUR STARTING POINT
             </div>
           </div>
 

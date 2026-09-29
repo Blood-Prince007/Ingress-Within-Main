@@ -30,7 +30,7 @@ export default function PublicFooter({ onSelectTab, onOpenPolicy }) {
                 alt="Ingress Within"
                 className="w-8 h-8 object-contain flex-shrink-0"
               />
-              <span className="font-editorial italic text-2xl text-white">Ingress Within</span>
+              <span className="font-editorial text-2xl text-white">Ingress Within</span>
             </div>
             <p className="font-mono-code text-[10px] tracking-[0.16em] uppercase text-[#BFCAD7] font-medium">
               Understand · Grow · Continue
@@ -42,16 +42,16 @@ export default function PublicFooter({ onSelectTab, onOpenPolicy }) {
 
           {/* Explore Links */}
           <div className="space-y-3">
-            <div className="font-editorial italic text-sm text-white font-medium">Explore</div>
+            <div className="font-editorial text-sm text-white font-medium">Explore</div>
             <ul className="space-y-2 text-xs font-zen text-[#8D98A3]">
               <li>
                 <a href="/solution" onClick={(e) => handleNav('solution', e)} className="hover:text-white transition-colors">
-                  Our solution
+                  Our Solution
                 </a>
               </li>
               <li>
                 <a href="/how-it-works" onClick={(e) => handleNav('how', e)} className="hover:text-white transition-colors">
-                  How it works
+                  How It Works
                 </a>
               </li>
               <li>
@@ -61,7 +61,7 @@ export default function PublicFooter({ onSelectTab, onOpenPolicy }) {
               </li>
               <li>
                 <a href="/start" onClick={(e) => handleNav('start', e)} className="hover:text-white transition-colors">
-                  Start here
+                  Start Here
                 </a>
               </li>
             </ul>
@@ -69,16 +69,16 @@ export default function PublicFooter({ onSelectTab, onOpenPolicy }) {
 
           {/* Trust & Safety Links */}
           <div className="space-y-3">
-            <div className="font-editorial italic text-sm text-white font-medium">Trust</div>
+            <div className="font-editorial text-sm text-white font-medium">Trust</div>
             <ul className="space-y-2 text-xs font-zen text-[#8D98A3]">
               <li>
                 <a href="/ai-data" onClick={(e) => handleNav('ai', e)} className="hover:text-white transition-colors">
-                  AI & data
+                  AI & Data
                 </a>
               </li>
               <li>
                 <a href="/evidence" onClick={(e) => handleNav('evidence', e)} className="hover:text-white transition-colors">
-                  Evidence & research
+                  Evidence & Research
                 </a>
               </li>
               <li>
@@ -88,7 +88,7 @@ export default function PublicFooter({ onSelectTab, onOpenPolicy }) {
               </li>
               <li>
                 <a href="/crisis" onClick={(e) => handleNav('crisis', e)} className="hover:text-[#E0A898] transition-colors font-medium">
-                  In crisis right now?
+                  In Crisis Right Now?
                 </a>
               </li>
             </ul>
@@ -96,7 +96,7 @@ export default function PublicFooter({ onSelectTab, onOpenPolicy }) {
 
           {/* Legal Links */}
           <div className="space-y-3">
-            <div className="font-editorial italic text-sm text-white font-medium">Legal</div>
+            <div className="font-editorial text-sm text-white font-medium">Legal</div>
             <ul className="space-y-2 text-xs font-zen text-[#8D98A3]">
               <li>
                 <button type="button" onClick={(e) => handlePolicy('privacy', e)} className="text-left text-xs text-[#8D98A3] hover:text-white transition-colors cursor-pointer">

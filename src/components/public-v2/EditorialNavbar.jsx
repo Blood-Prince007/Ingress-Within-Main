@@ -11,42 +11,59 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+    let currentScrolled = window.scrollY > 20;
+    setIsScrolled(currentScrolled);
 
-      // Check if navbar currently overlaps the dark footer or dark closing sections
-      const navHeight = 88;
-      const darkSections = Array.from(document.querySelectorAll('footer, section')).filter(
-        (el) => el.tagName.toLowerCase() === 'footer' || el.classList.contains('bg-[#011627]')
-      );
-      let overDark = false;
-      for (const el of darkSections) {
-        const rect = el.getBoundingClientRect();
-        if (rect.top <= navHeight && rect.bottom >= 0) {
-          overDark = true;
-          break;
-        }
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const nextScrolled = window.scrollY > 20;
+          if (nextScrolled !== currentScrolled) {
+            currentScrolled = nextScrolled;
+            setIsScrolled(nextScrolled);
+          }
+          ticking = false;
+        });
+        ticking = true;
       }
-      setIsOverDark(overDark);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll, { passive: true });
-    handleScroll();
+
+    // Zero-overhead dark section detection using IntersectionObserver
+    const navHeight = 88;
+    const darkSections = document.querySelectorAll('footer, .bg-\\[\\#011627\\]');
+    let observer;
+
+    if (darkSections.length > 0 && typeof IntersectionObserver !== 'undefined') {
+      observer = new IntersectionObserver(
+        () => {
+          const over = Array.from(darkSections).some((el) => {
+            const rect = el.getBoundingClientRect();
+            return rect.top <= navHeight && rect.bottom >= 0;
+          });
+          setIsOverDark(over);
+        },
+        { threshold: [0, 0.05, 0.2, 0.5, 0.8, 1.0] }
+      );
+      darkSections.forEach((el) => observer.observe(el));
+    }
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
+      if (observer) observer.disconnect();
     };
-  }, []);
+  }, [activeTab]);
 
   const navItems = [
-    { id: 'solution', label: 'Our solution', path: '/solution' },
-    { id: 'how', label: 'How it works', path: '/how-it-works' },
+    { id: 'solution', label: 'Our Solution', path: '/solution' },
+    { id: 'how', label: 'How It Works', path: '/how-it-works' },
     { id: 'pricing', label: 'Pricing', path: '/pricing' },
-    { id: 'ai', label: 'AI & data', path: '/ai-data' },
+    { id: 'ai', label: 'AI & Data', path: '/ai-data' },
     { id: 'evidence', label: 'Evidence', path: '/evidence' },
     { id: 'about', label: 'About', path: '/about' },
-    { id: 'crisis', label: 'In crisis?', path: '/crisis', highlight: true }
+    { id: 'crisis', label: 'In Crisis?', path: '/crisis', highlight: true }
   ];
 
   const handleNavClick = (item, e) => {
@@ -73,46 +90,53 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
     <header
       style={{
         backgroundColor: isOverDark
-          ? 'rgba(1, 22, 39, 0.82)'
+          ? isScrolled
+            ? 'rgba(1, 22, 39, 0.72)'
+            : 'rgba(1, 22, 39, 0.50)'
           : isScrolled
-          ? 'rgba(250, 247, 242, 0.45)'
-          : 'rgba(255, 255, 255, 0.12)',
-        backdropFilter: 'blur(8px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(8px) saturate(180%)',
+          ? 'rgba(254, 252, 249, 0.75)'
+          : 'rgba(253, 251, 247, 0.60)',
+        backdropFilter: 'blur(24px) saturate(110%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(110%)',
+        borderBottom: isOverDark
+          ? '1px solid rgba(255, 255, 255, 0.08)'
+          : isScrolled
+          ? '1px solid rgba(230, 220, 205, 0.50)'
+          : '1px solid rgba(230, 220, 205, 0.35)',
+        boxShadow: isOverDark
+          ? '0 10px 30px -10px rgba(0,0,0,0.30)'
+          : isScrolled
+          ? '0 10px 30px -10px rgba(40,30,20,0.04)'
+          : 'none',
       }}
-      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-        isOverDark
-          ? 'shadow-[0_4px_30px_rgba(0,0,0,0.3)]'
-          : isScrolled
-          ? 'shadow-[0_4px_24px_rgba(22,39,35,0.035)]'
-          : ''
-      }`}
+      className="sticky top-0 z-50 w-full transition-all duration-300"
     >
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 h-20 sm:h-22 flex items-center justify-between">
         
-        {/* Brand Logo */}
+        {/* Brand Logo: Logo Mark slightly heightened relative to Ingress Within and tagline combined */}
         <a
           href="/"
           onClick={(e) => handleNavClick({ id: 'home', path: '/' }, e)}
-          className="flex items-center gap-3 group text-left cursor-pointer"
+          className="flex items-center gap-3.5 group text-left cursor-pointer select-none py-0.5"
         >
-          {/* Official Brand Logo */}
+          {/* Logo Mark: Slightly taller than the combined text block */}
           <img
             src={isOverDark ? '/logo-mark-light.png' : '/logo-mark-transparent.png'}
             alt="Ingress Within"
-            className="w-8 h-8 sm:w-9 sm:h-9 object-contain flex-shrink-0 transition-transform duration-300 group-hover:scale-105"
+            className="w-[44px] h-[44px] sm:w-[48px] sm:h-[48px] object-contain flex-shrink-0 transition-transform duration-300 group-hover:scale-105"
           />
 
-          <div>
-            <div className={`font-editorial text-[21px] sm:text-[23px] tracking-tight leading-none transition-colors duration-300 ${
+          {/* Wordmark + Tagline Combined Block */}
+          <div className="flex flex-col justify-center">
+            <div className={`font-editorial text-[22px] sm:text-[24px] tracking-tight leading-none transition-colors duration-300 ${
               isOverDark ? 'text-white' : 'text-[#162723]'
             }`}>
               Ingress <span className={`font-medium transition-colors duration-300 ${
-                isOverDark ? 'text-[#8AA688]' : 'text-[#2E7A70]'
+                isOverDark ? 'text-[#C49A8F]' : 'text-[#795663]'
               }`}>Within</span>
             </div>
-            <div className={`font-mono-code text-[8.5px] sm:text-[9px] tracking-[0.16em] uppercase mt-1 transition-colors duration-300 ${
-              isOverDark ? 'text-[#BFCAD7]' : 'text-[#7D8E87]'
+            <div className={`font-mono-code text-[8px] sm:text-[8.5px] tracking-[0.16em] uppercase transition-colors duration-300 mt-1.5 leading-none ${
+              isOverDark ? 'text-[#BFCAD7]/80' : 'text-[#7D8E87]'
             }`}>
               Understand · Grow · Continue
             </div>
@@ -220,26 +244,28 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
             isOverDark ? 'text-white border-b border-white/10' : 'text-[#162723]'
           }`}
         >
-          <div className={`flex items-center gap-3 pb-3 border-b ${
+          <div className={`pb-3 border-b ${
             isOverDark ? 'border-white/10' : 'border-[#E7DECF]/40'
           }`}>
-            <img
-              src={isOverDark ? '/logo-mark-light.png' : '/logo-mark-transparent.png'}
-              alt="Ingress Within"
-              className="w-7 h-7 object-contain flex-shrink-0"
-            />
-            <div>
-              <div className={`font-editorial text-lg leading-none ${
-                isOverDark ? 'text-white' : 'text-[#162723]'
-              }`}>
-                Ingress <span className={`font-medium ${
-                  isOverDark ? 'text-[#8AA688]' : 'text-[#2E7A70]'
-                }`}>Within</span>
-              </div>
-              <div className={`font-mono-code text-[8px] tracking-[0.14em] uppercase mt-1 ${
-                isOverDark ? 'text-[#BFCAD7]' : 'text-[#7D8E87]'
-              }`}>
-                Understand · Grow · Continue
+            <div className="flex items-center gap-3">
+              <img
+                src={isOverDark ? '/logo-mark-light.png' : '/logo-mark-transparent.png'}
+                alt="Ingress Within"
+                className="w-10 h-10 object-contain flex-shrink-0"
+              />
+              <div className="flex flex-col justify-center">
+                <div className={`font-editorial text-lg leading-none ${
+                  isOverDark ? 'text-white' : 'text-[#162723]'
+                }`}>
+                  Ingress <span className={`font-medium ${
+                    isOverDark ? 'text-[#C49A8F]' : 'text-[#795663]'
+                  }`}>Within</span>
+                </div>
+                <div className={`font-mono-code text-[8px] tracking-[0.14em] uppercase mt-1 leading-none ${
+                  isOverDark ? 'text-[#BFCAD7]' : 'text-[#7D8E87]'
+                }`}>
+                  Understand · Grow · Continue
+                </div>
               </div>
             </div>
           </div>

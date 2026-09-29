@@ -42,7 +42,7 @@ export default function ContinuousJourneySection() {
         
         {/* Eyebrow Pill */}
         <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
-          01 · A CONTINUOUS JOURNEY
+          A CONTINUOUS JOURNEY
         </div>
 
         {/* Heading */}

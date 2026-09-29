@@ -41,16 +41,16 @@ export default function V2LandingPage({ initialTab = 'home' }) {
               <line x1="20" y1="40" x2="14" y2="50" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round"/>
               <circle cx="11" cy="53" r="5" fill="var(--fog)"/>
             </svg>
-            Ingress Within
+            Ingress <span style={{ color: 'var(--thistle, #795663)' }}>Within</span>
           </div>
           <div className="links">
-            <a onClick={() => go('solution')}>Our solution</a>
-            <a onClick={() => go('how')}>How it works</a>
+            <a onClick={() => go('solution')}>Our Solution</a>
+            <a onClick={() => go('how')}>How It Works</a>
             <a onClick={() => go('pricing')}>Pricing</a>
-            <a onClick={() => go('ai')}>AI & data</a>
+            <a onClick={() => go('ai')}>AI & Data</a>
             <a onClick={() => go('evidence')}>Evidence</a>
             <a onClick={() => go('about')}>About</a>
-            <a onClick={() => go('crisis')}>In crisis?</a>
+            <a onClick={() => go('crisis')}>In Crisis?</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button className="cta secondary" style={{ padding: '9px 16px', fontSize: '13px' }} onClick={() => go('signup')}>Self-work</button>
@@ -67,13 +67,13 @@ export default function V2LandingPage({ initialTab = 'home' }) {
           </div>
         </nav>
         <div id="mlinks" className={`mlinks wrap ${mobileMenuOpen ? 'open' : ''}`}>
-          <a onClick={() => { go('solution'); closeMenu(); }}>Our solution</a>
-          <a onClick={() => { go('how'); closeMenu(); }}>How it works</a>
+          <a onClick={() => { go('solution'); closeMenu(); }}>Our Solution</a>
+          <a onClick={() => { go('how'); closeMenu(); }}>How It Works</a>
           <a onClick={() => { go('pricing'); closeMenu(); }}>Pricing</a>
-          <a onClick={() => { go('ai'); closeMenu(); }}>AI & data</a>
+          <a onClick={() => { go('ai'); closeMenu(); }}>AI & Data</a>
           <a onClick={() => { go('evidence'); closeMenu(); }}>Evidence</a>
           <a onClick={() => { go('about'); closeMenu(); }}>About</a>
-          <a onClick={() => { go('crisis'); closeMenu(); }}>In crisis?</a>
+          <a onClick={() => { go('crisis'); closeMenu(); }}>In Crisis?</a>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px 0', borderTop: '1px solid var(--line)' }}>
             <button className="btn secondary" style={{ width: '100%' }} onClick={() => { go('signup'); closeMenu(); }}>Start your independent journey</button>
             <button className="btn primary" style={{ width: '100%' }} onClick={() => { go('intake'); closeMenu(); }}>Start with a professional</button>
@@ -89,7 +89,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
           <section className="hero">
             <div className="wrap grid">
               <div>
-                <div className="ey">01 · START WHERE YOU ARE</div>
+                <div className="ey">START WHERE YOU ARE</div>
                 <h1>Whatever brings you here, you can start there.</h1>
                 <p className="lede">
                   Most of what brings people here isn't a disorder — it's feelings that got pushed aside for too long. You may want to work on something yourself. You may want a therapist. You may want both. Ingress Within brings those ways of working on your mental health into one platform.
@@ -233,7 +233,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
                   <div className="ey">THERAPY</div>
                   <div className="amt">From ₹999 <small>/ session</small></div>
                   <p className="muted">Licensed, verified therapists. No lock-in packages.</p>
-                  <button className="btn primary" style={{ marginTop: '16px', width: '100%' }} onClick={() => go('intake')}>Book therapist session →</button>
+                  <button className="btn secondary" style={{ marginTop: '16px', width: '100%' }} onClick={() => go('intake')}>Book therapist session →</button>
                 </div>
               </div>
               <p className="note" style={{ marginTop: '20px' }}>
@@ -263,7 +263,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="solution" className={`page ${activeTab === 'solution' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">01 · OUR SOLUTION</div>
+              <div className="ey">OUR SOLUTION</div>
               <h1>One platform. Different ways to work on your mental health.</h1>
               <p className="lede">Some people just want to understand themselves better. Some want a therapist. Some want both, at different times. Here's what each looks like.</p>
             </div>
@@ -329,26 +329,169 @@ export default function V2LandingPage({ initialTab = 'home' }) {
                 <p className="muted" style={{ marginTop: '14px' }}>Recurring: agreeing to help others at your own cost. Suggested focus: notice the moment right before you say "yes."</p>
               </div>
 
-              <div className="diagram">
-                <div className="ey">HOW A SUGGESTION FORMS</div>
-                <h3>Free the whole way, until one point.</h3>
-                <svg viewBox="0 0 720 230" role="img" aria-label="Chart showing a pattern appearing gently in week one with a free explanation, repeating through week eight, at which point one paid module is suggested" style={{ width: '100%', height: 'auto', display: 'block' }}>
-                  <line x1="50" y1="190" x2="670" y2="190" stroke="var(--line)" strokeWidth="1"/>
-                  <path d="M50,175 C130,168 180,150 260,140 C340,130 400,110 470,95 C540,80 600,65 650,55" fill="none" stroke="var(--primary)" strokeWidth="3"/>
-                  <circle cx="50" cy="175" r="5" fill="var(--primary)"/>
-                  <circle cx="260" cy="140" r="5" fill="var(--primary)"/>
-                  <circle cx="470" cy="95" r="5" fill="var(--primary)"/>
-                  <circle cx="650" cy="55" r="7" fill="var(--gold)"/>
-                  <text x="50" y="205" fontFamily="Arial" fontSize="11" fill="var(--muted)">Week 1</text>
-                  <text x="240" y="205" fontFamily="Arial" fontSize="11" fill="var(--muted)">Week 3</text>
-                  <text x="450" y="205" fontFamily="Arial" fontSize="11" fill="var(--muted)">Week 6</text>
-                  <text x="625" y="205" fontFamily="Arial" fontSize="11" fill="var(--muted)">Week 8+</text>
-                  <text x="60" y="165" fontFamily="Georgia, serif" fontSize="13" fill="var(--ink)">Free intervention appears</text>
-                  <text x="270" y="130" fontFamily="Georgia, serif" fontSize="13" fill="var(--ink)">Still repeating — free</text>
-                  <text x="480" y="85" fontFamily="Georgia, serif" fontSize="13" fill="var(--ink)">Still repeating — free</text>
-                  <text x="650" y="38" textAnchor="end" fontFamily="Georgia, serif" fontSize="14" fontWeight="700" fill="var(--primary)">One module suggested — your call</text>
-                </svg>
-                <p className="note" style={{ marginTop: '10px' }}>Everything on the line is included with your ₹499/month subscription. Only the single point at the end — the module — is a separate, optional purchase.</p>
+              <div className="diagram" style={{ width: '100%', marginTop: '36px', background: '#FAF8F5', borderRadius: '16px', padding: '24px 28px', border: '1px solid #E7DECF', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ width: '24px', height: '1.5px', background: '#8C5F6D', borderRadius: '9999px', display: 'inline-block' }} />
+                    <span className="ey" style={{ margin: 0, fontSize: '10.5px' }}>HOW A <strong style={{ color: '#6A3D4E' }}>SUGGESTION</strong> FORMS</span>
+                  </div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#E3ECE5', padding: '4px 12px', borderRadius: '9999px' }}>
+                    <svg width="16" height="8" viewBox="0 0 20 10" fill="none" style={{ color: '#56795A' }}>
+                      <path d="M1 5C4 2 6 8 10 5C14 2 16 8 19 5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                    </svg>
+                    <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '10.5px', color: '#4A6B4F', fontWeight: 600, letterSpacing: '0.04em' }}>
+                      100% From longitudinal tracking
+                    </span>
+                  </div>
+                </div>
+
+                <h3 style={{ fontSize: '32px', color: '#162723', fontWeight: 400, marginTop: '8px', marginBottom: '8px', lineHeight: 1.15 }}>
+                  Free the whole way, until <span style={{ fontStyle: 'italic', color: '#6A3D4E' }}>one point.</span>
+                </h3>
+
+                <div style={{ width: '100%', overflowX: 'auto', paddingTop: '4px' }}>
+                  <svg
+                    viewBox="0 0 823 241"
+                    role="img"
+                    aria-label="How a suggestion forms chart showing a pattern appearing in week 1, repeating through week 8, where one module is offered"
+                    style={{ width: '100%', minWidth: '620px', height: 'auto', display: 'block', userSelect: 'none' }}
+                  >
+                    <defs>
+                      {/* Smooth multi-stop curve stroke gradient aligned to exact reference colors */}
+                      <linearGradient id="v2-curve-grad" x1="84" y1="0" x2="747" y2="0" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stopColor="#526A56" />
+                        <stop offset="18%" stopColor="#556E5A" />
+                        <stop offset="35%" stopColor="#6D4754" />
+                        <stop offset="68%" stopColor="#654C5F" />
+                        <stop offset="85%" stopColor="#9A693E" />
+                        <stop offset="100%" stopColor="#C4963C" />
+                      </linearGradient>
+
+                      {/* Horizontal baseline gradient matching reference transition across weeks */}
+                      <linearGradient id="v2-baseline-grad" x1="29" y1="0" x2="803" y2="0" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stopColor="#8E998B" />
+                        <stop offset="25%" stopColor="#937A82" />
+                        <stop offset="60%" stopColor="#998A91" />
+                        <stop offset="100%" stopColor="#C39859" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* --- Exact Physical Watercolor Wash Extracted From Reference --- */}
+                    <image
+                      href="/chart-watercolor-wash.png"
+                      x="0"
+                      y="0"
+                      width="823"
+                      height="241"
+                      preserveAspectRatio="none"
+                      style={{ mixBlendMode: 'multiply' }}
+                      className="pointer-events-none select-none opacity-95"
+                    />
+
+                    {/* Horizontal Baseline */}
+                    <line x1="29" y1="197" x2="803" y2="197" stroke="url(#v2-baseline-grad)" strokeWidth="1.2" />
+
+                    {/* Baseline Tick Marks */}
+                    <line x1="84" y1="194" x2="84" y2="200" stroke="#8E998B" strokeWidth="1.2" />
+                    <line x1="313" y1="194" x2="313" y2="200" stroke="#937A82" strokeWidth="1.2" />
+                    <line x1="538" y1="194" x2="538" y2="200" stroke="#998A91" strokeWidth="1.2" />
+                    <line x1="747" y1="194" x2="747" y2="200" stroke="#C39859" strokeWidth="1.2" />
+
+                    {/* Ascending Main S-Curve Line matching reference trajectory exactly */}
+                    <path
+                      d="M 84,165 C 160,165 245,148 313,130 C 390,127 465,102 538,90 C 615,84 675,66 747,46"
+                      fill="none"
+                      stroke="url(#v2-curve-grad)"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                    />
+
+                    {/* --- 01. WEEK 1 (Green) --- */}
+                    {/* Dashed vertical indicator line */}
+                    <line x1="84" y1="165" x2="84" y2="197" stroke="#7E9E82" strokeWidth="1.2" strokeDasharray="3 3" />
+                    {/* Dot with authentic white halo ring */}
+                    <circle cx="84" cy="165" r="6.5" fill="#587560" stroke="#FFFFFF" strokeWidth="1.8" />
+                    {/* Baseline Label */}
+                    <text x="84" y="215" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="700" fill="#4B6353" letterSpacing="0.14em">
+                      WEEK 1
+                    </text>
+                    {/* Handwritten Annotation: First noticed */}
+                    <text x="88" y="130" textAnchor="middle" fontFamily="var(--font-hand, 'Kalam', cursive)" fontSize="14" fill="#3E5445" transform="rotate(-6 88 130)">
+                      First noticed
+                    </text>
+                    {/* Curved Arrow pointing down into green dot */}
+                    <path d="M 96,138 Q 103,150 91,158" fill="none" stroke="#3E5445" strokeWidth="1.2" strokeLinecap="round" />
+                    <path d="M 89,152 L 91,158 L 98,155" fill="none" stroke="#3E5445" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+
+                    {/* --- 02. WEEK 3 (Plum) --- */}
+                    {/* Dashed vertical indicator line */}
+                    <line x1="313" y1="130" x2="313" y2="197" stroke="#8A5B68" strokeWidth="1.2" strokeDasharray="3 3" />
+                    {/* Dot with authentic white halo ring */}
+                    <circle cx="313" cy="130" r="6.5" fill="#6E4354" stroke="#FFFFFF" strokeWidth="1.8" />
+                    {/* Baseline Label */}
+                    <text x="313" y="215" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="700" fill="#6E4354" letterSpacing="0.14em">
+                      WEEK 3
+                    </text>
+                    {/* Handwritten Annotation: Repeating */}
+                    <text x="322" y="103" textAnchor="middle" fontFamily="var(--font-hand, 'Kalam', cursive)" fontSize="14" fill="#6E4354" transform="rotate(-5 322 103)">
+                      Repeating
+                    </text>
+                    {/* Curved Arrow pointing down into plum dot */}
+                    <path d="M 326,110 Q 333,121 321,126" fill="none" stroke="#6E4354" strokeWidth="1.2" strokeLinecap="round" />
+                    <path d="M 319,120 L 321,126 L 328,123" fill="none" stroke="#6E4354" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+
+                    {/* --- 03. WEEK 6 (Mauve / Slate) --- */}
+                    {/* Dashed vertical indicator line */}
+                    <line x1="538" y1="90" x2="538" y2="197" stroke="#8A5B68" strokeWidth="1.2" strokeDasharray="3 3" />
+                    {/* Dot with authentic white halo ring */}
+                    <circle cx="538" cy="90" r="6.5" fill="#63485A" stroke="#FFFFFF" strokeWidth="1.8" />
+                    {/* Baseline Label */}
+                    <text x="538" y="215" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="700" fill="#4A5C66" letterSpacing="0.14em">
+                      WEEK 6
+                    </text>
+                    {/* Handwritten Annotation: Intervention shown */}
+                    <text x="555" y="58" textAnchor="middle" fontFamily="var(--font-hand, 'Kalam', cursive)" fontSize="14" fill="#3D505D" transform="rotate(-3 555 58)">
+                      Intervention shown
+                    </text>
+                    {/* Curved Arrow pointing down into slate dot */}
+                    <path d="M 561,66 Q 568,77 546,85" fill="none" stroke="#3D505D" strokeWidth="1.2" strokeLinecap="round" />
+                    <path d="M 545,79 L 546,85 L 553,83" fill="none" stroke="#3D505D" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+
+                    {/* --- 04. WEEK 8 (Gold Sunburst Point) --- */}
+                    {/* Dashed vertical indicator line */}
+                    <line x1="747" y1="46" x2="747" y2="197" stroke="#C4963C" strokeWidth="1.2" strokeDasharray="3 3" />
+                    {/* Gold Sunburst Rays matching reference angles and lengths */}
+                    <line x1="760" y1="34" x2="771" y2="25" stroke="#C4963C" strokeWidth="1.8" strokeLinecap="round" />
+                    <line x1="766" y1="46" x2="778" y2="46" stroke="#C4963C" strokeWidth="1.8" strokeLinecap="round" />
+                    <line x1="761" y1="58" x2="771" y2="67" stroke="#C4963C" strokeWidth="1.8" strokeLinecap="round" />
+                    <line x1="747" y1="28" x2="747" y2="18" stroke="#C4963C" strokeWidth="1.8" strokeLinecap="round" />
+                    <line x1="764" y1="71" x2="769" y2="81" stroke="#C4963C" strokeWidth="1.8" strokeLinecap="round" />
+                    {/* Main Gold Dot with white halo ring */}
+                    <circle cx="747" cy="46" r="7" fill="#C4963C" stroke="#FFFFFF" strokeWidth="1.8" />
+                    {/* Baseline Label */}
+                    <text x="747" y="215" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="700" fill="#BD8F48" letterSpacing="0.14em">
+                      WEEK 8
+                    </text>
+                    {/* Handwritten Annotation: 1 module offered */}
+                    <text x="728" y="16" textAnchor="middle" fontFamily="var(--font-hand, 'Kalam', cursive)" fontSize="14.5" fontWeight="bold" fill="#794255" transform="rotate(-4 728 16)">
+                      1 module offered
+                    </text>
+                    {/* Curved Arrow pointing down into gold dot */}
+                    <path d="M 732,22 Q 741,31 743,39" fill="none" stroke="#794255" strokeWidth="1.3" strokeLinecap="round" />
+                    <path d="M 737,34 L 743,39 L 747,32" fill="none" stroke="#794255" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+
+                <div style={{ width: '100%', height: '1px', background: 'rgba(234, 223, 207, 0.7)', margin: '14px 0 12px' }} />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '1px solid rgba(184, 150, 74, 0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B8964A', fontSize: '10px', fontStyle: 'italic', fontFamily: 'serif', flexShrink: 0 }}>
+                    i
+                  </div>
+                  <p style={{ fontStyle: 'italic', fontSize: '12.5px', color: '#5C6873', margin: 0, lineHeight: 1.4 }}>
+                    Everything on the line is included with your <strong style={{ color: '#162723', fontWeight: 600, fontStyle: 'normal' }}>₹499/month subscription</strong>. Only the single point at the end, the module, is a separate, optional purchase.
+                  </p>
+                </div>
               </div>
             </div>
           </section>
@@ -482,7 +625,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="how" className={`page ${activeTab === 'how' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">02 · HOW IT WORKS</div>
+              <div className="ey">HOW IT WORKS</div>
               <h1>Different entry points. Shared capabilities.</h1>
               <div className="actions" style={{ justifyContent: 'center', marginTop: '24px' }}>
                 <button className="btn primary" onClick={() => go('signup')}>Start your independent journey</button>
@@ -687,7 +830,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="pricing" className={`page ${activeTab === 'pricing' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">03 · PRICING & PLANS</div>
+              <div className="ey">PRICING & PLANS</div>
               <h1>A monthly plan for self-work. Pay per session for therapy.</h1>
               <p className="lede">Prices shown in ₹ (INR). Pay by UPI, card or netbanking. No hidden charges.</p>
             </div>
@@ -763,7 +906,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="ai" className={`page ${activeTab === 'ai' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">04 · AI & DATA PRINCIPLES</div>
+              <div className="ey">AI & DATA PRINCIPLES</div>
               <h1>AI helps connect the information. It does not become the authority.</h1>
               <p className="lede">AI can organise information, surface possible patterns and connect relevant learning. In therapist-supported care, it can help structure information for professional review.</p>
             </div>
@@ -885,7 +1028,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="evidence" className={`page ${activeTab === 'evidence' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">05 · EVIDENCE & RESEARCH</div>
+              <div className="ey">EVIDENCE & RESEARCH</div>
               <h1>Why these building blocks make sense.</h1>
               <p className="lede">Ingress Within combines several evidence-informed mechanisms rather than presenting one feature as a complete answer.</p>
             </div>
@@ -937,7 +1080,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="about" className={`page ${activeTab === 'about' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">06 · ABOUT INGRESS WITHIN</div>
+              <div className="ey">ABOUT INGRESS WITHIN</div>
               <h1>One place for the different ways people work on their psychological health.</h1>
               <p className="lede">Sometimes you want to work on something yourself. Sometimes you want a therapist. Sometimes you want both. Ingress Within is built around that reality rather than forcing one route.</p>
             </div>
@@ -1011,7 +1154,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="policies" className={`page ${activeTab === 'policies' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap">
-              <div className="ey">07 · POLICIES & LEGAL</div>
+              <div className="ey">POLICIES & LEGAL</div>
               <h1>Privacy, terms & refunds.</h1>
               <p className="lede">These are working drafts, shared for transparency ahead of launch. Final versions will be reviewed by legal counsel and linked here before the platform goes live.</p>
             </div>
@@ -1054,7 +1197,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
         <div id="contact" className={`page ${activeTab === 'contact' ? 'active' : ''}`}>
           <section className="hero">
             <div className="wrap center">
-              <div className="ey">08 · START HERE</div>
+              <div className="ey">START HERE</div>
               <h1>What would be useful to you right now?</h1>
               <p className="lede">Choose the kind of work or support you want today — no required order.</p>
             </div>
