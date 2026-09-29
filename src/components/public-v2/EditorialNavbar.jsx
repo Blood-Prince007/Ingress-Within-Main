@@ -2,26 +2,47 @@ import { useState, useEffect } from 'react';
 
 /**
  * Editorial Navbar matching the screenshot visual design.
- * Features the brand mark, refined serif typography, small mono subtitle,
- * active indicator dot, and clean routing to production authentication.
+ * Features dynamic translucent glass styling that adapts to its background:
+ * When scrolling over dark navy/blue bands ([data-dark-section="true"] or footer),
+ * it turns into a rich frosty deep blue with glowing legible light accents.
  */
 export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isOnBlue, setIsOnBlue] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    let currentScrolled = window.scrollY > 20;
-    setIsScrolled(currentScrolled);
+    const checkState = () => {
+      try {
+        const scrollY = window.scrollY;
+        setIsScrolled(scrollY > 20);
+
+        // Height of the sticky navbar container
+        const navHeight = 88;
+        const darkElements = document.querySelectorAll('[data-dark-section="true"], footer');
+
+        let overBlue = false;
+        for (let i = 0; i < darkElements.length; i++) {
+          const rect = darkElements[i].getBoundingClientRect();
+          // Overlap condition: element has reached top navbar zone and hasn't scrolled completely above it
+          if (rect.top <= navHeight && rect.bottom >= 10) {
+            overBlue = true;
+            break;
+          }
+        }
+        setIsOnBlue(overBlue);
+      } catch (err) {
+        // Safe fallback in case DOM query is interrupted during hydration
+      }
+    };
+
+    checkState();
 
     let ticking = false;
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          const nextScrolled = window.scrollY > 20;
-          if (nextScrolled !== currentScrolled) {
-            currentScrolled = nextScrolled;
-            setIsScrolled(nextScrolled);
-          }
+          checkState();
           ticking = false;
         });
         ticking = true;
@@ -29,9 +50,15 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll, { passive: true });
+
+    // Recheck after initial render & whenever activeTab changes
+    const timer = setTimeout(checkState, 150);
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+      clearTimeout(timer);
     };
   }, [activeTab]);
 
@@ -50,8 +77,7 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
     setMobileMenuOpen(false);
     if (onSelectTab) {
       onSelectTab(item.id);
-    }
-    if (typeof window !== 'undefined') {
+    } else if (typeof window !== 'undefined') {
       window.history.pushState({}, '', item.path);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -68,19 +94,24 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
   return (
     <header
       style={{
-        background: isScrolled
+        background: isOnBlue
+          ? 'linear-gradient(to bottom, rgba(1, 22, 39, 0.85) 0%, rgba(1, 22, 39, 0.72) 100%)'
+          : isScrolled
           ? 'linear-gradient(to bottom, rgba(255, 255, 255, 0.62) 0%, rgba(254, 252, 249, 0.48) 100%)'
           : 'linear-gradient(to bottom, rgba(255, 255, 255, 0.38) 0%, rgba(253, 251, 247, 0.22) 100%)',
-        backdropFilter: 'blur(12px) saturate(140%)',
-        WebkitBackdropFilter: 'blur(12px) saturate(140%)',
+        backdropFilter: isOnBlue ? 'blur(16px) saturate(160%)' : 'blur(12px) saturate(140%)',
+        WebkitBackdropFilter: isOnBlue ? 'blur(16px) saturate(160%)' : 'blur(12px) saturate(140%)',
         border: 'none',
-        borderBottom: 'none',
-        boxShadow: isScrolled
+        borderBottom: isOnBlue ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
+        boxShadow: isOnBlue
+          ? '0 10px 30px -10px rgba(0, 0, 0, 0.45)'
+          : isScrolled
           ? '0 10px 30px -10px rgba(22, 39, 35, 0.04)'
           : 'none',
         transform: 'translate3d(0, 0, 0)',
+        transition: 'background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease'
       }}
-      className="sticky top-0 z-50 w-full transition-[background,box-shadow] duration-200"
+      className="sticky top-0 z-50 w-full"
     >
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 h-20 sm:h-22 flex items-center justify-between">
         
@@ -90,19 +121,34 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
           onClick={(e) => handleNavClick({ id: 'home', path: '/' }, e)}
           className="flex items-center gap-3.5 group text-left cursor-pointer select-none py-0.5"
         >
-          {/* Logo Mark: Slightly taller than the combined text block */}
+          {/* Logo Mark: Dynamically switches to light version on dark blue background */}
           <img
-            src="/logo-mark-transparent.png"
+            src={isOnBlue ? "/logo-mark-light.png" : "/logo-mark-transparent.png"}
             alt="Ingress Within"
             className="w-[44px] h-[44px] sm:w-[48px] sm:h-[48px] object-contain flex-shrink-0 transition-transform duration-300 group-hover:scale-105"
           />
 
           {/* Wordmark + Tagline Combined Block */}
           <div className="flex flex-col justify-center">
-            <div className="font-editorial text-[22px] sm:text-[24px] tracking-tight leading-none text-[#162723] transition-colors duration-300">
-              Ingress <span className="font-medium text-[#795663] transition-colors duration-300">Within</span>
+            <div
+              className={`font-editorial text-[22px] sm:text-[24px] tracking-tight leading-none transition-colors duration-300 ${
+                isOnBlue ? 'text-white' : 'text-[#162723]'
+              }`}
+            >
+              Ingress{' '}
+              <span
+                className={`font-medium transition-colors duration-300 ${
+                  isOnBlue ? 'text-[#E8A598]' : 'text-[#795663]'
+                }`}
+              >
+                Within
+              </span>
             </div>
-            <div className="font-mono-code text-[8px] sm:text-[8.5px] tracking-[0.16em] uppercase text-[#7D8E87] transition-colors duration-300 mt-1.5 leading-none">
+            <div
+              className={`font-mono-code text-[8px] sm:text-[8.5px] tracking-[0.16em] uppercase transition-colors duration-300 mt-1.5 leading-none ${
+                isOnBlue ? 'text-[#9AAAB8]' : 'text-[#7D8E87]'
+              }`}
+            >
               Understand · Grow · Continue
             </div>
           </div>
@@ -119,15 +165,25 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
                 onClick={(e) => handleNavClick(item, e)}
                 className={`relative py-2 font-medium transition-colors duration-300 cursor-pointer ${
                   item.highlight
-                    ? 'text-[#9A4232] hover:text-[#7A2F22] font-semibold'
+                    ? isOnBlue
+                      ? 'text-[#FF8A7A] hover:text-[#FFA092] font-semibold'
+                      : 'text-[#9A4232] hover:text-[#7A2F22] font-semibold'
                     : isActive
-                    ? 'text-[#162723] font-semibold'
+                    ? isOnBlue
+                      ? 'text-white font-semibold'
+                      : 'text-[#162723] font-semibold'
+                    : isOnBlue
+                    ? 'text-[#C2D1DE] hover:text-white'
                     : 'text-[#4F635E] hover:text-[#162723]'
                 }`}
               >
                 {item.label}
                 {isActive && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#162723] transition-colors duration-300" />
+                  <span
+                    className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                      isOnBlue ? 'bg-white' : 'bg-[#162723]'
+                    }`}
+                  />
                 )}
               </a>
             );
@@ -139,14 +195,22 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
           <a
             href="/login"
             onClick={(e) => handleAuthClick('/login', e)}
-            className="text-xs sm:text-[13px] font-medium px-3 py-2 text-[#4F635E] hover:text-[#162723] transition-colors duration-300 cursor-pointer"
+            className={`text-xs sm:text-[13px] font-medium px-3 py-2 transition-colors duration-300 cursor-pointer ${
+              isOnBlue
+                ? 'text-[#C2D1DE] hover:text-white'
+                : 'text-[#4F635E] hover:text-[#162723]'
+            }`}
           >
             Log in
           </a>
           <a
             href="/login"
             onClick={(e) => handleAuthClick('/login', e)}
-            className="inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-medium px-5 py-2.5 rounded-full shadow-sm hover:shadow transition-all duration-300 hover:scale-[1.02] cursor-pointer bg-[#162723] hover:bg-[#203631] text-[#FAF7F2]"
+            className={`inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-medium px-5 py-2.5 rounded-full shadow-sm hover:shadow transition-all duration-300 hover:scale-[1.02] cursor-pointer ${
+              isOnBlue
+                ? 'bg-white hover:bg-[#FAF7F2] text-[#011627]'
+                : 'bg-[#162723] hover:bg-[#203631] text-[#FAF7F2]'
+            }`}
           >
             <span>Get Started</span>
             <span className="text-[14px]">→</span>
@@ -158,7 +222,11 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
           <a
             href="/login"
             onClick={(e) => handleAuthClick('/login', e)}
-            className="inline-flex items-center text-xs font-semibold px-3.5 py-1.5 rounded-full transition-colors duration-300 bg-[#162723] text-white"
+            className={`inline-flex items-center text-xs font-semibold px-3.5 py-1.5 rounded-full transition-colors duration-300 ${
+              isOnBlue
+                ? 'bg-white text-[#011627]'
+                : 'bg-[#162723] text-white'
+            }`}
           >
             Log in
           </a>
@@ -167,12 +235,26 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
             aria-label="Toggle navigation menu"
             aria-expanded={mobileMenuOpen}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg transition-colors text-[#162723] hover:bg-black/5"
+            className={`p-2 rounded-lg transition-colors ${
+              isOnBlue ? 'text-white hover:bg-white/10' : 'text-[#162723] hover:bg-black/5'
+            }`}
           >
             <div className="w-5 h-4 flex flex-col justify-between">
-              <span className={`w-full h-0.5 rounded-full bg-[#162723] transition-transform ${mobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`} />
-              <span className={`w-full h-0.5 rounded-full bg-[#162723] transition-opacity ${mobileMenuOpen ? 'opacity-0' : ''}`} />
-              <span className={`w-full h-0.5 rounded-full bg-[#162723] transition-transform ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+              <span
+                className={`w-full h-0.5 rounded-full transition-all ${
+                  isOnBlue ? 'bg-white' : 'bg-[#162723]'
+                } ${mobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`}
+              />
+              <span
+                className={`w-full h-0.5 rounded-full transition-all ${
+                  isOnBlue ? 'bg-white' : 'bg-[#162723]'
+                } ${mobileMenuOpen ? 'opacity-0' : ''}`}
+              />
+              <span
+                className={`w-full h-0.5 rounded-full transition-all ${
+                  isOnBlue ? 'bg-white' : 'bg-[#162723]'
+                } ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}
+              />
             </div>
           </button>
         </div>
@@ -183,24 +265,33 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
       {mobileMenuOpen && (
         <div
           style={{
-            backgroundColor: 'rgba(253, 251, 248, 0.95)',
+            backgroundColor: isOnBlue ? 'rgba(1, 22, 39, 0.96)' : 'rgba(253, 251, 248, 0.95)',
             backdropFilter: 'blur(36px) saturate(200%)',
             WebkitBackdropFilter: 'blur(36px) saturate(200%)',
           }}
-          className="sm:hidden px-6 py-5 space-y-4 shadow-[0_16px_36px_rgba(22,39,35,0.06)] animate-fadeDown text-[#162723] border-b border-[#E7DECF]/40"
+          className={`sm:hidden px-6 py-5 space-y-4 shadow-[0_16px_36px_rgba(22,39,35,0.06)] animate-fadeDown border-b ${
+            isOnBlue ? 'text-white border-white/10' : 'text-[#162723] border-[#E7DECF]/40'
+          }`}
         >
-          <div className="pb-3 border-b border-[#E7DECF]/40">
+          <div className={`pb-3 border-b ${isOnBlue ? 'border-white/10' : 'border-[#E7DECF]/40'}`}>
             <div className="flex items-center gap-3">
               <img
-                src="/logo-mark-transparent.png"
+                src={isOnBlue ? "/logo-mark-light.png" : "/logo-mark-transparent.png"}
                 alt="Ingress Within"
                 className="w-10 h-10 object-contain flex-shrink-0"
               />
               <div className="flex flex-col justify-center">
-                <div className="font-editorial text-lg leading-none text-[#162723]">
-                  Ingress <span className="font-medium text-[#795663]">Within</span>
+                <div className={`font-editorial text-lg leading-none ${isOnBlue ? 'text-white' : 'text-[#162723]'}`}>
+                  Ingress{' '}
+                  <span className={`font-medium ${isOnBlue ? 'text-[#E8A598]' : 'text-[#795663]'}`}>
+                    Within
+                  </span>
                 </div>
-                <div className="font-mono-code text-[8px] tracking-[0.14em] uppercase text-[#7D8E87] mt-1 leading-none">
+                <div
+                  className={`font-mono-code text-[8px] tracking-[0.14em] uppercase mt-1 leading-none ${
+                    isOnBlue ? 'text-[#9AAAB8]' : 'text-[#7D8E87]'
+                  }`}
+                >
                   Understand · Grow · Continue
                 </div>
               </div>
@@ -214,19 +305,25 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
                 onClick={(e) => handleNavClick(item, e)}
                 className={`block py-2 text-sm ${
                   activeTab === item.id
-                    ? 'font-bold text-[#162723]'
+                    ? isOnBlue
+                      ? 'font-bold text-white'
+                      : 'font-bold text-[#162723]'
+                    : isOnBlue
+                    ? 'text-[#C2D1DE]'
                     : 'text-[#4F635E]'
-                } ${item.highlight ? 'text-[#9A4232]' : ''}`}
+                } ${item.highlight ? (isOnBlue ? 'text-[#FF8A7A]' : 'text-[#9A4232]') : ''}`}
               >
                 {item.label}
               </a>
             ))}
           </div>
-          <div className="pt-4 border-t border-[#E7DECF] flex flex-col gap-2">
+          <div className={`pt-4 border-t flex flex-col gap-2 ${isOnBlue ? 'border-white/10' : 'border-[#E7DECF]'}`}>
             <a
               href="/login"
               onClick={(e) => handleAuthClick('/login', e)}
-              className="w-full text-center py-2.5 text-xs font-semibold rounded-full text-white bg-[#162723]"
+              className={`w-full text-center py-2.5 text-xs font-semibold rounded-full ${
+                isOnBlue ? 'bg-white text-[#011627]' : 'text-white bg-[#162723]'
+              }`}
             >
               Get Started →
             </a>

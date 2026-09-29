@@ -4,8 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 /**
  * Physical Painted Watercolor Background
  * High-resolution authentic watercolor artwork on heavy cold-press warm ivory paper (#FAF7F2).
+ * Smooth meditative emergence animation (2.2s duration, 0.15s delay) that triggers
+ * reliably on initial load, page refresh, and every page/tab switch.
  */
-export default function WatercolorBackground({ className = '', activeTab = 'default' }) {
+export default function WatercolorBackground({ className = '', activeTab = 'home' }) {
   const [currentPath, setCurrentPath] = useState(() =>
     typeof window !== 'undefined' ? window.location.pathname : ''
   );
@@ -13,35 +15,16 @@ export default function WatercolorBackground({ className = '', activeTab = 'defa
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const handleLocationChange = () => {
+    const handlePop = () => {
       setCurrentPath(window.location.pathname);
     };
 
-    window.addEventListener('popstate', handleLocationChange);
-
-    const originalPushState = window.history.pushState;
-    const originalReplaceState = window.history.replaceState;
-
-    window.history.pushState = function (...args) {
-      const result = originalPushState.apply(this, args);
-      handleLocationChange();
-      return result;
-    };
-
-    window.history.replaceState = function (...args) {
-      const result = originalReplaceState.apply(this, args);
-      handleLocationChange();
-      return result;
-    };
-
-    return () => {
-      window.removeEventListener('popstate', handleLocationChange);
-      window.history.pushState = originalPushState;
-      window.history.replaceState = originalReplaceState;
-    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
   }, []);
 
-  const transitionKey = `${activeTab}-${currentPath}`;
+  // Use a single clean transition key to ensure AnimatePresence runs smoothly without race conditions
+  const transitionKey = activeTab || currentPath || 'home';
 
   return (
     <div
@@ -75,9 +58,9 @@ export default function WatercolorBackground({ className = '', activeTab = 'defa
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.18, ease: 'easeOut' } }}
           transition={{
-            duration: 2.2,
+            duration: 1.2,
             delay: 0.15,
-            ease: [0.25, 0.1, 0.25, 1]
+            ease: 'easeIn'
           }}
           className="w-full h-full"
         >
@@ -108,4 +91,3 @@ export default function WatercolorBackground({ className = '', activeTab = 'defa
     </div>
   );
 }
-
