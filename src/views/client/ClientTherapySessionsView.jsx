@@ -9,8 +9,11 @@ import {
   ExternalLink,
   ShieldCheck,
   ChevronRight,
-  Info
+  Info,
+  BookOpen,
+  Sparkles
 } from 'lucide-react';
+import ClientHomeworkModal from './ClientHomeworkModal';
 
 export default function ClientTherapySessionsView() {
   const [sessions, setSessions] = useState([]);
@@ -34,6 +37,26 @@ export default function ClientTherapySessionsView() {
   const [cancelModalAppt, setCancelModalAppt] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
+
+  // Homework & Self-Work state
+  const [homeworkList, setHomeworkList] = useState([]);
+  const [loadingHomework, setLoadingHomework] = useState(false);
+  const [selectedHomeworkId, setSelectedHomeworkId] = useState(null);
+
+  const fetchHomework = async () => {
+    setLoadingHomework(true);
+    try {
+      const res = await fetch('/api/therapy/client/homework');
+      if (res.ok) {
+        const data = await res.json();
+        setHomeworkList(data.assignments || []);
+      }
+    } catch (err) {
+      console.warn('Failed to load homework:', err);
+    } finally {
+      setLoadingHomework(false);
+    }
+  };
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -62,6 +85,7 @@ export default function ClientTherapySessionsView() {
 
   useEffect(() => {
     fetchSessions();
+    fetchHomework();
   }, []);
 
   // Fetch real therapist availability slots when reschedule modal opens
@@ -545,6 +569,128 @@ export default function ClientTherapySessionsView() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Assigned Clinical Self-Work & Homework Section */}
+      <div className="space-y-4 pt-6 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span className="text-xs uppercase tracking-wider font-semibold text-emerald-700 flex items-center gap-1.5">
+              <BookOpen size={14} /> Clinical Practice & Growth
+            </span>
+            <h2 className="text-xl font-serif text-gray-900 mt-0.5">Assigned Self-Work & Exercises</h2>
+            <p className="text-xs text-gray-500">
+              Complete structured clinical reflections and exercises assigned by your clinician between sessions.
+            </p>
+          </div>
+        </div>
+
+        {loadingHomework ? (
+          <div className="p-8 text-center text-xs text-gray-400">Loading your self-work assignments...</div>
+        ) : homeworkList.length === 0 ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center space-y-2">
+            <Sparkles size={24} className="mx-auto text-emerald-600/70" />
+            <p className="text-xs font-medium text-gray-800">No active homework assignments</p>
+            <p className="text-[11px] text-gray-500 max-w-sm mx-auto">
+              When your therapist assigns between-session CBT thought records, reflection journals, or psychoeducation worksheets, they will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {homeworkList.map((hw) => {
+              const isReviewed = hw.status === 'reviewed';
+              const isSubmitted = hw.status === 'submitted';
+              const isDraft = hw.hasDraft || hw.status === 'in_progress';
+
+              return (
+                <div
+                  key={hw.id}
+                  className={`bg-white border rounded-xl p-5 shadow-2xs flex flex-col justify-between space-y-4 transition-all ${
+                    isReviewed
+                      ? 'border-emerald-200 bg-emerald-50/20'
+                      : isSubmitted
+                      ? 'border-blue-200 bg-blue-50/20'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-semibold text-gray-900 leading-snug">
+                        {hw.title}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider shrink-0 ${
+                          isReviewed
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : isSubmitted
+                            ? 'bg-blue-100 text-blue-800'
+                            : isDraft
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {isDraft ? 'Draft Saved' : hw.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-gray-600 line-clamp-2">
+                      {hw.instructions}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 pt-1">
+                      <span>Clinician: <strong className="text-gray-700">{hw.therapistName}</strong></span>
+                      <span>&bull;</span>
+                      <span>~{hw.estimatedMinutes || 15} mins</span>
+                      {hw.dueAt && (
+                        <>
+                          <span>&bull;</span>
+                          <span className={hw.isOverdue ? 'text-red-600 font-medium' : 'text-gray-600'}>
+                            {hw.isOverdue ? 'Overdue: ' : 'Due: '}
+                            {new Date(hw.dueAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-[11px] text-gray-400 capitalize">
+                      {hw.exerciseType ? hw.exerciseType.replace(/_/g, ' ') : 'Exercise'}
+                    </span>
+                    <button
+                      onClick={() => setSelectedHomeworkId(hw.id)}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors inline-flex items-center gap-1.5 ${
+                        isReviewed || isSubmitted
+                          ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                          : 'bg-emerald-800 text-white hover:bg-emerald-900 shadow-2xs'
+                      }`}
+                    >
+                      {isReviewed
+                        ? 'View Feedback'
+                        : isSubmitted
+                        ? 'View Submission'
+                        : isDraft
+                        ? 'Resume Draft'
+                        : 'Start Exercise'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Client Homework Modal */}
+      {selectedHomeworkId && (
+        <ClientHomeworkModal
+          assignmentId={selectedHomeworkId}
+          onClose={() => setSelectedHomeworkId(null)}
+          onSuccess={async () => {
+            setSelectedHomeworkId(null);
+            await fetchHomework();
+          }}
+        />
       )}
     </div>
   );

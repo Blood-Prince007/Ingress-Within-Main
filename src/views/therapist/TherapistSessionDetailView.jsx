@@ -17,10 +17,14 @@ import {
   Play,
   Lock,
   Edit3,
-  RefreshCw
+  RefreshCw,
+  BookOpen,
+  Plus
 } from 'lucide-react';
 import TherapistRescheduleModal from './TherapistRescheduleModal';
 import TherapistSoapModal from './TherapistSoapModal';
+import TherapistAssignHomeworkModal from './TherapistAssignHomeworkModal';
+import TherapistReviewHomeworkModal from './TherapistReviewHomeworkModal';
 
 export default function TherapistSessionDetailView({
   sessionId,
@@ -36,11 +40,31 @@ export default function TherapistSessionDetailView({
 
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
   const [soapModalOpen, setSoapModalOpen] = useState(false);
+  const [assignHomeworkModalOpen, setAssignHomeworkModalOpen] = useState(false);
+  const [reviewHomeworkAssignmentId, setReviewHomeworkAssignmentId] = useState(null);
+  const [homeworkList, setHomeworkList] = useState([]);
+  const [loadingHomework, setLoadingHomework] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [starting, setStarting] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [syncRetrying, setSyncRetrying] = useState(false);
   const [actionNotice, setActionNotice] = useState('');
+
+  const fetchHomework = async () => {
+    if (!sessionId) return;
+    setLoadingHomework(true);
+    try {
+      const res = await fetch(`/api/therapist/homework?appointmentId=${sessionId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setHomeworkList(data.assignments || []);
+      }
+    } catch (e) {
+      console.warn('Homework fetch error:', e);
+    } finally {
+      setLoadingHomework(false);
+    }
+  };
 
   const handleRetryCalendarSync = async () => {
     setSyncRetrying(true);
@@ -88,6 +112,8 @@ export default function TherapistSessionDetailView({
       } catch (e) {
         console.warn('SOAP note status lookup note:', e);
       }
+
+      await fetchHomework();
     } catch (err) {
       console.error('Session detail error:', err);
       setError(err.message);
@@ -524,6 +550,92 @@ export default function TherapistSessionDetailView({
           )}
         </div>
 
+        {/* Clinical Self-Work & Homework Card */}
+        <div className="p-5 rounded-xl border border-[#132A24]/10 bg-white space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#4E7A66]/10 text-[#4E7A66] flex items-center justify-center">
+                <BookOpen size={16} />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#132A24]">
+                  Clinical Self-Work & Homework
+                </h4>
+                <p className="text-[11px] text-[#132A24]/50">
+                  {loadingHomework
+                    ? 'Loading exercises...'
+                    : homeworkList.length === 0
+                    ? 'No self-work assigned for this encounter.'
+                    : `${homeworkList.length} clinical assignment${homeworkList.length === 1 ? '' : 's'}`}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setAssignHomeworkModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-[#4E7A66] text-white text-xs font-medium hover:bg-[#4E7A66]/90 transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Plus size={13} /> Assign Self-Work
+            </button>
+          </div>
+
+          {homeworkList.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-[#132A24]/5">
+              {homeworkList.map((hw) => {
+                const isSubmitted = hw.status === 'submitted';
+                const isReviewed = hw.status === 'reviewed';
+
+                return (
+                  <div
+                    key={hw.id}
+                    className="p-3 rounded-lg bg-[#FAFAF8] border border-[#132A24]/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-[#132A24]">
+                          {hw.title}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider ${
+                            isReviewed
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : isSubmitted
+                              ? 'bg-blue-100 text-blue-800 font-semibold'
+                              : hw.status === 'in_progress'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-gray-200/80 text-gray-700'
+                          }`}
+                        >
+                          {hw.status.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#132A24]/60">
+                        Type: <span className="capitalize">{hw.exerciseType.replace(/_/g, ' ')}</span>
+                        {hw.dueAt && ` • Due ${new Date(hw.dueAt).toLocaleDateString('en-IN')}`}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {(isSubmitted || isReviewed) && (
+                        <button
+                          onClick={() => setReviewHomeworkAssignmentId(hw.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors inline-flex items-center gap-1 ${
+                            isSubmitted
+                              ? 'bg-[#4E7A66] text-white hover:bg-[#4E7A66]/90 shadow-xs'
+                              : 'border border-[#132A24]/15 bg-white text-[#132A24] hover:bg-[#132A24]/5'
+                          }`}
+                        >
+                          {isSubmitted ? 'Review Submission' : 'View Feedback'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Cancellation Notice if Cancelled */}
         {isCancelled && (
           <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-900 space-y-1">
@@ -651,6 +763,30 @@ export default function TherapistSessionDetailView({
           onClose={() => {
             setSoapModalOpen(false);
             fetchSessionData();
+          }}
+        />
+      )}
+
+      {/* Assign Homework Modal */}
+      {assignHomeworkModalOpen && (
+        <TherapistAssignHomeworkModal
+          session={session}
+          onClose={() => setAssignHomeworkModalOpen(false)}
+          onSuccess={async () => {
+            setAssignHomeworkModalOpen(false);
+            await fetchHomework();
+          }}
+        />
+      )}
+
+      {/* Review Homework Modal */}
+      {reviewHomeworkAssignmentId && (
+        <TherapistReviewHomeworkModal
+          assignmentId={reviewHomeworkAssignmentId}
+          onClose={() => setReviewHomeworkAssignmentId(null)}
+          onSuccess={async () => {
+            setReviewHomeworkAssignmentId(null);
+            await fetchHomework();
           }}
         />
       )}
