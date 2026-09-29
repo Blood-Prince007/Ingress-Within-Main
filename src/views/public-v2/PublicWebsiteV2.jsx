@@ -73,7 +73,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
         {/* Hero Header Container (Centered vertically and horizontally in initial viewport) */}
         <div
           className="relative z-10 flex flex-col justify-center items-center text-center px-6 sm:px-10 max-w-5xl 2xl:max-w-[1340px] mx-auto pointer-events-auto"
-          style={{ minHeight: 'calc(100vh / 0.9 - 5.5rem)' }}
+          style={{ minHeight: 'calc(100vh - 5.5rem)' }}
         >
           <div className="w-full flex flex-col items-center justify-center text-center my-auto py-8 sm:py-12 space-y-6">
             {/* Headline matching user reference image */}
@@ -501,7 +501,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       </section>
 
       {/* 11. PHILOSOPHY / CLOSING STATEMENT BAND */}
-      <section className="py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white text-center relative overflow-hidden">
+      <section data-dark-section="true" className="py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white text-center relative overflow-hidden">
         {/* Rich ambient color washes inside dark band */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-[#B8964A]/30 to-transparent" />
@@ -1380,7 +1380,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       </section>
 
       {/* 8. SECTION 07: THE PLATFORM, NOT TWO PRODUCTS (Full Width Dark Ink Band with Gold Accents) */}
-      <section className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden">
+      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden">
         {/* Subtle celestial gold watercolor glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-[#B8964A]/12 blur-3xl pointer-events-none rounded-full" />
 
@@ -2222,7 +2222,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       </section>
 
       {/* 9. DARK INK CLOSING BAND */}
-      <section className="w-full bg-[#011627] py-28 sm:py-36 px-6 sm:px-8 lg:px-12 text-white">
+      <section data-dark-section="true" className="w-full bg-[#011627] py-28 sm:py-36 px-6 sm:px-8 lg:px-12 text-white">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <div className="font-mono-code text-xs tracking-widest uppercase text-[#C5A880] font-semibold">
             UNDERSTAND · GROW · CONTINUE
@@ -2592,7 +2592,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       </section>
 
       {/* 5. DARK INK CLOSING BAND */}
-      <section className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center">
+      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center">
         {/* Subtle celestial gold watercolor glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-[#B8964A]/12 blur-3xl pointer-events-none rounded-full" />
 
@@ -2917,7 +2917,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       </section>
 
       {/* 5. DARK INK CLOSING BAND */}
-      <section className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center">
+      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center">
         {/* Subtle celestial gold watercolor glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-[#B8964A]/12 blur-3xl pointer-events-none rounded-full" />
 
@@ -3625,7 +3625,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       </section>
 
       {/* 7. DARK INK CLOSING BAND */}
-      <section className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center">
+      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-[#B8964A]/12 blur-3xl pointer-events-none rounded-full" />
 
         <div className="max-w-4xl mx-auto space-y-6 relative z-10">
@@ -4192,7 +4192,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] text-[#162723] font-zen selection:bg-[#EFE3E4] selection:text-[#795663] relative" style={{ zoom: 0.9 }}>
+    <div className="min-h-screen bg-[#FAF7F2] text-[#162723] font-zen selection:bg-[#EFE3E4] selection:text-[#795663] relative" style={{ zoom: 1 }}>
       {/* 1. Ambient SVG Watercolor Bleeds */}
       <WatercolorBackground activeTab={activeTab} />
 

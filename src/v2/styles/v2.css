@@ -80,7 +80,7 @@
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   text-rendering: optimizeLegibility;
-  zoom: 0.9;
+  zoom: 1;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
