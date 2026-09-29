@@ -253,8 +253,10 @@ export default function TherapistSessionDetailView({
   const isCompleted = session.status === 'completed';
   const isInProgress = session.status === 'in_progress';
   const isScheduled = session.status === 'scheduled' || session.status === 'confirmed' || session.status === 'rescheduled';
-  const meetUrl = session.google_meet_url || session.googleMeetUrl || session.meeting_link || session.meetingLink || null;
-  const calSyncStatus = session.calendar_sync_status || session.calendarSyncStatus || 'not_connected';
+  const rawMeetUrl = session.googleMeetUrl || session.google_meet_url || null;
+  const meetUrl = (rawMeetUrl && typeof rawMeetUrl === 'string' && rawMeetUrl.startsWith('https://meet.google.com/')) ? rawMeetUrl : null;
+  const calSyncStatus = session.calendarSyncStatus || session.calendar_sync_status || 'not_connected';
+  const meetStatus = session.googleMeetStatus || session.google_meet_status || (meetUrl ? 'created' : 'none');
 
   return (
     <div className="space-y-6">
@@ -428,6 +430,10 @@ export default function TherapistSessionDetailView({
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
                       <CheckCircle2 size={12} /> Synced
                     </span>
+                  ) : calSyncStatus === 'pending' || meetStatus === 'generating' ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700">
+                      <RefreshCw size={12} className="animate-spin" /> Generating Meet Link...
+                    </span>
                   ) : calSyncStatus === 'not_connected' ? (
                     <span className="text-[11px] text-[#132A24]/50">Not Connected</span>
                   ) : (
@@ -451,18 +457,22 @@ export default function TherapistSessionDetailView({
                 </a>
               ) : (
                 <span className="text-xs text-[#132A24]/50 italic">
-                  Meet link not available yet
+                  {calSyncStatus === 'not_connected'
+                    ? 'Google Calendar not connected'
+                    : calSyncStatus === 'pending' || meetStatus === 'generating'
+                    ? 'Google Meet link generating...'
+                    : 'Google Meet unavailable'}
                 </span>
               )}
 
-              {calSyncStatus === 'failed' && (
+              {(calSyncStatus === 'failed' || (calSyncStatus === 'synced' && !meetUrl)) && (
                 <button
                   onClick={handleRetryCalendarSync}
                   disabled={syncRetrying}
                   className="px-3 py-2 rounded-lg border border-[#132A24]/15 bg-white text-xs font-medium text-[#132A24] hover:bg-[#132A24]/5 transition-colors cursor-pointer inline-flex items-center gap-1.5"
                 >
                   <RefreshCw size={12} className={syncRetrying ? 'animate-spin' : ''} />
-                  Try calendar sync again
+                  Retry Calendar Sync
                 </button>
               )}
             </div>

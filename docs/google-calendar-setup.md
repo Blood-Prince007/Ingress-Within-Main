@@ -59,10 +59,10 @@ This document describes the steps required to configure and operate the Google C
 4. Name: `Ingress Within Web Application`.
 5. Add **Authorized JavaScript origins**:
    - Development: `http://localhost:3000`
-   - Production: `https://app.ingresswithin.com`
+   - Production: `https://ingresswithin.com`
 6. Add **Authorized redirect URIs**:
    - Development: `http://localhost:3000/api/calendar/google/callback`
-   - Production: `https://app.ingresswithin.com/api/calendar/google/callback`
+   - Production: `https://ingresswithin.com/api/calendar/google/callback`
 7. Click **Create**.
 8. Copy the **Client ID** and **Client Secret**.
 
@@ -80,7 +80,7 @@ Add the credentials to your server environment (e.g. Vercel, AWS ECS, or contain
 # Google Calendar & Meet Integration
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
-GOOGLE_REDIRECT_URI=https://app.ingresswithin.com/api/calendar/google/callback
+GOOGLE_REDIRECT_URI=https://ingresswithin.com/api/calendar/google/callback
 ```
 
 For local development in `.env`:

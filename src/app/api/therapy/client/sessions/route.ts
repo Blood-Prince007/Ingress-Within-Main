@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '../../../../../lib/auth-helper';
 import { supabase } from '../../../../../lib/db';
+import { isValidGoogleMeetUrl } from '../../../../../lib/calendar/googleCalendarService';
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,6 +65,7 @@ export async function GET(request: NextRequest) {
       const refundEligible = hoursRemaining >= 48;
 
       const therapist = therapistsMap[appt.therapist_account_id];
+      const validMeetUrl = isValidGoogleMeetUrl(appt.google_meet_url) ? appt.google_meet_url : null;
 
       return {
         id: appt.id,
@@ -72,8 +74,8 @@ export async function GET(request: NextRequest) {
         status: appt.status,
         sessionType: appt.session_type,
         modality: appt.modality,
-        googleMeetUrl: appt.google_meet_url || appt.meeting_link,
-        googleMeetStatus: appt.google_meet_status || (appt.google_meet_url ? 'succeeded' : 'none'),
+        googleMeetUrl: validMeetUrl,
+        googleMeetStatus: appt.google_meet_status || (validMeetUrl ? 'created' : 'none'),
         calendarSyncStatus: appt.calendar_sync_status,
         attendanceStatus: appt.attendance_status,
         refundStatus: appt.refund_status,

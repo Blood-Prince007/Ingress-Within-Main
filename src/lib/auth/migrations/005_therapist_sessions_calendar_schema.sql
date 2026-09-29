@@ -151,7 +151,7 @@ BEGIN
         'scheduled',
         COALESCE(p_session_type, 'video'),
         COALESCE(p_modality, 'telehealth'),
-        COALESCE(p_meeting_link, 'https://meet.ingresswithin.com/clinical/' || substr(md5(random()::text), 1, 8)),
+        p_meeting_link,
         p_client_notes,
         v_care_stage,
         now(),

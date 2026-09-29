@@ -551,7 +551,7 @@ export default function TherapistCalendarView({
 
             {selectedDaySessions.length === 0 && selectedDayExternalBusy.length === 0 ? (
               <div className="bg-white border border-[#132A24]/10 rounded-xl p-8 text-center space-y-2">
-                <p className="text-sm font-medium text-[#132A24]">No commitments scheduled for this day.</p>
+                <p className="text-sm font-medium text-[#132A24]">No sessions scheduled for this day.</p>
                 <p className="text-xs text-[#132A24]/50 max-w-sm mx-auto">
                   Click "Schedule Session" above to book a clinical encounter on this date.
                 </p>
@@ -771,9 +771,9 @@ export default function TherapistCalendarView({
 
           {isScheduled && (
             <>
-              {appt.meetingLink && (
+              {Boolean(appt.googleMeetUrl || (appt.google_meet_url && String(appt.google_meet_url).startsWith('https://meet.google.com/'))) && (
                 <a
-                  href={appt.meetingLink}
+                  href={appt.googleMeetUrl || appt.google_meet_url}
                   target="_blank"
                   rel="noreferrer"
                   className="px-3 py-1.5 rounded-lg bg-[#132A24] text-white text-xs font-medium hover:bg-[#132A24]/90 no-underline cursor-pointer inline-flex items-center gap-1"

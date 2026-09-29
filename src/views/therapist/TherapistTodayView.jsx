@@ -342,14 +342,14 @@ export default function TherapistTodayView({ onNavigate, onOpenSoap, onOpenSessi
                             Details
                           </button>
                         )}
-                        {session.meetingLink && session.status !== 'completed' && session.status !== 'cancelled' && (
+                        {session.googleMeetUrl && session.status !== 'completed' && session.status !== 'cancelled' && (
                           <a
-                            href={session.meetingLink}
+                            href={session.googleMeetUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="px-3.5 py-1.5 rounded-lg bg-[#132A24] text-white text-xs font-medium hover:bg-[#132A24]/90 no-underline cursor-pointer"
+                            className="px-3.5 py-1.5 rounded-lg bg-[#132A24] text-white text-xs font-medium hover:bg-[#132A24]/90 no-underline cursor-pointer inline-flex items-center gap-1"
                           >
-                            Join Call
+                            Join Google Meet
                           </a>
                         )}
                         {session.status !== 'completed' && session.status !== 'cancelled' && (
@@ -549,14 +549,14 @@ export default function TherapistTodayView({ onNavigate, onOpenSoap, onOpenSessi
                 </div>
 
                 <div className="pt-2 flex gap-2">
-                  {nextSession.meetingLink && (
+                  {nextSession.googleMeetUrl && (
                     <a
-                      href={nextSession.meetingLink}
+                      href={nextSession.googleMeetUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex-1 py-2 text-center rounded-lg bg-white text-[#132A24] text-xs font-semibold hover:bg-white/90 no-underline cursor-pointer"
+                      className="flex-1 py-2 text-center rounded-lg bg-white text-[#132A24] text-xs font-semibold hover:bg-white/90 no-underline cursor-pointer inline-flex items-center justify-center gap-1"
                     >
-                      Start Call
+                      Join Google Meet
                     </a>
                   )}
                   {onOpenSoap && (

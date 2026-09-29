@@ -1,7 +1,7 @@
 import { supabase } from '../db';
 import { EmailService } from '../email/emailService';
 import { TherapistPayoutService } from './therapistPayoutService';
-import { GoogleCalendarService } from '../calendar/googleCalendarService';
+import { GoogleCalendarService, isValidGoogleMeetUrl } from '../calendar/googleCalendarService';
 import { GoogleAuthService } from '../calendar/googleAuthService';
 
 export class TherapistPlatformService {
@@ -319,6 +319,10 @@ export class TherapistPlatformService {
         scheduled_end,
         status,
         session_type,
+        google_calendar_event_id,
+        google_meet_url,
+        google_meet_status,
+        calendar_sync_status,
         meeting_link,
         client_notes,
         users (
@@ -341,6 +345,10 @@ export class TherapistPlatformService {
         scheduled_end,
         status,
         session_type,
+        google_calendar_event_id,
+        google_meet_url,
+        google_meet_status,
+        calendar_sync_status,
         meeting_link,
         users (
           id,
@@ -466,28 +474,43 @@ export class TherapistPlatformService {
     }));
 
     // Next upcoming session
-    const nextSession = upcomingSessions && upcomingSessions.length > 0 ? {
-      id: upcomingSessions[0].id,
-      clientId: upcomingSessions[0].user_id,
-      clientDisplayName: (upcomingSessions[0] as any).users?.name || `Client #${upcomingSessions[0].user_id.substring(0, 6)}`,
-      scheduledStart: upcomingSessions[0].scheduled_start,
-      scheduledEnd: upcomingSessions[0].scheduled_end,
-      status: upcomingSessions[0].status,
-      sessionType: upcomingSessions[0].session_type,
-      meetingLink: upcomingSessions[0].meeting_link,
-    } : null;
+    const nextSession = upcomingSessions && upcomingSessions.length > 0 ? (() => {
+      const s = upcomingSessions[0] as any;
+      const validMeet = isValidGoogleMeetUrl(s.google_meet_url) ? s.google_meet_url : null;
+      return {
+        id: s.id,
+        clientId: s.user_id,
+        clientDisplayName: s.users?.name || `Client #${s.user_id.substring(0, 6)}`,
+        scheduledStart: s.scheduled_start,
+        scheduledEnd: s.scheduled_end,
+        status: s.status,
+        sessionType: s.session_type,
+        googleMeetUrl: validMeet,
+        googleCalendarEventId: s.google_calendar_event_id || null,
+        googleMeetStatus: s.google_meet_status || (validMeet ? 'created' : 'none'),
+        calendarSyncStatus: s.calendar_sync_status || 'not_connected',
+        meetingLink: s.meeting_link,
+      };
+    })() : null;
 
     return {
-      todaySessions: (todaySessions || []).map((session: any) => ({
-        id: session.id,
-        clientId: session.user_id,
-        clientDisplayName: session.users?.name || `Client #${session.user_id.substring(0, 6)}`,
-        scheduledStart: session.scheduled_start,
-        scheduledEnd: session.scheduled_end,
-        status: session.status,
-        sessionType: session.session_type,
-        meetingLink: session.meeting_link,
-      })),
+      todaySessions: (todaySessions || []).map((session: any) => {
+        const validMeet = isValidGoogleMeetUrl(session.google_meet_url) ? session.google_meet_url : null;
+        return {
+          id: session.id,
+          clientId: session.user_id,
+          clientDisplayName: session.users?.name || `Client #${session.user_id.substring(0, 6)}`,
+          scheduledStart: session.scheduled_start,
+          scheduledEnd: session.scheduled_end,
+          status: session.status,
+          sessionType: session.session_type,
+          googleMeetUrl: validMeet,
+          googleCalendarEventId: session.google_calendar_event_id || null,
+          googleMeetStatus: session.google_meet_status || (validMeet ? 'created' : 'none'),
+          calendarSyncStatus: session.calendar_sync_status || 'not_connected',
+          meetingLink: session.meeting_link,
+        };
+      }),
       nextSession,
       upcomingSession: nextSession, // Backward compatibility
       pendingRequests,
@@ -1754,7 +1777,7 @@ export class TherapistPlatformService {
         appt.modality ||
         (appt.session_type === 'in_person' ? 'in_person' : appt.session_type === 'audio' ? 'phone' : 'telehealth');
 
-      const finalMeetingLink = appt.google_meet_url || appt.meeting_link;
+      const validMeetUrl = isValidGoogleMeetUrl(appt.google_meet_url) ? appt.google_meet_url : null;
 
       return {
         id: appt.id,
@@ -1769,10 +1792,12 @@ export class TherapistPlatformService {
           displayName: clientName,
         },
         careStage: appt.care_stage || 'active_care',
-        meetingLink: finalMeetingLink,
-        googleMeetUrl: finalMeetingLink,
-        googleCalendarEventId: appt.google_calendar_event_id,
+        googleMeetUrl: validMeetUrl,
+        googleCalendarEventId: appt.google_calendar_event_id || null,
+        googleMeetConferenceId: appt.google_meet_conference_id || null,
+        googleMeetStatus: appt.google_meet_status || (validMeetUrl ? 'created' : 'none'),
         calendarSyncStatus: appt.calendar_sync_status || 'not_connected',
+        meetingLink: appt.meeting_link,
         attendanceStatus: appt.attendance_status || 'scheduled',
         refundStatus: appt.refund_status || 'none',
         clientNotes: appt.client_notes,
@@ -1787,6 +1812,9 @@ export class TherapistPlatformService {
         session_type: appt.session_type,
         clientDisplayName: clientName,
         relationship_id: appt.relationship_id,
+        google_meet_url: validMeetUrl,
+        google_calendar_event_id: appt.google_calendar_event_id || null,
+        calendar_sync_status: appt.calendar_sync_status || 'not_connected',
       };
     });
   }
@@ -1806,6 +1834,13 @@ export class TherapistPlatformService {
         scheduled_end,
         status,
         session_type,
+        google_calendar_event_id,
+        google_meet_url,
+        google_meet_conference_id,
+        google_meet_status,
+        calendar_sync_status,
+        attendance_status,
+        refund_status,
         meeting_link,
         client_notes,
         cancelled_by,
@@ -1856,6 +1891,8 @@ export class TherapistPlatformService {
       (appt as any).modality ||
       (appt.session_type === 'in_person' ? 'in_person' : appt.session_type === 'audio' ? 'phone' : 'telehealth');
 
+    const validMeetUrl = isValidGoogleMeetUrl(appt.google_meet_url) ? appt.google_meet_url : null;
+
     return {
       id: appt.id,
       startsAt: appt.scheduled_start,
@@ -1864,7 +1901,20 @@ export class TherapistPlatformService {
       status: appt.status,
       sessionType: appt.session_type,
       modality: modalityMapped,
+      googleMeetUrl: validMeetUrl,
+      googleCalendarEventId: appt.google_calendar_event_id || null,
+      googleMeetConferenceId: appt.google_meet_conference_id || null,
+      googleMeetStatus: appt.google_meet_status || (validMeetUrl ? 'created' : 'none'),
+      calendarSyncStatus: appt.calendar_sync_status || 'not_connected',
       meetingLink: appt.meeting_link,
+      // Backward compatibility fields:
+      google_meet_url: validMeetUrl,
+      google_calendar_event_id: appt.google_calendar_event_id || null,
+      google_meet_conference_id: appt.google_meet_conference_id || null,
+      google_meet_status: appt.google_meet_status || (validMeetUrl ? 'created' : 'none'),
+      calendar_sync_status: appt.calendar_sync_status || 'not_connected',
+      attendanceStatus: appt.attendance_status || 'scheduled',
+      refundStatus: appt.refund_status || 'none',
       clientNotes: appt.client_notes,
       cancelledBy: appt.cancelled_by,
       cancellationReason: appt.cancellation_reason,
@@ -1892,7 +1942,6 @@ export class TherapistPlatformService {
       })),
       createdAt: appt.created_at,
       updatedAt: appt.updated_at,
-      // Backwards compatibility properties:
       user_id: appt.user_id,
       scheduled_start: appt.scheduled_start,
       scheduled_end: appt.scheduled_end,
@@ -1977,6 +2026,7 @@ export class TherapistPlatformService {
     const meetingLink = data.meetingLink || null;
 
     // 3. Try atomic RPC with transaction advisory locks
+    let createdAppt: any = null;
     try {
       const { data: rpcAppt, error: rpcErr } = await supabase.rpc('schedule_therapist_appointment', {
         p_therapist_account_id: therapistAccountId,
@@ -1990,39 +2040,70 @@ export class TherapistPlatformService {
       });
 
       if (!rpcErr && rpcAppt) {
-        return {
-          ...rpcAppt,
-          clientDisplayName: `Client #${targetUserId.substring(0, 6)}`,
-          careStage: rel.care_stage || 'intake',
-          modality: targetModality,
-        };
+        createdAppt = rpcAppt;
       }
     } catch (rpcCatch) {}
 
-    // 4. Standard insert fallback
-    const { data: newAppt, error } = await supabase
-      .from('therapist_clinical_appointments')
-      .insert({
-        therapist_account_id: therapistAccountId,
-        user_id: targetUserId,
-        relationship_id: rel.id,
-        scheduled_start: targetStart,
-        scheduled_end: targetEnd,
-        status: 'scheduled',
-        session_type: targetSessionType,
-        meeting_link: meetingLink,
-        client_notes: data.clientNotes || null,
-      })
-      .select('*')
-      .single();
+    // 4. Standard insert fallback if RPC was not used or errored
+    if (!createdAppt) {
+      const { data: newAppt, error } = await supabase
+        .from('therapist_clinical_appointments')
+        .insert({
+          therapist_account_id: therapistAccountId,
+          user_id: targetUserId,
+          relationship_id: rel.id,
+          scheduled_start: targetStart,
+          scheduled_end: targetEnd,
+          status: 'scheduled',
+          session_type: targetSessionType,
+          meeting_link: meetingLink,
+          client_notes: data.clientNotes || null,
+        })
+        .select('*')
+        .single();
 
-    if (error) {
-      console.error('[TherapistPlatformService] createAppointment error:', error);
-      throw new Error('Failed to schedule session.');
+      if (error || !newAppt) {
+        console.error('[TherapistPlatformService] createAppointment error:', error);
+        throw new Error('Failed to schedule session.');
+      }
+      createdAppt = newAppt;
     }
 
+    // 5. Automatic Google Calendar & Google Meet Synchronization (for telehealth/video)
+    let syncResult = {
+      eventId: null as string | null,
+      googleMeetUrl: null as string | null,
+      googleMeetConferenceId: null as string | null,
+      googleMeetStatus: 'not_connected' as any,
+      calendarSyncStatus: 'not_connected' as any,
+    };
+
+    if (targetModality !== 'in_person' && targetSessionType !== 'in_person') {
+      try {
+        const sync = await GoogleCalendarService.syncAppointmentToGoogle(createdAppt.id);
+        syncResult = {
+          eventId: sync.eventId,
+          googleMeetUrl: sync.googleMeetUrl,
+          googleMeetConferenceId: sync.googleMeetConferenceId,
+          googleMeetStatus: sync.googleMeetStatus,
+          calendarSyncStatus: sync.calendarSyncStatus,
+        };
+      } catch (calErr) {
+        console.warn('[TherapistPlatformService] Google Calendar sync failed gracefully on manual schedule:', calErr);
+        syncResult.calendarSyncStatus = 'failed';
+        syncResult.googleMeetStatus = 'failed';
+      }
+    }
+
+    const validMeetUrl = isValidGoogleMeetUrl(syncResult.googleMeetUrl) ? syncResult.googleMeetUrl : null;
+
     return {
-      ...newAppt,
+      ...createdAppt,
+      googleMeetUrl: validMeetUrl,
+      googleCalendarEventId: syncResult.eventId,
+      googleMeetConferenceId: syncResult.googleMeetConferenceId,
+      googleMeetStatus: syncResult.googleMeetStatus,
+      calendarSyncStatus: syncResult.calendarSyncStatus,
       clientDisplayName: `Client #${targetUserId.substring(0, 6)}`,
       careStage: rel.care_stage || 'intake',
       modality: targetModality,
@@ -2210,6 +2291,9 @@ export class TherapistPlatformService {
         status: 'cancelled',
         cancelled_by: 'therapist',
         cancellation_reason: reason || 'Cancelled by therapist',
+        google_meet_url: null,
+        google_meet_status: 'none',
+        calendar_sync_status: 'not_connected',
         updated_at: new Date().toISOString(),
       })
       .eq('id', appointmentId)
@@ -2218,6 +2302,15 @@ export class TherapistPlatformService {
 
     if (error) {
       throw new Error('Failed to cancel appointment.');
+    }
+
+    // Delete Google Calendar event if exists
+    if (appt.google_calendar_event_id) {
+      try {
+        await GoogleCalendarService.deleteEvent(therapistAccountId, appt.google_calendar_event_id);
+      } catch (calErr) {
+        console.warn('[TherapistPlatformService] Google Calendar event deletion error:', calErr);
+      }
     }
 
     return updated;

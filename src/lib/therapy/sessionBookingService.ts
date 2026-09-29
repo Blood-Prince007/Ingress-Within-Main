@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { supabase } from '../db';
 import { BillingService } from '../billing/billingService';
-import { GoogleCalendarService } from '../calendar/googleCalendarService';
+import { GoogleCalendarService, isValidGoogleMeetUrl } from '../calendar/googleCalendarService';
 import { EmailService } from '../email/emailService';
 import { EmailEvents } from '../email/emailEvents';
 import { TherapistPayoutService } from '../therapist/therapistPayoutService';
@@ -528,50 +528,34 @@ export class SessionBookingService {
       throw new Error('Failed to create appointment after payment.');
     }
 
-    // 5. Create Google Calendar event with Google Meet
-    let calendarEventResult = {
+    // 5. Create Google Calendar event with Google Meet via canonical orchestration
+    let syncResult = {
       eventId: null as string | null,
-      meetUrl: null as string | null,
-      conferenceId: null as string | null,
-      syncStatus: 'not_connected' as 'synced' | 'failed' | 'not_connected',
+      googleMeetUrl: null as string | null,
+      googleMeetConferenceId: null as string | null,
+      googleMeetStatus: 'not_connected' as any,
+      calendarSyncStatus: 'not_connected' as any,
     };
 
     try {
-      calendarEventResult = await GoogleCalendarService.createEventWithMeet({
-        therapistAccountId: booking.therapist_account_id,
-        userId: booking.user_id,
-        appointmentId: newAppt.id,
+      const sync = await GoogleCalendarService.syncAppointmentToGoogle(newAppt.id, {
         summary: `Ingress Within: Session with ${clientUser?.full_name || 'Client'}`,
         description: `Ingress Within confidential therapy session. Ref: ${booking.booking_reference}`,
-        startTime: booking.slot_start,
-        endTime: booking.slot_end,
-        attendees: [therapistAccount?.email, clientUser?.email].filter(Boolean) as string[],
       });
+      syncResult = {
+        eventId: sync.eventId,
+        googleMeetUrl: sync.googleMeetUrl,
+        googleMeetConferenceId: sync.googleMeetConferenceId,
+        googleMeetStatus: sync.googleMeetStatus,
+        calendarSyncStatus: sync.calendarSyncStatus,
+      };
     } catch (calErr) {
       console.warn('[SessionBookingService] Calendar sync failed gracefully:', calErr);
-      calendarEventResult.syncStatus = 'failed';
+      syncResult.calendarSyncStatus = 'failed';
+      syncResult.googleMeetStatus = 'failed';
     }
 
-    // Determine real Google Meet status - NEVER fabricate a URL
-    const meetUrl = calendarEventResult.meetUrl || null;
-    const meetStatus = meetUrl
-      ? 'created'
-      : calendarEventResult.syncStatus === 'not_connected'
-      ? 'not_connected'
-      : 'failed';
-
-    // Update appointment with calendar & meet details
-    await supabase
-      .from('therapist_clinical_appointments')
-      .update({
-        google_calendar_event_id: calendarEventResult.eventId,
-        google_meet_url: meetUrl,
-        google_meet_conference_id: calendarEventResult.conferenceId,
-        google_meet_status: meetStatus,
-        calendar_sync_status: calendarEventResult.syncStatus,
-        meeting_link: meetUrl,
-      })
-      .eq('id', newAppt.id);
+    const meetUrl = isValidGoogleMeetUrl(syncResult.googleMeetUrl) ? syncResult.googleMeetUrl : null;
 
     // 6. Update booking status
     const { data: updatedBooking } = await supabase
@@ -630,8 +614,8 @@ export class SessionBookingService {
         ...newAppt,
         meeting_link: meetUrl,
         google_meet_url: meetUrl,
-        google_meet_status: meetStatus,
-        calendar_sync_status: calendarEventResult.syncStatus,
+        google_meet_status: syncResult.googleMeetStatus,
+        calendar_sync_status: syncResult.calendarSyncStatus,
       },
     };
   }
@@ -1469,43 +1453,24 @@ export class SessionBookingService {
       .eq('id', appt.therapist_account_id)
       .maybeSingle();
 
-    const calendarEventResult = await GoogleCalendarService.createEventWithMeet({
-      therapistAccountId: appt.therapist_account_id,
-      userId: appt.user_id,
-      appointmentId: appt.id,
+    const syncResult = await GoogleCalendarService.syncAppointmentToGoogle(appt.id, {
       summary: `Ingress Within: Session with ${clientUser?.full_name || 'Client'}`,
       description: `Ingress Within confidential therapy session.`,
-      startTime: appt.scheduled_start,
-      endTime: appt.scheduled_end,
-      attendees: [therapistAccount?.email, clientUser?.email].filter(Boolean) as string[],
     });
 
-    const meetUrl = calendarEventResult.meetUrl || null;
-    const meetStatus = meetUrl
-      ? 'created'
-      : calendarEventResult.syncStatus === 'not_connected'
-      ? 'not_connected'
-      : 'failed';
+    const meetUrl = isValidGoogleMeetUrl(syncResult.googleMeetUrl) ? syncResult.googleMeetUrl : null;
 
     const { data: updatedAppt } = await supabase
       .from('therapist_clinical_appointments')
-      .update({
-        google_calendar_event_id: calendarEventResult.eventId || appt.google_calendar_event_id,
-        google_meet_url: meetUrl || appt.google_meet_url,
-        google_meet_conference_id: calendarEventResult.conferenceId || appt.google_meet_conference_id,
-        google_meet_status: meetStatus,
-        calendar_sync_status: calendarEventResult.syncStatus,
-        meeting_link: meetUrl || appt.meeting_link,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', appt.id)
       .select('*')
+      .eq('id', appt.id)
       .single();
 
     return {
-      success: calendarEventResult.syncStatus === 'synced',
+      success: syncResult.calendarSyncStatus === 'synced',
       appointment: updatedAppt,
-      syncStatus: calendarEventResult.syncStatus,
+      syncStatus: syncResult.calendarSyncStatus,
+      googleMeetUrl: meetUrl,
       meetUrl,
     };
   }

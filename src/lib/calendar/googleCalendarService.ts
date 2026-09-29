@@ -16,41 +16,118 @@ export interface GoogleCalendarEventResult {
   eventId: string | null;
   meetUrl: string | null;
   conferenceId: string | null;
-  syncStatus: 'synced' | 'failed' | 'not_connected';
+  syncStatus: 'synced' | 'pending' | 'failed' | 'not_connected';
+  meetStatus: 'created' | 'generating' | 'failed' | 'not_connected';
   error?: string;
 }
 
+export interface SyncAppointmentResult {
+  success: boolean;
+  appointmentId: string;
+  eventId: string | null;
+  googleMeetUrl: string | null;
+  googleMeetConferenceId: string | null;
+  googleMeetStatus: 'created' | 'generating' | 'failed' | 'not_connected' | 'none';
+  calendarSyncStatus: 'synced' | 'pending' | 'failed' | 'not_connected';
+  error?: string;
+}
+
+/**
+ * Validates that a URL is a real, canonical Google Meet URL.
+ * Strictly forbids custom subdomains, localhost, or non-Google domains.
+ */
+export function isValidGoogleMeetUrl(url: string | null | undefined): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (trimmed.includes('ingresswithin.com') || trimmed.includes('localhost')) {
+    return false;
+  }
+  // Standard format: https://meet.google.com/abc-defg-hij (with optional query parameters)
+  return /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}(\?.*)?$/i.test(trimmed);
+}
+
 export class GoogleCalendarService {
+  /**
+   * Helper delay for polling
+   */
+  private static async sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Extracts Google Meet video URL and conference ID from a Google Calendar event object.
+   */
+  private static extractMeetDetails(event: any): { meetUrl: string | null; conferenceId: string | null } {
+    let meetUrl: string | null = null;
+    let conferenceId: string | null = null;
+
+    if (event?.conferenceData) {
+      conferenceId = event.conferenceData.conferenceId || null;
+      const videoEntryPoint = event.conferenceData.entryPoints?.find(
+        (ep: any) => ep.entryPointType === 'video'
+      );
+      if (videoEntryPoint?.uri && isValidGoogleMeetUrl(videoEntryPoint.uri)) {
+        meetUrl = videoEntryPoint.uri;
+      }
+    }
+
+    if (!meetUrl && event?.hangoutLink && isValidGoogleMeetUrl(event.hangoutLink)) {
+      meetUrl = event.hangoutLink;
+    }
+
+    return { meetUrl, conferenceId };
+  }
+
+  /**
+   * Polls an existing Google Calendar event for asynchronous Google Meet conference completion.
+   */
+  private static async pollConferenceCreation(
+    accessToken: string,
+    eventId: string,
+    maxAttempts: number = 3
+  ): Promise<{ meetUrl: string | null; conferenceId: string | null; isPending: boolean }> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await this.sleep(attempt * 600); // 600ms, 1200ms, 1800ms
+      try {
+        const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}?conferenceDataVersion=1`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        if (res.ok) {
+          const event = await res.json();
+          const { meetUrl, conferenceId } = this.extractMeetDetails(event);
+          if (meetUrl) {
+            return { meetUrl, conferenceId, isPending: false };
+          }
+
+          const status = event.conferenceData?.createRequest?.status?.statusCode;
+          if (status && status !== 'pending' && status !== 'inProgress') {
+            // Conference creation failed on Google's end
+            return { meetUrl: null, conferenceId, isPending: false };
+          }
+        }
+      } catch (pollErr) {
+        console.warn(`[GoogleCalendarService] Conference poll attempt ${attempt} failed:`, pollErr);
+      }
+    }
+
+    return { meetUrl: null, conferenceId: null, isPending: true };
+  }
+
   /**
    * Creates an event in the therapist's Google Calendar with an automatically generated Google Meet link.
    * Uses Google Calendar API conferenceData.createRequest with conferenceDataVersion=1.
    * 
    * PRODUCTION INVARIANTS:
-   * 1. IDEMPOTENCY: Derived from appointmentId. If google_calendar_event_id already exists, returns existing.
-   * 2. NO FABRICATED MEET URLs: google_meet_url is ONLY populated if Google actually returned a valid video entrypoint.
-   * 3. FAILURE ISOLATION: Google Calendar unavailability or error never rolls back or throws out of clinical operations.
+   * 1. IDEMPOTENCY: Derived from appointmentId. If google_calendar_event_id already exists, inspects/polls existing event.
+   * 2. NO FABRICATED MEET URLs: google_meet_url is ONLY populated if Google returned a valid video entrypoint.
+   * 3. ASYNC CONFLICT/PENDING RESOLUTION: Polls boundedly if conference status is pending.
+   * 4. FAILURE ISOLATION: Google Calendar unavailability or error never rolls back clinical operations.
    */
   static async createEventWithMeet(options: CreateEventOptions): Promise<GoogleCalendarEventResult> {
     try {
-      // 1. Idempotency Check: Verify if appointment already has an active calendar event
-      if (options.appointmentId) {
-        const { data: appt } = await supabase
-          .from('therapist_clinical_appointments')
-          .select('google_calendar_event_id, google_meet_url, google_meet_conference_id, calendar_sync_status')
-          .eq('id', options.appointmentId)
-          .maybeSingle();
-
-        if (appt?.google_calendar_event_id && appt.calendar_sync_status === 'synced') {
-          return {
-            eventId: appt.google_calendar_event_id,
-            meetUrl: appt.google_meet_url,
-            conferenceId: appt.google_meet_conference_id,
-            syncStatus: 'synced',
-          };
-        }
-      }
-
-      // 2. Get valid access token for therapist
+      // 1. Get valid access token for therapist
       const accessToken = await GoogleAuthService.getValidAccessToken('therapist', options.therapistAccountId);
 
       if (!accessToken) {
@@ -59,7 +136,50 @@ export class GoogleCalendarService {
           meetUrl: null,
           conferenceId: null,
           syncStatus: 'not_connected',
+          meetStatus: 'not_connected',
         };
+      }
+
+      // 2. Idempotency Check: Verify if appointment already has an active calendar event
+      if (options.appointmentId) {
+        const { data: appt } = await supabase
+          .from('therapist_clinical_appointments')
+          .select('google_calendar_event_id, google_meet_url, google_meet_conference_id, calendar_sync_status, google_meet_status')
+          .eq('id', options.appointmentId)
+          .maybeSingle();
+
+        if (appt?.google_calendar_event_id) {
+          // If already synced and has valid meet URL, return existing
+          if (appt.google_meet_url && isValidGoogleMeetUrl(appt.google_meet_url)) {
+            return {
+              eventId: appt.google_calendar_event_id,
+              meetUrl: appt.google_meet_url,
+              conferenceId: appt.google_meet_conference_id,
+              syncStatus: 'synced',
+              meetStatus: 'created',
+            };
+          }
+
+          // Otherwise poll Google to check if Meet has finished generating
+          const pollResult = await this.pollConferenceCreation(accessToken, appt.google_calendar_event_id, 2);
+          if (pollResult.meetUrl) {
+            return {
+              eventId: appt.google_calendar_event_id,
+              meetUrl: pollResult.meetUrl,
+              conferenceId: pollResult.conferenceId,
+              syncStatus: 'synced',
+              meetStatus: 'created',
+            };
+          } else if (pollResult.isPending) {
+            return {
+              eventId: appt.google_calendar_event_id,
+              meetUrl: null,
+              conferenceId: pollResult.conferenceId,
+              syncStatus: 'pending',
+              meetStatus: 'generating',
+            };
+          }
+        }
       }
 
       // 3. Prepare deterministic conference request ID derived from appointment ID
@@ -101,33 +221,39 @@ export class GoogleCalendarService {
           meetUrl: null,
           conferenceId: null,
           syncStatus: 'failed',
+          meetStatus: 'failed',
           error: `HTTP_${status}`,
         };
       }
 
       const event = await res.json();
+      let { meetUrl, conferenceId } = this.extractMeetDetails(event);
 
-      // 5. Extract Google Meet video link — STRICT NO FABRICATION
-      let meetUrl: string | null = null;
-      let conferenceId: string | null = null;
-
-      if (event.conferenceData) {
-        conferenceId = event.conferenceData.conferenceId || null;
-        const videoEntryPoint = event.conferenceData.entryPoints?.find(
-          (ep: any) => ep.entryPointType === 'video'
-        );
-        if (videoEntryPoint?.uri) {
-          meetUrl = videoEntryPoint.uri;
-        } else if (event.hangoutLink) {
-          meetUrl = event.hangoutLink;
+      // 5. If conference creation is still pending, poll boundedly
+      if (!meetUrl && event.id) {
+        const pollResult = await this.pollConferenceCreation(accessToken, event.id, 3);
+        if (pollResult.meetUrl) {
+          meetUrl = pollResult.meetUrl;
+          conferenceId = pollResult.conferenceId || conferenceId;
+        } else if (pollResult.isPending) {
+          return {
+            eventId: event.id,
+            meetUrl: null,
+            conferenceId,
+            syncStatus: 'pending',
+            meetStatus: 'generating',
+          };
         }
       }
+
+      const isMeetReady = Boolean(meetUrl);
 
       return {
         eventId: event.id || null,
         meetUrl,
         conferenceId,
         syncStatus: 'synced',
+        meetStatus: isMeetReady ? 'created' : 'failed',
       };
     } catch (err: any) {
       console.error('[GoogleCalendarService] Safe failure during event creation:', err.message || 'unknown');
@@ -136,7 +262,144 @@ export class GoogleCalendarService {
         meetUrl: null,
         conferenceId: null,
         syncStatus: 'failed',
+        meetStatus: 'failed',
         error: err.code || 'CALENDAR_SERVICE_EXCEPTION',
+      };
+    }
+  }
+
+  /**
+   * Canonical orchestration method to sync an Ingress Within clinical appointment to Google Calendar.
+   * Called by BOTH client booking (SessionBookingService) and manual therapist scheduling (TherapistPlatformService).
+   * 
+   * Handles:
+   * - Connection lookup & token validation
+   * - Calendar event creation / retrieval
+   * - Google Meet conference attachment & polling
+   * - Database persistence into therapist_clinical_appointments
+   * - Safe error isolation
+   */
+  static async syncAppointmentToGoogle(
+    appointmentId: string,
+    options: { summary?: string; description?: string } = {}
+  ): Promise<SyncAppointmentResult> {
+    try {
+      if (!appointmentId) {
+        return {
+          success: false,
+          appointmentId: '',
+          eventId: null,
+          googleMeetUrl: null,
+          googleMeetConferenceId: null,
+          googleMeetStatus: 'failed',
+          calendarSyncStatus: 'failed',
+          error: 'MISSING_APPOINTMENT_ID',
+        };
+      }
+
+      // 1. Fetch appointment details
+      const { data: appt, error: apptErr } = await supabase
+        .from('therapist_clinical_appointments')
+        .select('*')
+        .eq('id', appointmentId)
+        .maybeSingle();
+
+      if (apptErr || !appt) {
+        return {
+          success: false,
+          appointmentId,
+          eventId: null,
+          googleMeetUrl: null,
+          googleMeetConferenceId: null,
+          googleMeetStatus: 'failed',
+          calendarSyncStatus: 'failed',
+          error: 'APPOINTMENT_NOT_FOUND',
+        };
+      }
+
+      if (appt.status === 'cancelled') {
+        return {
+          success: false,
+          appointmentId,
+          eventId: appt.google_calendar_event_id || null,
+          googleMeetUrl: null,
+          googleMeetConferenceId: null,
+          googleMeetStatus: 'none',
+          calendarSyncStatus: 'not_connected',
+          error: 'APPOINTMENT_CANCELLED',
+        };
+      }
+
+      // 2. Fetch therapist and client identity
+      const { data: therapistAccount } = await supabase
+        .from('therapist_accounts')
+        .select('email, full_name')
+        .eq('id', appt.therapist_account_id)
+        .maybeSingle();
+
+      const { data: clientUser } = await supabase
+        .from('users')
+        .select('email, full_name')
+        .eq('id', appt.user_id)
+        .maybeSingle();
+
+      const clientName = clientUser?.full_name || 'Client';
+      const therapistName = therapistAccount?.full_name || 'Therapist';
+
+      const summary = options.summary || `Ingress Within Therapy Session: ${clientName} & ${therapistName}`;
+      const description = options.description || `Confidential clinical telehealth session scheduled via Ingress Within.\nClient: ${clientName}\nTherapist: ${therapistName}`;
+
+      const attendees = [therapistAccount?.email, clientUser?.email].filter(Boolean) as string[];
+
+      // 3. Create or reconcile event in Google Calendar
+      const eventResult = await this.createEventWithMeet({
+        therapistAccountId: appt.therapist_account_id,
+        userId: appt.user_id,
+        appointmentId: appt.id,
+        summary,
+        description,
+        startTime: appt.scheduled_start,
+        endTime: appt.scheduled_end,
+        attendees,
+      });
+
+      // 4. Update appointment in database with real results
+      const finalMeetUrl = eventResult.meetUrl;
+      const finalSyncStatus = eventResult.syncStatus;
+      const finalMeetStatus = eventResult.meetStatus;
+
+      await supabase
+        .from('therapist_clinical_appointments')
+        .update({
+          google_calendar_event_id: eventResult.eventId || appt.google_calendar_event_id || null,
+          google_meet_url: finalMeetUrl,
+          google_meet_conference_id: eventResult.conferenceId || appt.google_meet_conference_id || null,
+          google_meet_status: finalMeetStatus,
+          calendar_sync_status: finalSyncStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', appt.id);
+
+      return {
+        success: finalSyncStatus === 'synced',
+        appointmentId: appt.id,
+        eventId: eventResult.eventId || appt.google_calendar_event_id || null,
+        googleMeetUrl: finalMeetUrl,
+        googleMeetConferenceId: eventResult.conferenceId || appt.google_meet_conference_id || null,
+        googleMeetStatus: finalMeetStatus,
+        calendarSyncStatus: finalSyncStatus,
+      };
+    } catch (err: any) {
+      console.error('[GoogleCalendarService] Safe sync failure:', err.message || 'unknown');
+      return {
+        success: false,
+        appointmentId,
+        eventId: null,
+        googleMeetUrl: null,
+        googleMeetConferenceId: null,
+        googleMeetStatus: 'failed',
+        calendarSyncStatus: 'failed',
+        error: err.code || 'SYNC_EXCEPTION',
       };
     }
   }
@@ -282,3 +545,4 @@ export class GoogleCalendarService {
     }
   }
 }
+
