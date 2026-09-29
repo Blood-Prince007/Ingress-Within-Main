@@ -1,5 +1,6 @@
 import { supabase } from '../db';
 import { TherapistPayoutService, TherapistEarningRecord, PayoutBatchRecord } from './therapistPayoutService';
+import { TherapistPayoutAccountService, BalanceSummary } from './therapistPayoutAccountService';
 
 export type EarningsDateRange = 'today' | 'week' | 'month' | 'last_month' | 'custom';
 
@@ -53,6 +54,7 @@ export interface EarningsReportResponse {
     to: string;
   };
   summary: EarningsSummaryMetrics;
+  balance?: BalanceSummary;
   chart: EarningsChartPoint[];
   transactions: EarningsTransactionItem[];
   payouts: any[];
@@ -403,6 +405,13 @@ export class TherapistEarningsService {
       createdAt: b.created_at,
     }));
 
+    let availableBalance: BalanceSummary | undefined;
+    try {
+      availableBalance = await TherapistPayoutAccountService.getAvailableBalance(therapistAccountId);
+    } catch {
+      // Safe fallback
+    }
+
     return {
       currency: 'INR',
       range: rangeKey,
@@ -421,6 +430,7 @@ export class TherapistEarningsService {
         averagePerSession,
         currency: 'INR',
       },
+      balance: availableBalance,
       chart: chartPoints,
       transactions: paginatedTransactions,
       payouts: formattedPayouts,
