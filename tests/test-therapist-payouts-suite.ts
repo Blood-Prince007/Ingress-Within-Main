@@ -333,6 +333,86 @@ async function runTestSuite() {
     assert.strictEqual(updated?.failure_reason, 'Beneficiary bank technical timeout');
   });
 
+  await test('Double-spend immunity: Available balance remains ₹1975 and Withdrawn is ₹1000 after payout completion', async () => {
+    const balance = await TherapistPayoutAccountService.getAvailableBalance(testTherapistId);
+    assert.strictEqual(balance.withdrawn, 1000, 'Withdrawn must reflect the ₹1000 completed withdrawal');
+    assert.strictEqual(balance.availableToWithdraw, 1975, 'Available balance must remain ₹1975 (not revert to ₹2975)');
+  });
+
+  await test('Idempotent webhook replay: 10x delivery of payout.processed causes no state regression or balance drift', async () => {
+    const replayEvent = {
+      event: 'payout.processed',
+      payload: {
+        payout: {
+          entity: {
+            id: createdWithdrawal.provider_payout_id,
+            status: 'processed',
+            utr: 'HDFCR5202609290001',
+          },
+        },
+      },
+    };
+
+    for (let i = 0; i < 10; i++) {
+      const res = await TherapistPayoutAccountService.handlePayoutWebhookEvent(replayEvent);
+      assert.strictEqual(res.handled, true);
+      assert.strictEqual(res.status, 'completed');
+    }
+
+    const balanceAfterReplay = await TherapistPayoutAccountService.getAvailableBalance(testTherapistId);
+    assert.strictEqual(balanceAfterReplay.withdrawn, 1000, 'Withdrawn is still exactly ₹1000');
+    assert.strictEqual(balanceAfterReplay.availableToWithdraw, 1975, 'Available balance is still exactly ₹1975');
+  });
+
+  await test('Out-of-order webhook rejection: Refuses payout.failed after payout is already completed', async () => {
+    const staleFailEvent = {
+      event: 'payout.failed',
+      payload: {
+        payout: {
+          entity: {
+            id: createdWithdrawal.provider_payout_id,
+            status: 'failed',
+            failure_reason: 'Stale out-of-order network failure',
+          },
+        },
+      },
+    };
+
+    const res = await TherapistPayoutAccountService.handlePayoutWebhookEvent(staleFailEvent);
+    assert.strictEqual(res.status, 'completed', 'Status must not regress from completed to failed');
+
+    const history = await TherapistPayoutAccountService.getWithdrawalHistory(testTherapistId);
+    const check = history.find((w) => w.id === createdWithdrawal.id);
+    assert.strictEqual(check?.status, 'completed', 'Withdrawal record must remain completed');
+  });
+
+  await test('Concurrency race prevention: Two simultaneous requests for ₹1500 when available is ₹1975', async () => {
+    // Attempt two simultaneous withdrawals for ₹1500 each
+    const results = await Promise.allSettled([
+      TherapistPayoutAccountService.requestWithdrawal({
+        therapistAccountId: testTherapistId,
+        payoutAccountId: bankAccountRecord.id,
+        amount: 1500,
+      }),
+      TherapistPayoutAccountService.requestWithdrawal({
+        therapistAccountId: testTherapistId,
+        payoutAccountId: bankAccountRecord.id,
+        amount: 1500,
+      }),
+    ]);
+
+    const fulfilled = results.filter((r) => r.status === 'fulfilled');
+    const rejected = results.filter((r) => r.status === 'rejected');
+
+    // Exactly one should succeed, one must be blocked by concurrency lock or balance check!
+    assert.strictEqual(fulfilled.length, 1, 'Exactly one concurrent withdrawal must succeed');
+    assert.strictEqual(rejected.length, 1, 'The competing concurrent withdrawal must be rejected');
+
+    const bal = await TherapistPayoutAccountService.getAvailableBalance(testTherapistId);
+    // 1975 - 1500 = 475
+    assert.strictEqual(bal.availableToWithdraw, 475, 'Remaining available balance is exactly ₹475');
+  });
+
   // --- SECTION 6: Multi-Tenant Isolation & Privacy Safeguards ---
   console.log('\n--- SECTION 6: Multi-Tenant Isolation & Privacy Safeguards ---');
 

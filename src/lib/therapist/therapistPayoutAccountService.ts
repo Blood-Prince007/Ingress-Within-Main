@@ -432,45 +432,79 @@ export class TherapistPayoutAccountService {
       }
     }
 
-    // Calculate authoritative totals
-    let totalNetEarned = 0;
-    let withdrawn = 0;
-    let pendingPayout = 0;
+    // Use integer paise for all calculations to eliminate floating-point arithmetic errors
+    let totalNetCollectedPaise = 0;
+    let totalPaidFromBatchesPaise = 0;
+    let unbatchedCollectedPaise = 0;
     let billableSessions = 0;
 
     for (const e of allEarnings) {
+      const netPaise = Math.round(Number(e.net_earnings || 0) * 100);
       if (e.payment_status === 'collected') {
-        totalNetEarned += e.net_earnings;
+        totalNetCollectedPaise += netPaise;
         billableSessions++;
         if (!e.payout_batch_id) {
-          pendingPayout += e.net_earnings;
+          unbatchedCollectedPaise += netPaise;
         }
       } else if (e.payment_status === 'paid') {
-        totalNetEarned += e.net_earnings;
-        withdrawn += e.net_earnings;
+        totalPaidFromBatchesPaise += netPaise;
         billableSessions++;
       }
     }
 
-    // Calculate in-flight withdrawals (pending provider execution)
-    let inFlightWithdrawals = 0;
+    let completedWithdrawalsPaise = 0;
+    let inFlightWithdrawalsPaise = 0;
     for (const w of withdrawals) {
-      if (w.status === 'requested' || w.status === 'processing') {
-        inFlightWithdrawals += w.amount;
+      const wPaise = Math.round(Number(w.amount || 0) * 100);
+      if (w.status === 'completed') {
+        completedWithdrawalsPaise += wPaise;
+      } else if (w.status === 'requested' || w.status === 'processing') {
+        inFlightWithdrawalsPaise += wPaise;
       }
     }
 
-    const availableToWithdraw = Math.max(0, Math.round((pendingPayout - inFlightWithdrawals) * 100) / 100);
+    const totalWithdrawnPaise = totalPaidFromBatchesPaise + completedWithdrawalsPaise;
+    const totalNetEarnedPaise = totalNetCollectedPaise + totalPaidFromBatchesPaise;
+    const pendingPayoutPaise = Math.max(0, unbatchedCollectedPaise - completedWithdrawalsPaise);
+    const availableToWithdrawPaise = Math.max(0, pendingPayoutPaise - inFlightWithdrawalsPaise);
 
     return {
       currency: 'INR',
-      totalNetEarned: Math.round(totalNetEarned * 100) / 100,
-      withdrawn: Math.round(withdrawn * 100) / 100,
-      pendingPayout: Math.round(pendingPayout * 100) / 100,
-      inFlightWithdrawals: Math.round(inFlightWithdrawals * 100) / 100,
-      availableToWithdraw,
+      totalNetEarned: totalNetEarnedPaise / 100,
+      withdrawn: totalWithdrawnPaise / 100,
+      pendingPayout: pendingPayoutPaise / 100,
+      inFlightWithdrawals: inFlightWithdrawalsPaise / 100,
+      availableToWithdraw: availableToWithdrawPaise / 100,
       sessionCount: billableSessions,
     };
+  }
+
+  /**
+   * Validates withdrawal request state machine transitions.
+   * State Machine:
+   *   requested -> processing, cancelled, failed
+   *   processing -> completed, failed
+   *   completed -> reversed
+   *   failed -> (terminal)
+   *   reversed -> (terminal)
+   */
+  static validateWithdrawalTransition(
+    current: WithdrawalRequestStatus,
+    target: WithdrawalRequestStatus
+  ): boolean {
+    if (current === target) return true; // Idempotent
+
+    const validMap: Record<WithdrawalRequestStatus, WithdrawalRequestStatus[]> = {
+      requested: ['processing', 'cancelled', 'failed'],
+      processing: ['completed', 'failed'],
+      completed: ['reversed'],
+      failed: [], // Terminal
+      reversed: [], // Terminal
+      cancelled: [], // Terminal
+    };
+
+    const allowed = validMap[current] || [];
+    return allowed.includes(target);
   }
 
   /**
@@ -692,7 +726,7 @@ export class TherapistPayoutAccountService {
         };
       };
     };
-  }): Promise<{ handled: boolean; status: string }> {
+  }): Promise<{ handled: boolean; status: string; idempotent?: boolean; ignored?: boolean }> {
     const eventType = event.event;
     const payoutEntity = event.payload?.payout?.entity;
     const providerPayoutId = payoutEntity?.id;
@@ -745,8 +779,17 @@ export class TherapistPayoutAccountService {
     }
 
     const nowIso = new Date().toISOString();
+    const currentStatus = targetWithdrawal.status;
 
     if (eventType === 'payout.processed') {
+      if (currentStatus === 'completed') {
+        return { handled: true, status: 'completed', idempotent: true };
+      }
+      if (!this.validateWithdrawalTransition(currentStatus, 'completed')) {
+        console.warn(`[TherapistPayoutAccountService] Refused invalid transition from '${currentStatus}' to 'completed' for payout ${providerPayoutId}`);
+        return { handled: true, status: currentStatus, ignored: true };
+      }
+
       const utr = payoutEntity?.utr || `UTR_${Date.now()}`;
       targetWithdrawal.status = 'completed';
       targetWithdrawal.utr_number = utr;
@@ -767,6 +810,14 @@ export class TherapistPayoutAccountService {
     }
 
     if (eventType === 'payout.failed' || eventType === 'payout.rejected') {
+      if (currentStatus === 'failed') {
+        return { handled: true, status: 'failed', idempotent: true };
+      }
+      if (!this.validateWithdrawalTransition(currentStatus, 'failed')) {
+        console.warn(`[TherapistPayoutAccountService] Refused invalid transition from '${currentStatus}' to 'failed' for payout ${providerPayoutId}`);
+        return { handled: true, status: currentStatus, ignored: true };
+      }
+
       const reason = payoutEntity?.failure_reason || 'Disbursement failed by provider';
       targetWithdrawal.status = 'failed';
       targetWithdrawal.failure_reason = reason;
@@ -785,6 +836,14 @@ export class TherapistPayoutAccountService {
     }
 
     if (eventType === 'payout.reversed') {
+      if (currentStatus === 'reversed') {
+        return { handled: true, status: 'reversed', idempotent: true };
+      }
+      if (!this.validateWithdrawalTransition(currentStatus, 'reversed')) {
+        console.warn(`[TherapistPayoutAccountService] Refused invalid transition from '${currentStatus}' to 'reversed' for payout ${providerPayoutId}`);
+        return { handled: true, status: currentStatus, ignored: true };
+      }
+
       const reason = payoutEntity?.failure_reason || 'Disbursement reversed by beneficiary bank';
       targetWithdrawal.status = 'reversed';
       targetWithdrawal.reversal_reason = reason;
@@ -800,6 +859,22 @@ export class TherapistPayoutAccountService {
         .eq('id', targetWithdrawal.id);
 
       return { handled: true, status: 'reversed' };
+    }
+
+    if (eventType === 'payout.queued' || eventType === 'payout.initiated') {
+      if (currentStatus === 'requested') {
+        targetWithdrawal.status = 'processing';
+        targetWithdrawal.updated_at = nowIso;
+
+        await supabase
+          .from('therapist_withdrawal_requests')
+          .update({
+            status: 'processing',
+            updated_at: nowIso,
+          })
+          .eq('id', targetWithdrawal.id);
+      }
+      return { handled: true, status: 'processing' };
     }
 
     return { handled: true, status: targetWithdrawal.status };
