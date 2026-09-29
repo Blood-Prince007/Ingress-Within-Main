@@ -23,9 +23,11 @@ export class GoogleCalendarConfigService {
     const clientSecret = (process.env.GOOGLE_CLIENT_SECRET || '').trim();
     
     // Resolve environment-specific default redirect URI if not explicitly defined
-    const defaultRedirectUri = process.env.NODE_ENV === 'production'
-      ? 'https://app.ingresswithin.com/api/calendar/google/callback'
-      : `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/calendar/google/callback`;
+    const defaultRedirectUri = process.env.NEXT_PUBLIC_APP_URL
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/calendar/google/callback`
+      : (process.env.NODE_ENV === 'production'
+          ? 'https://ingresswithin.com/api/calendar/google/callback'
+          : 'http://localhost:3000/api/calendar/google/callback');
 
     const redirectUri = (process.env.GOOGLE_REDIRECT_URI || defaultRedirectUri).trim();
 

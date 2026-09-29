@@ -531,9 +531,14 @@ export default function App({ initialRoute = 'home' }) {
       const anchor = e.target.closest('a');
       if (!anchor) return;
 
-      const href = anchor.getAttribute('href');
-      // If it's a local path or hash link
-      if (href && (href.startsWith('/') || href.startsWith('#')) && !href.startsWith('//') && !anchor.target) {
+      // If it's a local path or hash link (excluding backend API endpoints)
+      if (
+        href &&
+        (href.startsWith('/') || href.startsWith('#')) &&
+        !href.startsWith('//') &&
+        !href.startsWith('/api/') &&
+        !anchor.target
+      ) {
         // Handle in-page hash scroll for Home route
         if (href.startsWith('#') && window.location.pathname === '/') {
           const anchorId = href.replace(/^#\/?/, '');

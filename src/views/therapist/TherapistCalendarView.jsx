@@ -43,6 +43,7 @@ export default function TherapistCalendarView({
   const [rescheduleAppt, setRescheduleAppt] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
   const [completingId, setCompletingId] = useState(null);
+  const [connectingCalendar, setConnectingCalendar] = useState(false);
 
   // Compute month window: from first day to last day of current month
   const { monthStartIso, monthEndIso, monthTitle } = useMemo(() => {
@@ -77,6 +78,25 @@ export default function TherapistCalendarView({
       setError(err.message || 'Failed to load calendar events.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConnectCalendar = async () => {
+    setConnectingCalendar(true);
+    try {
+      const res = await fetch('/api/calendar/google/connect?type=therapist&returnTo=/therapist/calendar', {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+      }
+      window.location.href = '/api/calendar/google/connect?type=therapist&returnTo=/therapist/calendar';
+    } catch {
+      window.location.href = '/api/calendar/google/connect?type=therapist&returnTo=/therapist/calendar';
     }
   };
 
@@ -330,13 +350,14 @@ export default function TherapistCalendarView({
               Sync Now
             </button>
           ) : (
-            <a
-              href="/api/calendar/google/connect?type=therapist&returnTo=/therapist/calendar"
+            <button
+              onClick={handleConnectCalendar}
+              disabled={connectingCalendar}
               className="px-3.5 py-1.5 rounded-lg bg-[#132A24] text-white font-medium hover:bg-[#132A24]/90 transition-colors cursor-pointer no-underline inline-flex items-center gap-1.5 shadow-2xs"
             >
-              <CalendarIcon size={12} />
-              Connect Calendar
-            </a>
+              <CalendarIcon size={12} className={connectingCalendar ? 'animate-spin' : ''} />
+              {connectingCalendar ? 'Connecting...' : 'Connect Calendar'}
+            </button>
           )}
         </div>
       </div>
