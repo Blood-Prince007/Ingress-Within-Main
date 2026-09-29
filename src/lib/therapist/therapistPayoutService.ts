@@ -860,4 +860,17 @@ export class TherapistPayoutService {
 
     return batches;
   }
+
+  /**
+   * Fetches all earnings for a therapist from memory/cache.
+   */
+  static getInMemoryEarningsForTherapist(therapistAccountId: string): TherapistEarningRecord[] {
+    const list: TherapistEarningRecord[] = [];
+    for (const e of this.inMemoryEarnings.values()) {
+      if (e.therapist_account_id === therapistAccountId) {
+        list.push(e);
+      }
+    }
+    return list;
+  }
 }
