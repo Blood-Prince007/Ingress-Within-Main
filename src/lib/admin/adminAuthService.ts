@@ -125,33 +125,33 @@ export class AdminAuthService {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    // 1. Fetch admin account from DB or in-memory store
-    let adminRecord: AdminAccountRecord | null = null;
+    // 1. Fetch admin account from in-memory test store or DB
+    let adminRecord: AdminAccountRecord | null = this.inMemoryAdmins.get(normalizedEmail) || null;
 
-    const { data: dbAdmin } = await supabase
-      .from('admin_accounts')
-      .select('*')
-      .eq('email', normalizedEmail)
-      .maybeSingle();
+    if (!adminRecord) {
+      const { data: dbAdmin } = await supabase
+        .from('admin_accounts')
+        .select('*')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
 
-    if (dbAdmin) {
-      adminRecord = {
-        id: dbAdmin.id,
-        email: dbAdmin.email,
-        password_hash: dbAdmin.password_hash,
-        full_name: dbAdmin.full_name,
-        role: dbAdmin.role,
-        status: dbAdmin.status,
-        failed_login_attempts: dbAdmin.failed_login_attempts || 0,
-        locked_until: dbAdmin.locked_until,
-        last_login_at: dbAdmin.last_login_at,
-        last_login_ip: dbAdmin.last_login_ip,
-        created_by: dbAdmin.created_by,
-        created_at: dbAdmin.created_at,
-        updated_at: dbAdmin.updated_at,
-      };
-    } else {
-      adminRecord = this.inMemoryAdmins.get(normalizedEmail) || null;
+      if (dbAdmin) {
+        adminRecord = {
+          id: dbAdmin.id,
+          email: dbAdmin.email,
+          password_hash: dbAdmin.password_hash,
+          full_name: dbAdmin.full_name,
+          role: dbAdmin.role,
+          status: dbAdmin.status,
+          failed_login_attempts: dbAdmin.failed_login_attempts || 0,
+          locked_until: dbAdmin.locked_until,
+          last_login_at: dbAdmin.last_login_at,
+          last_login_ip: dbAdmin.last_login_ip,
+          created_by: dbAdmin.created_by,
+          created_at: dbAdmin.created_at,
+          updated_at: dbAdmin.updated_at,
+        };
+      }
     }
 
     if (!adminRecord) {
