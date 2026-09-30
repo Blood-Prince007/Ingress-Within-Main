@@ -4,6 +4,9 @@ export const COOKIE_REFRESH_NAME = (process.env.NODE_ENV === 'production' || pro
 export const COOKIE_THERAPIST_ACCESS_NAME = (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test') ? '__Host-iw-th-access' : 'iw-th-access';
 export const COOKIE_THERAPIST_REFRESH_NAME = (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test') ? '__Host-iw-th-refresh' : 'iw-th-refresh';
 
+export const COOKIE_ADMIN_ACCESS_NAME = (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test') ? '__Host-iw-adm-access' : 'iw-adm-access';
+export const COOKIE_ADMIN_REFRESH_NAME = (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test') ? '__Host-iw-adm-refresh' : 'iw-adm-refresh';
+
 export const getCookieOptions = (maxAgeSeconds: number) => {
   const isProd = process.env.NODE_ENV === 'production';
   return {

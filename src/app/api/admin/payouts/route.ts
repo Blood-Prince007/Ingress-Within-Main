@@ -2,22 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TherapistPayoutService } from '../../../../lib/therapist/therapistPayoutService';
 import { requireAuthorizedAdmin } from '../../../../lib/auth/adminAuthHelper';
 import { AdminAuditService } from '../../../../lib/admin/adminAuditService';
+import { AdminPlatformService } from '../../../../lib/admin/adminPlatformService';
 import { supabase } from '../../../../lib/db';
 
 export async function GET(request: NextRequest) {
   try {
     await requireAuthorizedAdmin(request);
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: { code: 'ADMIN_UNAUTHORIZED', message: 'Admin authorization required.' } },
-      { status: 403 }
-    );
-  }
 
-  const { searchParams } = new URL(request.url);
-  const therapistId = searchParams.get('therapist_account_id');
+    const { searchParams } = new URL(request.url);
+    const therapistId = searchParams.get('therapist_account_id');
+    const status = searchParams.get('status') || 'all';
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
 
-  try {
+    // 1. Fetch batches
     let query = supabase
       .from('therapist_payout_batches')
       .select('*')
@@ -27,16 +25,24 @@ export async function GET(request: NextRequest) {
       query = query.eq('therapist_account_id', therapistId);
     }
 
-    const { data, error } = await query;
-    if (error && error.code !== 'PGRST205' && error.code !== '42P01') {
-      throw error;
-    }
+    const { data: batches } = await query;
 
-    return NextResponse.json({ success: true, batches: data || [] });
+    // 2. Fetch withdrawal requests via AdminPlatformService
+    const withdrawalsResult = await AdminPlatformService.getPayouts({
+      page,
+      limit,
+      status,
+    });
+
+    return NextResponse.json({
+      success: true,
+      batches: batches || [],
+      ...withdrawalsResult,
+    });
   } catch (err: any) {
     return NextResponse.json(
       { error: { code: err.code || 'PAYOUT_QUERY_ERROR', message: err.message } },
-      { status: 500 }
+      { status: err.status || 500 }
     );
   }
 }

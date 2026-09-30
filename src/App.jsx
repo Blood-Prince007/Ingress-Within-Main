@@ -19,6 +19,7 @@ const ContactPage = lazy(() => import('./views/ContactPage'));
 const AuthPage = lazy(() => import('./views/AuthPage'));
 const TherapistAuthPage = lazy(() => import('./views/TherapistAuthPage'));
 const TherapistPlatformView = lazy(() => import('./views/therapist/TherapistPlatformView'));
+const AdminPlatformView = lazy(() => import('./views/admin/AdminPlatformView'));
 const RazorpayVerificationPage = lazy(() => import('./views/RazorpayVerificationPage'));
 const AiDataPage = lazy(() => import('./views/AiDataPage'));
 const OnboardingPage = lazy(() => import('./views/OnboardingPage'));
@@ -389,6 +390,9 @@ export default function App({ initialRoute = 'home' }) {
       } else if (path === '/therapist' || path === '/therapist/' || path === '/therapist/auth' || path === '/therapist/auth/' || path === '/therapist/login' || path === '/therapist/login/' || path.startsWith('/therapist/')) {
         setCurrentRoute(path.replace(/^\/|\/$/g, '') || 'therapist/auth');
         window.scrollTo(0, 0);
+      } else if (path === '/admin' || path === '/admin/' || (path.startsWith('/admin') && !path.startsWith('/admin/psychoeducation-lab'))) {
+        setCurrentRoute(path.replace(/^\/|\/$/g, '') || 'admin');
+        window.scrollTo(0, 0);
       } else if (path.startsWith('/onboarding')) {
         setCurrentRoute('onboarding');
         window.scrollTo(0, 0);
@@ -655,6 +659,22 @@ export default function App({ initialRoute = 'home' }) {
       case 'therapist/earnings':
       case 'therapist/profile':
         return <TherapistPlatformView />;
+      case 'admin':
+      case 'admin/login':
+      case 'admin/overview':
+      case 'admin/users':
+      case 'admin/therapists':
+      case 'admin/applications':
+      case 'admin/clients':
+      case 'admin/sessions':
+      case 'admin/payments':
+      case 'admin/payouts':
+      case 'admin/api-usage':
+      case 'admin/health':
+      case 'admin/webhooks':
+      case 'admin/audit-logs':
+      case 'admin/security':
+        return <AdminPlatformView />;
       case 'razorpay-verification':
         return <RazorpayVerificationPage />;
       case 'onboarding':
