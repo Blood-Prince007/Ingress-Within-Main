@@ -42,6 +42,17 @@ export interface AuthenticatedTherapistProfileData {
   profile_image_url?: string | null;
   city?: string | null;
   state?: string | null;
+  practice_name?: string;
+  practice_address?: string;
+  timezone?: string;
+  notification_preferences?: {
+    email_appointment_reminders?: boolean;
+    email_booking_notifications?: boolean;
+    email_cancellation_alerts?: boolean;
+    email_homework_submissions?: boolean;
+    in_app_session_alerts?: boolean;
+    security_alerts?: boolean;
+  };
   created_at: string;
   updated_at: string;
 }
@@ -174,6 +185,17 @@ export async function requireTherapistProfile(request: NextRequest): Promise<Aut
     profile_image_url: profile.profile_image_url || null,
     city: profile.city || null,
     state: profile.state || null,
+    practice_name: profile.practice_name || '',
+    practice_address: profile.practice_address || '',
+    timezone: profile.timezone || 'Asia/Kolkata',
+    notification_preferences: profile.notification_preferences || {
+      email_appointment_reminders: true,
+      email_booking_notifications: true,
+      email_cancellation_alerts: true,
+      email_homework_submissions: true,
+      in_app_session_alerts: true,
+      security_alerts: true,
+    },
     created_at: profile.created_at || account.created_at,
     updated_at: profile.updated_at || account.updated_at
   } : {
@@ -191,6 +213,17 @@ export async function requireTherapistProfile(request: NextRequest): Promise<Aut
     profile_image_url: null,
     city: null,
     state: null,
+    practice_name: '',
+    practice_address: '',
+    timezone: 'Asia/Kolkata',
+    notification_preferences: {
+      email_appointment_reminders: true,
+      email_booking_notifications: true,
+      email_cancellation_alerts: true,
+      email_homework_submissions: true,
+      in_app_session_alerts: true,
+      security_alerts: true,
+    },
     created_at: account.created_at,
     updated_at: account.updated_at
   };

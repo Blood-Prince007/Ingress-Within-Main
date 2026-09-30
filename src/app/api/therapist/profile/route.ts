@@ -5,7 +5,31 @@ import { TherapistPlatformService } from '../../../../lib/therapist/therapistPla
 export async function GET(request: NextRequest) {
   try {
     const { account, profile } = await requireTherapistProfile(request);
-    return NextResponse.json({ success: true, account, profile });
+
+    // Compute summary stats for the profile settings hub
+    let balanceSummary: any = null;
+    let deactivationReadiness: any = null;
+    try {
+      deactivationReadiness = await TherapistPlatformService.checkDeactivationReadiness(account.id);
+      balanceSummary = {
+        availableToWithdraw: deactivationReadiness.availableBalance,
+        inFlightWithdrawals: deactivationReadiness.inFlightWithdrawals,
+      };
+    } catch {
+      // In-memory or fallback
+    }
+
+    return NextResponse.json({
+      success: true,
+      account,
+      profile,
+      summary: {
+        activeClients: deactivationReadiness?.activeClients || 0,
+        upcomingSessions: deactivationReadiness?.upcomingSessions || 0,
+        availableBalance: balanceSummary?.availableToWithdraw || 0,
+        canDeactivate: deactivationReadiness?.canDeactivate ?? false,
+      },
+    });
   } catch (err: any) {
     return NextResponse.json(
       { error: { code: err.code || 'PROFILE_ERROR', message: err.message } },
@@ -20,6 +44,11 @@ export async function PATCH(request: NextRequest) {
 
     // Mass Assignment Shield: Strictly Reject attempts to tamper with protected fields
     const FORBIDDEN_KEYS = [
+      'id',
+      'therapist_account_id',
+      'auth_user_id',
+      'phone',
+      'phone_number',
       'can_practice',
       'canPractice',
       'status',

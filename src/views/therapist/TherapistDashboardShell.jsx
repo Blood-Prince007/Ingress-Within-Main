@@ -307,7 +307,7 @@ export default function TherapistDashboardShell({ therapistData, onLogout }) {
               <TherapistEarningsView />
             )}
             {activeTab === 'profile' && (
-              <TherapistProfileView />
+              <TherapistProfileView onNavigateTab={handleTabChange} onLogout={onLogout} />
             )}
           </>
         )}
