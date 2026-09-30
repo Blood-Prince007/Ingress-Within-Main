@@ -55,15 +55,17 @@ CREATE INDEX IF NOT EXISTS idx_admin_sessions_lookup
 CREATE TABLE IF NOT EXISTS public.webhook_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id VARCHAR(100) UNIQUE NOT NULL,
-    provider VARCHAR(50) NOT NULL DEFAULT 'razorpay',
     event_type VARCHAR(100) NOT NULL,
     payload JSONB NOT NULL DEFAULT '{}'::jsonb,
-    status VARCHAR(50) NOT NULL DEFAULT 'processed' CHECK (status IN ('received', 'processing', 'processed', 'failed', 'ignored')),
     processed BOOLEAN NOT NULL DEFAULT true,
-    error_message TEXT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    processed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Ensure all formal columns exist if table was already created in earlier billing migration
+ALTER TABLE public.webhook_events ADD COLUMN IF NOT EXISTS provider VARCHAR(50) NOT NULL DEFAULT 'razorpay';
+ALTER TABLE public.webhook_events ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'processed';
+ALTER TABLE public.webhook_events ADD COLUMN IF NOT EXISTS error_message TEXT NULL;
+ALTER TABLE public.webhook_events ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ NULL DEFAULT now();
 
 CREATE INDEX IF NOT EXISTS idx_webhook_events_lookup
     ON public.webhook_events (provider, event_type, created_at DESC);
