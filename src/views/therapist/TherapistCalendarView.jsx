@@ -103,15 +103,24 @@ export default function TherapistCalendarView({
   const handleConnectCalendar = async () => {
     setConnectingCalendar(true);
     try {
-      const res = await fetch('/api/calendar/google/connect?type=therapist&returnTo=/therapist/calendar', {
+      const res = await fetch('/api/calendar/google/connect?type=therapist&returnTo=/therapist/calendar&format=json', {
         headers: { 'Accept': 'application/json' },
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;
-          return;
-        }
+      const data = await res.json().catch(() => ({}));
+      if (data.simulated) {
+        await fetchCalendar();
+        alert('Google Calendar connected successfully!');
+        setConnectingCalendar(false);
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      if (!res.ok) {
+        alert(data.error?.message || 'Failed to initiate Google Calendar connection.');
+        setConnectingCalendar(false);
+        return;
       }
       window.location.href = '/api/calendar/google/connect?type=therapist&returnTo=/therapist/calendar';
     } catch {

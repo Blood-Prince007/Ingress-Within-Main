@@ -110,13 +110,24 @@ export default function ClientTherapySessionsView() {
 
   const handleConnectGoogleCal = async () => {
     try {
-      const res = await fetch('/api/calendar/google/connect');
-      const data = await res.json();
+      const res = await fetch('/api/calendar/google/connect?format=json', {
+        headers: { Accept: 'application/json' },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.simulated) {
+        await fetchSessions();
+        alert('Google Calendar connected successfully!');
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
+        return;
       }
-    } catch (err) {
-      alert('Failed to initiate Google Calendar connection.');
+      if (!res.ok) {
+        alert(data.error?.message || 'Failed to initiate Google Calendar connection.');
+      }
+    } catch {
+      alert('Failed to initiate Google Calendar connection. Please check your network or server configuration.');
     }
   };
 

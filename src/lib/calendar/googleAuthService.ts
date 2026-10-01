@@ -535,4 +535,63 @@ export class GoogleAuthService {
       lastSyncedAt: data?.last_synced_at || null,
     };
   }
+
+  /**
+   * Development & local testing simulation helper.
+   * Connects a mock Google Calendar account when real Google OAuth credentials are not yet configured.
+   */
+  static async simulateConnection(
+    accountType: 'user' | 'therapist',
+    accountId: string,
+    email?: string
+  ) {
+    const targetUserId = accountType === 'user' ? accountId : null;
+    const targetTherapistId = accountType === 'therapist' ? accountId : null;
+    const connectionKey = `${accountType}:${accountId}`;
+    const mockEmail = email || (accountType === 'therapist' ? 'dr.therapist@ingresswithin.com' : 'client@ingresswithin.com');
+
+    let query = supabase.from('google_calendar_connections').select('id');
+    if (accountType === 'therapist') {
+      query = query.eq('therapist_account_id', targetTherapistId).eq('account_type', 'therapist');
+    } else {
+      query = query.eq('user_id', targetUserId).eq('account_type', 'user');
+    }
+
+    const { data: existing } = await query.maybeSingle();
+
+    const payload = {
+      id: existing?.id || crypto.randomUUID(),
+      account_type: accountType,
+      user_id: targetUserId,
+      therapist_account_id: targetTherapistId,
+      google_email: mockEmail,
+      google_account_id: 'simulated_google_id_' + Date.now(),
+      access_token_encrypted: encryptToken('simulated_access_token_' + Date.now()),
+      refresh_token_encrypted: encryptToken('simulated_refresh_token_' + Date.now()),
+      token_expiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      sync_status: 'connected',
+      last_synced_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existing?.id) {
+      await supabase.from('google_calendar_connections').update(payload).eq('id', existing.id);
+    } else {
+      const { error: insertErr } = await supabase.from('google_calendar_connections').insert(payload);
+      if (insertErr) {
+        this.inMemoryConnections.set(connectionKey, payload);
+      }
+    }
+    this.inMemoryConnections.set(connectionKey, payload);
+
+    return {
+      success: true,
+      simulated: true,
+      accountType,
+      googleEmail: mockEmail,
+      syncStatus: 'connected',
+      lastSyncedAt: payload.last_synced_at,
+    };
+  }
 }
+

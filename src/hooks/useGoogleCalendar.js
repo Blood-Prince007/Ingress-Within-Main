@@ -19,13 +19,23 @@ export function useGoogleCalendar(options = {}) {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const [canSimulate, setCanSimulate] = useState(false);
+
   const fetchStatus = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const typeParam = accountType === 'therapist' ? '?type=therapist' : '';
-      const res = await fetch(`/api/calendar/google/status${typeParam}`);
+      const res = await fetch(`/api/calendar/google/status${typeParam}`, {
+        headers: { Accept: 'application/json' },
+      });
       if (!res.ok) {
+        if (res.status === 401) {
+          // Unauthenticated or session expired; keep not_connected without loud error
+          setConnected(false);
+          setSyncStatus('not_connected');
+          return;
+        }
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error?.message || 'Failed to check calendar connection status.');
       }
@@ -35,7 +45,10 @@ export function useGoogleCalendar(options = {}) {
       setSyncStatus(data.syncStatus || 'not_connected');
       setLastSyncedAt(data.lastSyncedAt || null);
     } catch (err) {
-      setError(err.message || 'Error fetching calendar status');
+      const msg = err.name === 'TypeError' || err.message?.includes('fetch')
+        ? 'Calendar status unavailable: network connection issue.'
+        : (err.message || 'Error fetching calendar status');
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -46,30 +59,51 @@ export function useGoogleCalendar(options = {}) {
   }, [fetchStatus]);
 
   // Initiate OAuth flow
-  const connect = useCallback(async (customReturnTo) => {
+  const connect = useCallback(async (customReturnTo, connectOpts = {}) => {
     setActionLoading(true);
     setError(null);
     try {
       const targetReturn = customReturnTo || returnTo;
       const typeParam = accountType === 'therapist' ? '&type=therapist' : '';
-      const res = await fetch(
-        `/api/calendar/google/connect?returnTo=${encodeURIComponent(targetReturn)}${typeParam}`
-      );
+      const simParam = connectOpts.simulate ? '&simulate=true' : '';
+      const endpoint = `/api/calendar/google/connect?returnTo=${encodeURIComponent(targetReturn)}${typeParam}&format=json${simParam}`;
+
+      const res = await fetch(endpoint, {
+        headers: { Accept: 'application/json' },
+      });
+
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error?.message || 'Failed to initiate Google Calendar connection.');
+        if (data.canSimulate) {
+          setCanSimulate(true);
+        }
+        throw new Error(data.error?.message || 'Failed to initiate Google Calendar connection.');
       }
-      const data = await res.json();
+
+      if (data.simulated) {
+        await fetchStatus();
+        return;
+      }
+
       if (data.url) {
         window.location.href = data.url;
       } else {
-        throw new Error('No authorization URL returned.');
+        throw new Error('No authorization URL returned by server.');
       }
     } catch (err) {
-      setError(err.message);
+      const isFetchErr = err.name === 'TypeError' || err.message?.includes('fetch');
+      const friendlyMsg = isFetchErr
+        ? 'Unable to reach calendar authentication service. Please check your network or server configuration.'
+        : (err.message || 'Failed to connect Google Calendar.');
+      setError(friendlyMsg);
       setActionLoading(false);
     }
-  }, [accountType, returnTo]);
+  }, [accountType, returnTo, fetchStatus]);
+
+  const connectSimulated = useCallback(async (customReturnTo) => {
+    return connect(customReturnTo, { simulate: true });
+  }, [connect]);
 
   // Disconnect Google Calendar
   const disconnect = useCallback(async () => {
@@ -78,7 +112,7 @@ export function useGoogleCalendar(options = {}) {
     try {
       const res = await fetch('/api/calendar/google/disconnect', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ type: accountType }),
       });
       if (!res.ok) {
@@ -87,7 +121,7 @@ export function useGoogleCalendar(options = {}) {
       }
       await fetchStatus();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to disconnect Google Calendar.');
     } finally {
       setActionLoading(false);
     }
@@ -98,6 +132,10 @@ export function useGoogleCalendar(options = {}) {
     return fetchStatus();
   }, [fetchStatus]);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   return {
     connected,
     email: googleEmail,
@@ -106,8 +144,11 @@ export function useGoogleCalendar(options = {}) {
     lastSyncedAt,
     loading: loading || actionLoading,
     error,
+    canSimulate,
     connect,
+    connectSimulated,
     disconnect,
     refresh,
+    clearError,
   };
 }

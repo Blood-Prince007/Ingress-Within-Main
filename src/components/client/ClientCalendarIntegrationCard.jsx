@@ -18,9 +18,12 @@ export default function ClientCalendarIntegrationCard({ className = '', onStatus
     lastSyncedAt,
     loading,
     error,
+    canSimulate,
     connect,
+    connectSimulated,
     disconnect,
     refresh,
+    clearError,
   } = useGoogleCalendar({
     type: 'user',
     returnTo: '/settings',
@@ -67,9 +70,40 @@ export default function ClientCalendarIntegrationCard({ className = '', onStatus
 
       {/* Error / Alert banner */}
       {error && (
-        <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-start gap-2.5">
-          <AlertCircle size={15} className="shrink-0 mt-0.5" />
-          <span className="leading-relaxed">{error}</span>
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-900 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle size={16} className="text-red-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-medium text-red-950">Connection Issue</p>
+                <p className="leading-relaxed text-red-800">{error}</p>
+              </div>
+            </div>
+            {clearError && (
+              <button
+                type="button"
+                onClick={clearError}
+                className="text-red-500 hover:text-red-800 text-xs p-1"
+                title="Dismiss"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {(canSimulate || error.includes('credentials') || error.includes('simulated')) && (
+            <div className="pt-2 border-t border-red-200/60 flex items-center justify-between">
+              <span className="text-[11px] text-red-700">Development mode detected:</span>
+              <button
+                type="button"
+                onClick={() => connectSimulated('/settings')}
+                disabled={loading}
+                className="px-3 py-1.5 bg-[#132A24] text-white rounded-lg text-[11px] font-semibold hover:bg-[#132A24]/90 transition cursor-pointer"
+              >
+                Connect in Simulated Dev Mode
+              </button>
+            </div>
+          )}
         </div>
       )}
 

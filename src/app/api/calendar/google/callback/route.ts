@@ -5,12 +5,14 @@ import { getAuthenticatedTherapist } from '../../../../../lib/therapist/therapis
 import { GoogleAuthService } from '../../../../../lib/calendar/googleAuthService';
 
 function getBaseOrigin(request: NextRequest): string {
-  const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
-  const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
-  if (forwardedHost) {
-    return `${forwardedProto}://${forwardedHost}`;
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, '');
   }
-  return request.nextUrl.origin;
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+  const proto = forwardedProto || (request.nextUrl.protocol ? request.nextUrl.protocol.replace(':', '') : (isLocal ? 'http' : 'https'));
+  return `${proto}://${host}`;
 }
 
 export async function GET(request: NextRequest) {
