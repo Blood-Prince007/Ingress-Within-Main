@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
         submittedAt: state.application?.submitted_at,
         reviewedAt: state.application?.reviewed_at,
         reviewerNotes: state.application?.reviewer_notes,
+        rejectionReason: (state.application as any)?.rejection_reason || null,
+        resubmittedAt: (state.application as any)?.resubmitted_at || null,
       },
     });
   } catch (err: any) {

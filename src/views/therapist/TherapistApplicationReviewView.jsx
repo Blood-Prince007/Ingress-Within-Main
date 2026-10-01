@@ -2,10 +2,13 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Clock, ShieldCheck, CheckCircle2, FileText, ArrowRight, LogOut, HelpCircle, AlertCircle } from 'lucide-react';
 
-export default function TherapistApplicationReviewView({ applicationData, onLogout, onRefresh }) {
+export default function TherapistApplicationReviewView({ applicationData, onLogout, onRefresh, onEditApplication }) {
   const account = applicationData?.account;
   const profile = applicationData?.profile;
   const application = applicationData?.application;
+
+  const isRejected = account?.applicationStatus === 'rejected' || account?.application_status === 'rejected';
+  const rejectionReason = application?.rejectionReason || application?.reviewerNotes || account?.rejection_reason;
 
   const submittedAtDate = application?.submittedAt
     ? new Date(application.submittedAt).toLocaleDateString('en-IN', {
@@ -18,8 +21,16 @@ export default function TherapistApplicationReviewView({ applicationData, onLogo
   const verificationStages = [
     { title: 'Identity & Mobile Verification', status: 'completed', desc: 'Phone OTP confirmed' },
     { title: 'Clinical Onboarding Submission', status: 'completed', desc: '11-step application profile recorded' },
-    { title: 'Degrees & License Review', status: 'in_progress', desc: 'Verification of clinical credentials' },
-    { title: 'Practice Authorization', status: 'pending', desc: 'Unlocking clinical caseload & dashboard' },
+    {
+      title: 'Degrees & License Review',
+      status: isRejected ? 'rejected' : 'in_progress',
+      desc: isRejected ? 'Revisions requested by clinical reviewer' : 'Verification of clinical credentials',
+    },
+    {
+      title: 'Practice Authorization',
+      status: 'pending',
+      desc: isRejected ? 'Awaiting application resubmission' : 'Unlocking clinical caseload & dashboard',
+    },
   ];
 
   return (
@@ -57,19 +68,43 @@ export default function TherapistApplicationReviewView({ applicationData, onLogo
         >
           {/* Header Status */}
           <div className="text-center space-y-3">
-            <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto">
-              <Clock size={32} />
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${
+              isRejected ? 'bg-amber-500/10 text-amber-700' : 'bg-amber-500/10 text-amber-600'
+            }`}>
+              {isRejected ? <AlertCircle size={32} /> : <Clock size={32} />}
             </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold uppercase tracking-wider">
-              Application Under Review
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider ${
+              isRejected ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-amber-100 text-amber-800'
+            }`}>
+              {isRejected ? 'Application Requires Revision' : 'Application Under Review'}
             </div>
             <h1 className="font-serif text-3xl font-normal text-[#132A24]">
               Welcome, {profile?.fullName || 'Practitioner'}
             </h1>
             <p className="text-sm text-[#132A24]/60 max-w-md mx-auto leading-relaxed">
-              Your clinical application was submitted on <span className="font-medium text-[#132A24]">{submittedAtDate}</span>. Our clinical governance team is reviewing your profile and credentials.
+              {isRejected ? (
+                <>Our clinical review team has reviewed your application submitted on <span className="font-medium text-[#132A24]">{submittedAtDate}</span> and requested updates before granting practice authorization.</>
+              ) : (
+                <>Your clinical application was submitted on <span className="font-medium text-[#132A24]">{submittedAtDate}</span>. Our clinical governance team is reviewing your profile and credentials.</>
+              )}
             </p>
           </div>
+
+          {/* Rejection Feedback Banner */}
+          {isRejected && (
+            <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-amber-950 space-y-2">
+              <div className="flex items-center gap-2 font-semibold text-amber-900">
+                <AlertCircle size={15} className="text-amber-700 shrink-0" />
+                <span>Review Feedback & Action Items</span>
+              </div>
+              <p className="text-xs text-amber-900/90 leading-relaxed font-sans bg-white/70 p-3 rounded-lg border border-amber-200/50 whitespace-pre-wrap">
+                {rejectionReason || 'Please review your uploaded credentials and experience details. Re-verify document clarity and ensure all certificates are legible.'}
+              </p>
+              <p className="text-[11px] text-amber-800/80">
+                You can update your answers and replace verification documents directly, then resubmit your application for immediate re-evaluation.
+              </p>
+            </div>
+          )}
 
           {/* Verification Pipeline Checklist */}
           <div className="border border-[#132A24]/10 rounded-xl divide-y divide-[#132A24]/10 bg-[#FAFAF8]/50">
@@ -80,6 +115,8 @@ export default function TherapistApplicationReviewView({ applicationData, onLogo
                     <CheckCircle2 size={16} className="text-[#4E7A66] shrink-0" />
                   ) : stage.status === 'in_progress' ? (
                     <Clock size={16} className="text-amber-600 shrink-0 animate-pulse" />
+                  ) : stage.status === 'rejected' ? (
+                    <AlertCircle size={16} className="text-amber-700 shrink-0" />
                   ) : (
                     <div className="w-4 h-4 rounded-full border border-[#132A24]/20 shrink-0" />
                   )}
@@ -94,9 +131,11 @@ export default function TherapistApplicationReviewView({ applicationData, onLogo
                     ? 'bg-[#4E7A66]/10 text-[#4E7A66]'
                     : stage.status === 'in_progress'
                     ? 'bg-amber-100 text-amber-800'
+                    : stage.status === 'rejected'
+                    ? 'bg-amber-100 text-amber-900 border border-amber-200'
                     : 'bg-[#132A24]/5 text-[#132A24]/40'
                 }`}>
-                  {stage.status === 'completed' ? 'Verified' : stage.status === 'in_progress' ? 'In Review' : 'Pending'}
+                  {stage.status === 'completed' ? 'Verified' : stage.status === 'in_progress' ? 'In Review' : stage.status === 'rejected' ? 'Revision Needed' : 'Pending'}
                 </span>
               </div>
             ))}
@@ -115,12 +154,21 @@ export default function TherapistApplicationReviewView({ applicationData, onLogo
 
           {/* Actions */}
           <div className="pt-2 flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={onRefresh}
-              className="flex-1 py-3 px-4 rounded-lg bg-[#132A24] text-white text-xs font-semibold hover:bg-[#132A24]/90 transition-all cursor-pointer text-center"
-            >
-              Check Status
-            </button>
+            {isRejected ? (
+              <button
+                onClick={onEditApplication}
+                className="flex-1 py-3 px-4 rounded-lg bg-[#4E7A66] text-white text-xs font-semibold hover:bg-[#3D6353] transition-all cursor-pointer text-center inline-flex items-center justify-center gap-2 shadow-xs"
+              >
+                <FileText size={14} /> Update Application & Resubmit
+              </button>
+            ) : (
+              <button
+                onClick={onRefresh}
+                className="flex-1 py-3 px-4 rounded-lg bg-[#132A24] text-white text-xs font-semibold hover:bg-[#132A24]/90 transition-all cursor-pointer text-center"
+              >
+                Check Status
+              </button>
+            )}
             <a
               href="mailto:clinical@ingresswithin.com"
               className="flex-1 py-3 px-4 rounded-lg border border-[#132A24]/15 text-[#132A24] text-xs font-medium hover:bg-[#132A24]/5 transition-all cursor-pointer text-center no-underline"

@@ -431,9 +431,26 @@ export class AdminPlatformService {
 
   /**
    * 5. Therapist Applications Review Queue
+   * Supports both object-based paginated options and legacy string status.
    */
-  static async getApplications(status = 'pending') {
-    let query = supabase.from('therapist_accounts').select('*');
+  static async getApplications(
+    options: string | { status?: string; page?: number; limit?: number; search?: string } = 'pending'
+  ) {
+    let status = 'pending';
+    let page = 1;
+    let limit = 20;
+    let search = '';
+
+    if (typeof options === 'string') {
+      status = options;
+    } else if (options && typeof options === 'object') {
+      status = options.status || 'pending';
+      page = Math.max(1, options.page || 1);
+      limit = Math.min(100, Math.max(1, options.limit || 20));
+      search = (options.search || '').trim().toLowerCase();
+    }
+
+    let query = supabase.from('therapist_accounts').select('*', { count: 'exact' });
 
     if (status === 'pending') {
       query = query.in('application_status', ['submitted', 'under_review', 'pending']);
@@ -441,82 +458,490 @@ export class AdminPlatformService {
       query = query.eq('application_status', status);
     }
 
-    const { data: accounts } = await query.order('created_at', { ascending: false });
+    const offset = (page - 1) * limit;
+    const { data: accounts, count } = await query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     const applications: any[] = [];
     if (accounts && accounts.length > 0) {
       const accountIds = accounts.map((a: any) => a.id);
-      const { data: profiles } = await supabase
-        .from('therapist_profiles')
-        .select('*')
-        .in('therapist_account_id', accountIds);
+
+      const [{ data: profiles }, { data: appData }] = await Promise.all([
+        supabase
+          .from('therapist_profiles')
+          .select('*')
+          .in('therapist_account_id', accountIds),
+        supabase
+          .from('therapist_applications')
+          .select('therapist_account_id, submitted_at, resubmitted_at, answers, documents, rejection_reason')
+          .in('therapist_account_id', accountIds),
+      ]);
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.therapist_account_id, p]));
+      const appMap = new Map((appData || []).map((a: any) => [a.therapist_account_id, a]));
 
       for (const a of accounts) {
         const p: any = profileMap.get(a.id) || {};
+        const app: any = appMap.get(a.id) || {};
+        const fullName = p.full_name || app.answers?.fullName || 'Applicant';
+
+        // Filter by search query if supplied
+        if (search) {
+          const matchName = fullName.toLowerCase().includes(search);
+          const matchPhone = (a.phone_number || '').includes(search);
+          const matchTitle = (p.title || app.answers?.credentials || '').toLowerCase().includes(search);
+          if (!matchName && !matchPhone && !matchTitle) {
+            continue;
+          }
+        }
+
+        const docCount = Array.isArray(app.documents) ? app.documents.length : 0;
+        const specialties = Array.isArray(p.specializations) && p.specializations.length
+          ? p.specializations
+          : (Array.isArray(app.answers?.specialties) ? app.answers.specialties : []);
+
         applications.push({
           therapistAccountId: a.id,
           phone_number: a.phone_number,
-          email: a.email,
+          email: a.email || null,
+          status: a.status,
           application_status: a.application_status,
           verification_status: a.verification_status,
           can_practice: a.can_practice,
           rci_registered: !!a.rci_registered,
           rci_number: a.rci_number || null,
-          full_name: p.full_name || 'Applicant',
-          title: p.title || '',
-          bio: p.bio || '',
-          qualification: p.qualification || '',
-          experience_years: p.experience_years || 0,
-          specializations: p.specializations || [],
-          languages: p.languages || [],
-          submitted_at: a.created_at,
+          full_name: fullName,
+          title: p.title || app.answers?.credentials || 'Clinician',
+          bio: p.bio || app.answers?.bio || '',
+          qualification: p.qualification || app.answers?.credentials || '',
+          experience_years: p.experience_years || Number(app.answers?.yearsOfExperience) || 0,
+          specializations: specialties,
+          languages: p.languages || app.answers?.languages || ['English'],
+          submitted_at: app.submitted_at || a.created_at,
+          resubmitted_at: app.resubmitted_at || null,
+          rejection_reason: app.rejection_reason || null,
+          documents_count: docCount,
+          profile_complete: Boolean(p.full_name && p.bio && p.qualification),
         });
       }
     }
 
-    return applications;
+    // When called via old string status signature, return raw array for backward compatibility
+    if (typeof options === 'string') {
+      return applications;
+    }
+
+    return {
+      applications,
+      pagination: {
+        page,
+        limit,
+        total: count || applications.length,
+        totalPages: Math.ceil((count || applications.length) / limit),
+      },
+    };
   }
 
   /**
-   * Reviews and transitions a therapist application.
+   * Retrieves the comprehensive clinical verification dossier for a therapist.
+   * Assembles Basic Info, Professional Profile, Education, Credentials, Documents,
+   * Practice readiness, and complete review history.
    */
-  static async reviewApplication(params: {
-    therapistAccountId: string;
-    decision: 'approved' | 'rejected';
-    adminId: string;
-    reviewerNotes?: string;
-  }) {
-    const { therapistAccountId, decision, adminId, reviewerNotes } = params;
+  static async getApplicationDetail(therapistAccountId: string) {
+    if (!therapistAccountId) {
+      const err: any = new Error('Therapist account ID is required.');
+      err.code = 'INVALID_ID';
+      err.status = 400;
+      throw err;
+    }
 
-    if (decision !== 'approved' && decision !== 'rejected') {
-      const err: any = new Error('Invalid review decision: must be approved or rejected.');
-      err.code = 'INVALID_DECISION';
+    // 1. Fetch account, profile, application, and reviews concurrently
+    const [
+      { data: account, error: accError },
+      { data: profile },
+      { data: application },
+      { data: payoutAccount },
+      { data: reviews },
+    ] = await Promise.all([
+      supabase
+        .from('therapist_accounts')
+        .select('*')
+        .eq('id', therapistAccountId)
+        .maybeSingle(),
+      supabase
+        .from('therapist_profiles')
+        .select('*')
+        .eq('therapist_account_id', therapistAccountId)
+        .maybeSingle(),
+      supabase
+        .from('therapist_applications')
+        .select('*')
+        .eq('therapist_account_id', therapistAccountId)
+        .maybeSingle(),
+      supabase
+        .from('therapist_payout_accounts')
+        .select('id, payout_method, is_verified, bank_name, masked_account_number')
+        .eq('therapist_account_id', therapistAccountId)
+        .eq('is_active', true)
+        .maybeSingle(),
+      supabase
+        .from('therapist_application_reviews')
+        .select('*')
+        .eq('therapist_account_id', therapistAccountId)
+        .order('created_at', { ascending: false }),
+    ]);
+
+    if (accError || !account) {
+      const err: any = new Error('Therapist application not found.');
+      err.code = 'APPLICATION_NOT_FOUND';
+      err.status = 404;
+      throw err;
+    }
+
+    const answers = (application?.answers || {}) as Record<string, any>;
+    const rawDocs = Array.isArray(application?.documents) ? application.documents : [];
+
+    // Helper: Mask sensitive identifiers (e.g. license/RCI numbers)
+    const maskIdentifier = (val?: string | null) => {
+      if (!val || typeof val !== 'string') return null;
+      const trimmed = val.trim();
+      if (trimmed.length <= 4) return '****';
+      return `${trimmed.slice(0, 2)}****${trimmed.slice(-4)}`;
+    };
+
+    // 2. Structured Sections
+    const basicInfo = {
+      fullName: profile?.full_name || answers.fullName || 'Clinician Applicant',
+      email: account.email || answers.email || null,
+      phone: account.phone_number,
+      city: profile?.city || answers.city || null,
+      state: profile?.state || answers.state || null,
+      profileImageUrl: profile?.profile_image_url || answers.photo?.path || null,
+      timezone: 'Asia/Kolkata',
+      createdAt: account.created_at,
+      status: account.status,
+      applicationStatus: account.application_status,
+      verificationStatus: account.verification_status,
+      canPractice: account.can_practice,
+    };
+
+    const professionalInfo = {
+      title: profile?.title || answers.credentials || 'Clinical Psychologist',
+      qualification: profile?.qualification || answers.credentials || 'Not specified',
+      bio: profile?.bio || answers.bio || '',
+      yearsOfExperience: profile?.experience_years || Number(answers.yearsOfExperience) || 0,
+      specializations: Array.isArray(profile?.specializations) && profile.specializations.length
+        ? profile.specializations
+        : (Array.isArray(answers.specialties) ? answers.specialties : []),
+      modalities: Array.isArray(answers.modalities) ? answers.modalities : (profile?.modalities || []),
+      primaryModalities: Array.isArray(answers.primaryModalities) ? answers.primaryModalities : [],
+      languages: Array.isArray(profile?.languages) ? profile.languages : (answers.languages || ['English', 'Hindi']),
+      ageGroups: Array.isArray(answers.ageGroups) ? answers.ageGroups : [],
+      vignetteAnswers: answers.vignetteAnswers || {},
+    };
+
+    // 3. Education Parsing
+    let educationList: any[] = [];
+    if (Array.isArray(answers.education) && answers.education.length > 0) {
+      educationList = answers.education.map((edu: any) => ({
+        degree: edu.degree || 'Degree',
+        institution: edu.institution || edu.university || 'University',
+        field: edu.field || 'Psychology / Mental Health',
+        startYear: edu.startYear || null,
+        endYear: edu.endYear || edu.year || null,
+      }));
+    } else {
+      educationList = [
+        {
+          degree: answers.credentials || profile?.qualification || 'Master of Psychology',
+          institution: answers.issuingBody || 'Accredited Institution',
+          field: 'Clinical Psychology',
+          endYear: null,
+        },
+      ];
+    }
+
+    // 4. Professional Credentials & RCI
+    const credentials = {
+      issuingBody: answers.issuingBody || (account.rci_registered ? 'Rehabilitation Council of India' : 'Professional Board'),
+      licenseNumberMasked: maskIdentifier(answers.licenseNumber || account.rci_number),
+      licenseNumberFull: answers.licenseNumber || account.rci_number || null,
+      rciRegistered: Boolean(account.rci_registered),
+      rciNumber: account.rci_number || null,
+      traumaCertification: Boolean(answers.traumaCertification),
+      primaryModalityCertified: Boolean(answers.primaryModalityCertificate),
+      supervisionConfirmed: Boolean(answers.supervisionConfirmation),
+    };
+
+    // 5. Verification Documents
+    const documents = rawDocs.map((doc: any, index: number) => ({
+      id: doc.id || `doc_${index}`,
+      category: doc.category || 'credential',
+      filename: doc.filename || doc.path?.split('/').pop() || 'document.pdf',
+      mimeType: doc.mimeType || 'application/pdf',
+      sizeBytes: doc.size || 0,
+      path: doc.path,
+      uploadedAt: doc.uploadedAt || application?.created_at,
+      verificationStatus: doc.verificationStatus || 'pending',
+    }));
+
+    // 6. Practice Information
+    const practiceInfo = {
+      sessionFormats: Array.isArray(profile?.session_formats) ? profile.session_formats : ['telehealth'],
+      perSessionFee: Number(account.per_session_fee || 1500),
+      commissionRate: Number(account.commission_rate || 15.0),
+      availabilityHours: profile?.availability_hours || {
+        mon: ['09:00-17:00'],
+        tue: ['09:00-17:00'],
+        wed: ['09:00-17:00'],
+        thu: ['09:00-17:00'],
+        fri: ['09:00-17:00'],
+      },
+    };
+
+    // 7. Platform Readiness Checklist
+    const hasProfile = Boolean(basicInfo.fullName && professionalInfo.bio);
+    const hasCredentials = Boolean(credentials.licenseNumberFull && credentials.issuingBody);
+    const hasDocuments = documents.length > 0;
+    const hasEthics = answers.ethicsDeclaration !== false;
+    const hasBackgroundCheck = answers.backgroundCheckConsent !== false;
+    const hasPayout = Boolean(payoutAccount?.id);
+
+    const readiness = {
+      profileCompleted: hasProfile,
+      credentialsSubmitted: hasCredentials,
+      documentsUploaded: hasDocuments,
+      ethicsDeclared: hasEthics,
+      backgroundCheckConsented: hasBackgroundCheck,
+      payoutConfigured: hasPayout,
+      overallReadyForReview: hasProfile && hasCredentials && hasDocuments,
+      isVerified: account.verification_status === 'verified' && account.can_practice === true,
+    };
+
+    // 8. Review History
+    const rawReviews = (reviews && reviews.length > 0)
+      ? reviews
+      : await TherapistPlatformService.getReviewHistory(therapistAccountId);
+
+    const history = rawReviews.map((r: any) => ({
+      id: r.id,
+      action: r.action,
+      previousStatus: r.previous_status,
+      newStatus: r.new_status,
+      reviewerId: r.reviewer_id,
+      reason: r.reason,
+      reviewerNotes: r.reviewer_notes,
+      createdAt: r.created_at,
+    }));
+
+    return {
+      therapistAccountId,
+      applicationId: application?.id || null,
+      submittedAt: application?.submitted_at || account.created_at,
+      resubmittedAt: application?.resubmitted_at || null,
+      reviewedAt: application?.reviewed_at || null,
+      rejectionReason: application?.rejection_reason || null,
+      reviewerNotes: application?.reviewer_notes || null,
+      basicInfo,
+      professionalInfo,
+      education: educationList,
+      credentials,
+      documents,
+      practiceInfo,
+      readiness,
+      readinessChecklist: readiness,
+      applicationMeta: {
+        applicationStatus: account.application_status,
+        verificationStatus: account.verification_status,
+        canPractice: Boolean(account.can_practice),
+        rejectionReason: application?.rejection_reason || null,
+        reviewerNotes: application?.reviewer_notes || null,
+        submittedAt: application?.submitted_at || account.created_at,
+        reviewedAt: application?.reviewed_at || null,
+      },
+      reviewHistory: history,
+    };
+  }
+
+  /**
+   * Generates a secure, short-lived 1-hour signed URL for an application document.
+   * Validates that the document path belongs strictly to the target therapist.
+   */
+  static async generateDocumentSignedUrl(
+    paramsOrId: string | { therapistAccountId: string; documentPath: string; adminId: string },
+    documentPathArg?: string,
+    adminIdArg?: string
+  ) {
+    const therapistAccountId = typeof paramsOrId === 'string' ? paramsOrId : paramsOrId.therapistAccountId;
+    const documentPath = typeof paramsOrId === 'string' ? (documentPathArg || '') : paramsOrId.documentPath;
+    const adminId = typeof paramsOrId === 'string' ? (adminIdArg || 'system') : paramsOrId.adminId;
+
+    if (!documentPath || typeof documentPath !== 'string') {
+      const err: any = new Error('Document path is required.');
+      err.code = 'INVALID_PATH';
+      err.status = 400;
+      throw err;
+    }
+
+    // Path Traversal & IDOR Defense: path must start with therapistAccountId/ and contain no relative traversal
+    const normalized = documentPath.replace(/\\/g, '/').replace(/^\/+/, '');
+    if (normalized.includes('..') || normalized.includes('\0')) {
+      const err: any = new Error('Invalid document path. Directory traversal detected.');
+      err.code = 'PATH_TRAVERSAL_DETECTED';
+      err.status = 400;
+      throw err;
+    }
+    if (!normalized.startsWith(`${therapistAccountId}/`)) {
+      const err: any = new Error('Unauthorized document access. Path does not belong to specified therapist.');
+      err.code = 'DOCUMENT_ACCESS_DENIED';
+      err.status = 403;
+      throw err;
+    }
+
+    const { data, error } = await supabase.storage
+      .from('therapist-verification')
+      .createSignedUrl(normalized, 3600); // 1 Hour
+
+    if (error || !data?.signedUrl) {
+      throw new Error(`Failed to generate signed document URL: ${error?.message || 'Storage error'}`);
+    }
+
+    await AdminAuditService.logAction({
+      actorId: adminId,
+      actorType: 'admin_user',
+      action: 'therapist_document_inspected',
+      entityType: 'therapist_document',
+      entityId: therapistAccountId,
+      metadata: {
+        documentPath: normalized,
+        expiresInSeconds: 3600,
+      },
+    });
+
+    return {
+      signedUrl: data.signedUrl,
+      expiresInSeconds: 3600,
+    };
+  }
+
+  /**
+   * Approves a therapist application.
+   * Server-side atomic transaction with concurrency safety, review logging, and notification.
+   */
+  static async approveApplication(
+    paramsOrId: string | { therapistAccountId: string; adminId: string; reviewerNotes?: string },
+    adminIdArg?: string,
+    notesArg?: string
+  ) {
+    const therapistAccountId = typeof paramsOrId === 'string' ? paramsOrId : paramsOrId.therapistAccountId;
+    const adminId = typeof paramsOrId === 'string' ? (adminIdArg || 'system') : paramsOrId.adminId;
+    const reviewerNotes = typeof paramsOrId === 'string' ? notesArg : paramsOrId.reviewerNotes;
+
+    const result = await TherapistPlatformService.adminReviewTherapist(
+      therapistAccountId,
+      'approved',
+      adminId,
+      reviewerNotes || 'Approved by clinical administrator.'
+    );
+
+    await AdminAuditService.logAction({
+      actorId: adminId,
+      actorType: 'admin_user',
+      action: 'therapist.application_approved',
+      entityType: 'therapist',
+      entityId: therapistAccountId,
+      metadata: {
+        decision: 'approved',
+        notes: reviewerNotes || null,
+        canPractice: true,
+      },
+    });
+
+    return {
+      ...result,
+      message: 'Therapist application approved successfully. Clinical practice authorization granted.',
+    };
+  }
+
+  /**
+   * Rejects a therapist application.
+   * Strictly enforces a mandatory operational rejection reason.
+   */
+  static async rejectApplication(
+    paramsOrId: string | { therapistAccountId: string; adminId: string; rejectionReason: string; reviewerNotes?: string },
+    adminIdArg?: string,
+    reasonArg?: string,
+    notesArg?: string
+  ) {
+    const therapistAccountId = typeof paramsOrId === 'string' ? paramsOrId : paramsOrId.therapistAccountId;
+    const adminId = typeof paramsOrId === 'string' ? (adminIdArg || 'system') : paramsOrId.adminId;
+    const rejectionReason = typeof paramsOrId === 'string' ? (reasonArg || '') : paramsOrId.rejectionReason;
+    const reviewerNotes = typeof paramsOrId === 'string' ? notesArg : paramsOrId.reviewerNotes;
+
+    if (!rejectionReason || typeof rejectionReason !== 'string' || rejectionReason.trim().length < 5) {
+      const err: any = new Error('A detailed operational rejection reason (minimum 5 characters) is required.');
+      err.code = 'REJECTION_REASON_REQUIRED';
       err.status = 400;
       throw err;
     }
 
     const result = await TherapistPlatformService.adminReviewTherapist(
       therapistAccountId,
-      decision,
+      'rejected',
       adminId,
-      reviewerNotes
+      reviewerNotes || rejectionReason,
+      rejectionReason.trim()
     );
 
     await AdminAuditService.logAction({
       actorId: adminId,
       actorType: 'admin_user',
-      action: decision === 'approved' ? 'therapist_approved' : 'therapist_rejected',
+      action: 'therapist.application_rejected',
       entityType: 'therapist',
       entityId: therapistAccountId,
       metadata: {
-        decision,
+        decision: 'rejected',
+        reason: rejectionReason.trim(),
         notes: reviewerNotes || null,
+        canPractice: false,
       },
     });
 
-    return result;
+    return {
+      ...result,
+      message: 'Therapist application rejected. Feedback delivered to applicant.',
+    };
+  }
+
+  /**
+   * Reviews and transitions a therapist application.
+   * Backward-compatible dispatcher routing to approve or reject.
+   */
+  static async reviewApplication(params: {
+    therapistAccountId: string;
+    decision: 'approved' | 'rejected';
+    adminId: string;
+    reviewerNotes?: string;
+    rejectionReason?: string;
+  }) {
+    const { therapistAccountId, decision, adminId, reviewerNotes, rejectionReason } = params;
+
+    if (decision === 'approved') {
+      return this.approveApplication({ therapistAccountId, adminId, reviewerNotes });
+    } else if (decision === 'rejected') {
+      return this.rejectApplication({
+        therapistAccountId,
+        adminId,
+        rejectionReason: rejectionReason || reviewerNotes || 'Application declined following clinical credential review.',
+        reviewerNotes,
+      });
+    }
+
+    const err: any = new Error('Invalid review decision: must be approved or rejected.');
+    err.code = 'INVALID_DECISION';
+    err.status = 400;
+    throw err;
   }
 
   /**

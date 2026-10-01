@@ -9,6 +9,7 @@ export default function TherapistPlatformView() {
   const [authState, setAuthState] = useState('checking'); // 'checking' | 'unauthenticated' | 'authenticated'
   const [therapistData, setTherapistData] = useState(null);
   const [appStatusData, setAppStatusData] = useState(null);
+  const [isEditingApplication, setIsEditingApplication] = useState(false);
 
   const checkTherapistSession = async (existingData = null) => {
     try {
@@ -105,14 +106,43 @@ export default function TherapistPlatformView() {
     );
   }
 
-  // 3. Deactivated or suspended
-  if (account?.status === 'suspended' || account?.status === 'rejected' || applicationStatus === 'rejected') {
+  // 3. Rejected application -> REVIEW FEEDBACK & RESUBMIT FLOW
+  if (applicationStatus === 'rejected') {
+    if (isEditingApplication) {
+      return (
+        <TherapistOnboardingView
+          initialData={{
+            application: appStatusData?.application || null,
+            account: therapistData?.therapist,
+            profile: therapistData?.profile,
+          }}
+          onComplete={() => {
+            setIsEditingApplication(false);
+            checkTherapistSession();
+          }}
+          onLogout={handleLogout}
+        />
+      );
+    }
+
+    return (
+      <TherapistApplicationReviewView
+        applicationData={appStatusData || therapistData}
+        onLogout={handleLogout}
+        onRefresh={checkTherapistSession}
+        onEditApplication={() => setIsEditingApplication(true)}
+      />
+    );
+  }
+
+  // 4. Suspended account
+  if (account?.status === 'suspended') {
     return (
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6 text-center">
         <div className="max-w-md bg-white border border-[#132A24]/10 rounded-2xl p-8 shadow-sm space-y-4">
-          <h2 className="font-serif text-2xl text-[#132A24]">Account Inactive</h2>
+          <h2 className="font-serif text-2xl text-[#132A24]">Account Suspended</h2>
           <p className="text-xs text-[#132A24]/60 leading-relaxed">
-            Your clinical practitioner account has been deactivated or paused. Please contact our clinical operations desk at clinical@ingresswithin.com.
+            Your clinical practitioner account has been suspended by administration. Please contact our clinical operations desk at clinical@ingresswithin.com.
           </p>
           <button
             onClick={handleLogout}

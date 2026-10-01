@@ -142,4 +142,53 @@ export class AdminAuditService {
 
     return this.inMemoryLogs.filter((l) => l.action === action);
   }
+
+  /**
+   * Retrieves paginated audit logs with search/action filter and in-memory fallback.
+   */
+  static async getAuditLogs(options: { page?: number; limit?: number; action?: string } = {}) {
+    const page = options.page || 1;
+    const limit = options.limit || 50;
+    const offset = (page - 1) * limit;
+
+    let query = supabase
+      .from('admin_audit_logs')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (options.action) {
+      query = query.eq('action', options.action);
+    }
+
+    const { data, count, error } = await query;
+    if (!error && data && data.length > 0) {
+      return {
+        logs: data,
+        pagination: {
+          page,
+          limit,
+          totalCount: count || data.length,
+          totalPages: Math.ceil((count || data.length) / limit) || 1,
+        },
+      };
+    }
+
+    // In-memory fallback
+    let filtered = [...this.inMemoryLogs].reverse();
+    if (options.action) {
+      filtered = filtered.filter((l) => l.action === options.action);
+    }
+    const paginated = filtered.slice(offset, offset + limit);
+
+    return {
+      logs: paginated,
+      pagination: {
+        page,
+        limit,
+        totalCount: filtered.length,
+        totalPages: Math.ceil(filtered.length / limit) || 1,
+      },
+    };
+  }
 }

@@ -12,26 +12,18 @@ export async function POST(
     const applicationId = resolvedParams.id;
 
     const body = await request.json().catch(() => ({}));
-    const { decision, notes } = body;
+    const { notes } = body;
 
-    if (!decision || (decision !== 'approved' && decision !== 'rejected')) {
-      return NextResponse.json(
-        { error: { code: 'INVALID_DECISION', message: "decision must be 'approved' or 'rejected'." } },
-        { status: 400 }
-      );
-    }
-
-    const result = await AdminPlatformService.reviewApplication({
-      therapistAccountId: applicationId,
-      decision,
-      adminId: admin.adminId,
-      reviewerNotes: notes,
-    });
+    const result = await AdminPlatformService.approveApplication(
+      applicationId,
+      admin.adminId,
+      notes
+    );
 
     return NextResponse.json(result);
   } catch (err: any) {
     return NextResponse.json(
-      { error: { code: err.code || 'REVIEW_ERROR', message: err.message } },
+      { error: { code: err.code || 'APPROVE_ERROR', message: err.message } },
       { status: err.status || 500 }
     );
   }

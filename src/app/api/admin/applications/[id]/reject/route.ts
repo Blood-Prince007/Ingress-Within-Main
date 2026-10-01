@@ -12,26 +12,31 @@ export async function POST(
     const applicationId = resolvedParams.id;
 
     const body = await request.json().catch(() => ({}));
-    const { decision, notes } = body;
+    const { reason, notes } = body;
 
-    if (!decision || (decision !== 'approved' && decision !== 'rejected')) {
+    if (!reason || typeof reason !== 'string' || reason.trim().length < 5) {
       return NextResponse.json(
-        { error: { code: 'INVALID_DECISION', message: "decision must be 'approved' or 'rejected'." } },
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'A specific operational rejection reason (minimum 5 characters) is required.',
+          },
+        },
         { status: 400 }
       );
     }
 
-    const result = await AdminPlatformService.reviewApplication({
-      therapistAccountId: applicationId,
-      decision,
-      adminId: admin.adminId,
-      reviewerNotes: notes,
-    });
+    const result = await AdminPlatformService.rejectApplication(
+      applicationId,
+      admin.adminId,
+      reason.trim(),
+      notes
+    );
 
     return NextResponse.json(result);
   } catch (err: any) {
     return NextResponse.json(
-      { error: { code: err.code || 'REVIEW_ERROR', message: err.message } },
+      { error: { code: err.code || 'REJECT_ERROR', message: err.message } },
       { status: err.status || 500 }
     );
   }

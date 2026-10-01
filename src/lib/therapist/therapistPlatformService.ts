@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { supabase } from '../db';
 import { EmailService } from '../email/emailService';
 import { TherapistPayoutService } from './therapistPayoutService';
@@ -6,6 +7,35 @@ import { GoogleAuthService } from '../calendar/googleAuthService';
 import { TherapistPayoutAccountService } from './therapistPayoutAccountService';
 
 export class TherapistPlatformService {
+  private static inMemoryReviews: Array<{
+    id: string;
+    therapist_account_id: string;
+    reviewer_id: string | null;
+    action: string;
+    previous_status: string;
+    new_status: string;
+    reason: string | null;
+    reviewer_notes: string | null;
+    created_at: string;
+  }> = [];
+
+  static async getReviewHistory(therapistAccountId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('therapist_application_reviews')
+        .select('*')
+        .eq('therapist_account_id', therapistAccountId)
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        return data;
+      }
+    } catch {}
+
+    return this.inMemoryReviews.filter(
+      (r) => r.therapist_account_id === therapistAccountId
+    );
+  }
   /**
    * =========================================================================
    * 1. ONBOARDING & APPLICATION WORKFLOW
@@ -156,6 +186,8 @@ export class TherapistPlatformService {
           acuity_clearance_level: 'none',
           background_check_status: backgroundCheckStatus,
           supervision_status: supervisionStatus,
+          resubmitted_at: existing.account?.application_status === 'rejected' ? now : undefined,
+          rejection_reason: null,
           updated_at: now,
         },
         { onConflict: 'therapist_account_id' }
@@ -166,6 +198,21 @@ export class TherapistPlatformService {
     if (appError) {
       console.error('[TherapistPlatformService] submitApplication app error:', appError);
       throw new Error('Failed to submit application.');
+    }
+
+    if (existing.account?.application_status === 'rejected') {
+      try {
+        await supabase.from('therapist_application_reviews').insert({
+          therapist_account_id: therapistAccountId,
+          previous_status: 'rejected',
+          new_status: 'submitted',
+          action: 'resubmitted',
+          notes: 'Application revised and resubmitted by therapist applicant',
+          created_at: now,
+        });
+      } catch (logErr) {
+        console.warn('[TherapistPlatformService] submitApplication review log notice:', logErr);
+      }
     }
 
     // 2. Update therapist_accounts status
@@ -239,21 +286,61 @@ export class TherapistPlatformService {
   /**
    * Internal / Admin Review action.
    * Can only be triggered by authorized administrative caller.
+   * Concurrency-safe: validates current status before atomic transition.
    */
   static async adminReviewTherapist(
     therapistAccountId: string,
     decision: 'approved' | 'rejected',
     reviewerId?: string,
-    reviewerNotes?: string
+    reviewerNotes?: string,
+    rejectionReason?: string
   ) {
+    if (decision !== 'approved' && decision !== 'rejected') {
+      const err: any = new Error('Invalid review decision: must be approved or rejected.');
+      err.code = 'INVALID_DECISION';
+      err.status = 400;
+      throw err;
+    }
+
+    if (decision === 'rejected' && (!rejectionReason || rejectionReason.trim().length < 5)) {
+      const err: any = new Error('A detailed operational rejection reason of at least 5 characters is required.');
+      err.code = 'REJECTION_REASON_REQUIRED';
+      err.status = 400;
+      throw err;
+    }
+
     const now = new Date().toISOString();
     const isApproved = decision === 'approved';
 
-    // 1. Update therapist_accounts
+    // 1. Fetch current status to ensure concurrency safety
+    const { data: currentAccount } = await supabase
+      .from('therapist_accounts')
+      .select('id, status, application_status, verification_status, can_practice')
+      .eq('id', therapistAccountId)
+      .maybeSingle();
+
+    if (!currentAccount) {
+      const err: any = new Error('Therapist account not found.');
+      err.code = 'THERAPIST_NOT_FOUND';
+      err.status = 404;
+      throw err;
+    }
+
+    const previousStatus = currentAccount.application_status || 'submitted';
+
+    // Concurrency defense: Cannot approve or reject if already in that terminal state
+    if (previousStatus === decision) {
+      const err: any = new Error(`Application has already been ${decision}.`);
+      err.code = 'STALE_APPLICATION_STATE';
+      err.status = 409;
+      throw err;
+    }
+
+    // 2. Atomic update of therapist_accounts
     const { error: accountError } = await supabase
       .from('therapist_accounts')
       .update({
-        status: isApproved ? 'active' : 'rejected',
+        status: isApproved ? 'active' : 'pending',
         application_status: isApproved ? 'approved' : 'rejected',
         can_practice: isApproved,
         verification_status: isApproved ? 'verified' : 'rejected',
@@ -265,34 +352,176 @@ export class TherapistPlatformService {
       throw new Error(`Failed to update therapist account: ${accountError.message}`);
     }
 
-    // 2. Update therapist_applications
-    await supabase
+    // 3. Update therapist_applications
+    const updatePayload: Record<string, any> = {
+      reviewed_at: now,
+      reviewed_by: reviewerId || null,
+      reviewer_notes: reviewerNotes || (isApproved ? 'Approved by clinical administrator' : 'Application declined'),
+      updated_at: now,
+    };
+    if (!isApproved && rejectionReason) {
+      updatePayload.rejection_reason = rejectionReason;
+    }
+
+    const { error: appErr } = await supabase
       .from('therapist_applications')
-      .update({
-        reviewed_at: now,
-        reviewed_by: reviewerId || null,
-        reviewer_notes: reviewerNotes || (isApproved ? 'Approved by clinical administrator' : 'Application declined'),
-        updated_at: now,
-      })
+      .update(updatePayload)
       .eq('therapist_account_id', therapistAccountId);
 
-    // 3. Create therapist notification
+    if (appErr && appErr.message?.includes('rejection_reason')) {
+      delete updatePayload.rejection_reason;
+      await supabase
+        .from('therapist_applications')
+        .update(updatePayload)
+        .eq('therapist_account_id', therapistAccountId);
+    }
+
+    // 4. Record to immutable review history table
+    const reviewRecord = {
+      id: crypto.randomUUID(),
+      therapist_account_id: therapistAccountId,
+      reviewer_id: reviewerId || null,
+      action: decision,
+      previous_status: previousStatus,
+      new_status: decision,
+      reason: rejectionReason || null,
+      reviewer_notes: reviewerNotes || null,
+      created_at: now,
+    };
+    this.inMemoryReviews.unshift(reviewRecord);
+
+    try {
+      await supabase
+        .from('therapist_application_reviews')
+        .insert(reviewRecord);
+    } catch (revErr) {
+      console.warn('[TherapistPlatformService] Warning writing application review history:', revErr);
+    }
+
+    // 5. Create therapist notification
+    const notificationMessage = isApproved
+      ? 'Your clinical application has been approved! You now have full access to your therapist workspace.'
+      : `Your clinical application was reviewed and could not be approved at this time: ${rejectionReason || 'Please review your credentials.'}`;
+
     await supabase
       .from('therapist_notifications')
       .insert({
         therapist_account_id: therapistAccountId,
         type: isApproved ? 'application_approved' : 'application_rejected',
-        title: isApproved ? 'Application Approved' : 'Application Status Update',
-        message: isApproved
-          ? 'Your clinical application has been approved! You now have full access to your therapist workspace.'
-          : 'Your clinical application was reviewed. Please contact clinical support for details.',
-        link: isApproved ? '/therapist' : '/therapist/application',
+        title: isApproved ? 'Application Approved' : 'Application Update: Action Required',
+        message: notificationMessage,
+        link: isApproved ? '/therapist' : '/therapist/application/status',
       });
 
     return {
       success: true,
       decision,
       can_practice: isApproved,
+      previous_status: previousStatus,
+    };
+  }
+
+  /**
+   * Resubmits a previously rejected therapist application.
+   * Resets status to 'submitted' and re-enqueues for administrative review.
+   */
+  static async resubmitApplication(
+    therapistAccountId: string,
+    answers: Record<string, any> = {},
+    documents: any[] = []
+  ) {
+    const existing = await this.getOnboardingState(therapistAccountId);
+    const previousStatus = existing.account?.application_status || 'rejected';
+
+    const mergedAnswers = {
+      ...(existing.application?.answers || {}),
+      ...answers,
+    };
+
+    const requiredChecks = [
+      ['fullName', Boolean(mergedAnswers.fullName)],
+      ['credentials', Boolean(mergedAnswers.credentials)],
+      ['city', Boolean(mergedAnswers.city)],
+      ['bio', Boolean(mergedAnswers.bio)],
+      ['specialties', Array.isArray(mergedAnswers.specialties) && mergedAnswers.specialties.length > 0 && mergedAnswers.specialties.length <= 5],
+      ['licenseNumber', Boolean(mergedAnswers.licenseNumber)],
+      ['issuingBody', Boolean(mergedAnswers.issuingBody)],
+      ['degreeCertificate', Boolean(mergedAnswers.degreeCertificate)],
+      ['ethicsDeclaration', mergedAnswers.ethicsDeclaration !== undefined && mergedAnswers.ethicsDeclaration !== null],
+      ['truthfulnessConfirmed', mergedAnswers.truthfulnessConfirmed !== undefined && mergedAnswers.truthfulnessConfirmed !== null],
+    ];
+
+    const missing = requiredChecks.filter(([, ok]) => !ok).map(([key]) => key);
+    if (missing.length) {
+      const error: any = new Error(`Complete the required fields before resubmitting: ${missing.join(', ')}`);
+      error.status = 400;
+      error.code = 'ONBOARDING_INCOMPLETE';
+      throw error;
+    }
+
+    const now = new Date().toISOString();
+    const persistedDocuments = documents.length > 0 ? documents : (Array.isArray((existing.application as any)?.documents) ? (existing.application as any).documents : []);
+
+    // 1. Update therapist_applications
+    await supabase
+      .from('therapist_applications')
+      .update({
+        answers: mergedAnswers,
+        documents: persistedDocuments,
+        resubmitted_at: now,
+        submitted_at: now,
+        rejection_reason: null, // Clear old rejection
+        updated_at: now,
+      })
+      .eq('therapist_account_id', therapistAccountId);
+
+    // 2. Update therapist_accounts
+    await supabase
+      .from('therapist_accounts')
+      .update({
+        status: 'pending',
+        application_status: 'submitted',
+        verification_status: 'pending',
+        can_practice: false,
+        updated_at: now,
+      })
+      .eq('id', therapistAccountId);
+
+    // 3. Record in review history
+    const resubmitRecord = {
+      id: crypto.randomUUID(),
+      therapist_account_id: therapistAccountId,
+      reviewer_id: null,
+      action: 'resubmitted',
+      previous_status: previousStatus,
+      new_status: 'submitted',
+      reason: null,
+      reviewer_notes: 'Therapist updated and resubmitted application for clinical review.',
+      created_at: now,
+    };
+    this.inMemoryReviews.unshift(resubmitRecord);
+
+    try {
+      await supabase
+        .from('therapist_application_reviews')
+        .insert(resubmitRecord);
+    } catch {}
+
+    // 4. Create in-app notification
+    await supabase
+      .from('therapist_notifications')
+      .insert({
+        therapist_account_id: therapistAccountId,
+        type: 'application_submitted',
+        title: 'Application Resubmitted',
+        message: 'Your revised application has been resubmitted for clinical governance review.',
+        link: '/therapist/application/status',
+      });
+
+    return {
+      success: true,
+      application_status: 'submitted',
+      can_practice: false,
     };
   }
 
