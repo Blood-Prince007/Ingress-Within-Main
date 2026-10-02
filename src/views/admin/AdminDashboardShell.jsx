@@ -39,6 +39,7 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from 'lucide-react';
+import ApiTrafficCenterView from './ApiTrafficCenterView';
 
 export default function AdminDashboardShell({ admin, onLogout, initialTab = 'overview' }) {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -57,6 +58,7 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
   const [paymentsData, setPaymentsData] = useState({ payments: [], pagination: {} });
   const [payoutsData, setPayoutsData] = useState({ payouts: [], batches: [], pagination: {} });
   const [apiUsageData, setApiUsageData] = useState({ summaries: [], recentEvents: [] });
+  const [apiUsageRange, setApiUsageRange] = useState('24h');
   const [systemHealth, setSystemHealth] = useState(null);
   const [webhooksData, setWebhooksData] = useState({ webhooks: [], pagination: {} });
   const [auditLogsData, setAuditLogsData] = useState({ logs: [], pagination: {} });
@@ -174,7 +176,7 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
         const data = await res.json();
         if (data.success) setPayoutsData(data);
       } else if (activeTab === 'api-usage') {
-        const res = await fetch('/api/admin/api-usage');
+        const res = await fetch(`/api/admin/api-usage?range=${apiUsageRange || '24h'}`);
         const data = await res.json();
         if (data.success) setApiUsageData(data);
       } else if (activeTab === 'health') {
@@ -1783,52 +1785,21 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
           {/* TAB 9: API USAGE & TRAFFIC */}
           {/* ========================================================================= */}
           {activeTab === 'api-usage' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {apiUsageData.summaries.map((s) => (
-                  <div
-                    key={s.provider}
-                    className="bg-white border border-[#132A24]/10 rounded-2xl p-5 space-y-3 shadow-xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="font-serif font-semibold text-[#132A24] text-base capitalize">
-                        {s.provider.replace('_', ' ')}
-                      </div>
-                      <span
-                        className={`text-[10px] px-2.5 py-0.5 rounded-full font-medium border ${
-                          s.isTracked
-                            ? 'bg-[#4E7A66]/10 border-[#4E7A66]/20 text-[#2D5A46]'
-                            : 'bg-[#132A24]/5 border-[#132A24]/10 text-[#132A24]/50'
-                        }`}
-                      >
-                        {s.isTracked ? 'Tracked' : 'Not Tracked'}
-                      </span>
-                    </div>
-                    <div className="text-xs text-[#132A24]/60">{s.service}</div>
-                    {s.isTracked ? (
-                      <div className="space-y-1.5 pt-3 border-t border-[#132A24]/10 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-[#132A24]/50">Total Requests:</span>
-                          <span className="font-semibold text-[#132A24]">{s.totalRequests}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-[#132A24]/50">Success Rate:</span>
-                          <span className="font-semibold text-[#2D5A46]">{s.successRatePercent}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-[#132A24]/50">Avg Latency:</span>
-                          <span className="font-mono text-[#132A24]/80">{s.avgLatencyMs} ms</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-[#132A24]/40 italic pt-3 border-t border-[#132A24]/10">
-                        Usage data not currently tracked
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ApiTrafficCenterView
+              data={apiUsageData}
+              isLoading={isLoading}
+              onRefresh={async (range) => {
+                setApiUsageRange(range);
+                setIsLoading(true);
+                try {
+                  const res = await fetch(`/api/admin/api-usage?range=${range}`);
+                  const data = await res.json();
+                  if (data.success) setApiUsageData(data);
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+            />
           )}
 
           {/* ========================================================================= */}

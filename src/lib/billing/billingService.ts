@@ -1,6 +1,7 @@
 import { supabase } from '../db';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
+import { ApiUsageService } from '../admin/apiUsageService';
 
 export const GST_RATE = 0.18; // 18% standard GST
 
@@ -389,6 +390,7 @@ export class BillingService {
     let gatewayOrderId = `order_test_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
     if (razorpay) {
+      const rzpStart = Date.now();
       try {
         const rzpOrder = await razorpay.orders.create({
           amount: pricing.totalPaise,
@@ -399,8 +401,28 @@ export class BillingService {
             product_id: product.id
           }
         });
+        const rzpLatency = Date.now() - rzpStart;
+        ApiUsageService.recordEvent({
+          provider: 'razorpay',
+          service: 'orders_create',
+          endpoint: 'api.razorpay.com/v1/orders',
+          statusCode: 200,
+          success: true,
+          latencyMs: rzpLatency,
+          metadata: { amount_paise: pricing.totalPaise },
+        });
         gatewayOrderId = rzpOrder.id;
       } catch (err: any) {
+        const rzpLatency = Date.now() - rzpStart;
+        ApiUsageService.recordEvent({
+          provider: 'razorpay',
+          service: 'orders_create',
+          endpoint: 'api.razorpay.com/v1/orders',
+          statusCode: err.statusCode || 500,
+          success: false,
+          latencyMs: rzpLatency,
+          errorCategory: 'GATEWAY_ERROR',
+        });
         const errorDesc = err.error?.description || err.message || 'Unable to create order';
         console.error('[BillingService] Razorpay Orders API error:', err);
         throw new Error(`Razorpay gateway error: ${errorDesc}`);

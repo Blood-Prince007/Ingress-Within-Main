@@ -1,5 +1,6 @@
 import { GoogleAuthService } from './googleAuthService';
 import { supabase } from '../db';
+import { ApiUsageService } from '../admin/apiUsageService';
 
 export interface CreateEventOptions {
   therapistAccountId: string;
@@ -212,6 +213,7 @@ export class GoogleCalendarService {
         ? 'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1'
         : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
+      const calStart = Date.now();
       const res = await fetch(url, {
         method: 'POST',
         headers: {
@@ -221,9 +223,22 @@ export class GoogleCalendarService {
         body: JSON.stringify(eventPayload),
       });
 
+      const calLatency = Date.now() - calStart;
+
       if (!res.ok) {
         const status = res.status;
         console.warn(`[GoogleCalendarService] Failed to insert event: HTTP ${status}`);
+
+        ApiUsageService.recordEvent({
+          provider: 'google_calendar',
+          service: 'calendar_events',
+          endpoint: 'googleapis.com/calendar/v3/events.insert',
+          statusCode: status,
+          success: false,
+          latencyMs: calLatency,
+          errorCategory: status === 401 ? 'AUTH_EXPIRED' : (status === 403 ? 'FORBIDDEN' : 'API_ERROR'),
+        });
+
         return {
           eventId: null,
           meetUrl: null,
@@ -233,6 +248,16 @@ export class GoogleCalendarService {
           error: `HTTP_${status}`,
         };
       }
+
+      ApiUsageService.recordEvent({
+        provider: 'google_calendar',
+        service: 'calendar_events',
+        endpoint: 'googleapis.com/calendar/v3/events.insert',
+        statusCode: 200,
+        success: true,
+        latencyMs: calLatency,
+        metadata: { createMeetConference: createMeet },
+      });
 
       const event = await res.json();
       let { meetUrl, conferenceId } = this.extractMeetDetails(event);
@@ -265,6 +290,14 @@ export class GoogleCalendarService {
       };
     } catch (err: any) {
       console.error('[GoogleCalendarService] Safe failure during event creation:', err.message || 'unknown');
+      ApiUsageService.recordEvent({
+        provider: 'google_calendar',
+        service: 'calendar_events',
+        endpoint: 'googleapis.com/calendar/v3/events.insert',
+        statusCode: 500,
+        success: false,
+        errorCategory: 'NETWORK_EXCEPTION',
+      });
       return {
         eventId: null,
         meetUrl: null,
@@ -527,6 +560,7 @@ export class GoogleCalendarService {
         return [];
       }
 
+      const calStart = Date.now();
       const url = 'https://www.googleapis.com/calendar/v3/freeBusy';
       const res = await fetch(url, {
         method: 'POST',
@@ -541,9 +575,29 @@ export class GoogleCalendarService {
         }),
       });
 
+      const calLatency = Date.now() - calStart;
+
       if (!res.ok) {
+        ApiUsageService.recordEvent({
+          provider: 'google_calendar',
+          service: 'calendar_availability',
+          endpoint: 'googleapis.com/calendar/v3/freeBusy',
+          statusCode: res.status,
+          success: false,
+          latencyMs: calLatency,
+          errorCategory: res.status === 401 ? 'AUTH_EXPIRED' : 'API_ERROR',
+        });
         return [];
       }
+
+      ApiUsageService.recordEvent({
+        provider: 'google_calendar',
+        service: 'calendar_availability',
+        endpoint: 'googleapis.com/calendar/v3/freeBusy',
+        statusCode: 200,
+        success: true,
+        latencyMs: calLatency,
+      });
 
       const data = await res.json();
       const primaryBusy = data.calendars?.primary?.busy || [];
@@ -555,6 +609,14 @@ export class GoogleCalendarService {
       }));
     } catch (err: any) {
       console.warn('[GoogleCalendarService] FreeBusy query exception:', err.message || 'unknown');
+      ApiUsageService.recordEvent({
+        provider: 'google_calendar',
+        service: 'calendar_availability',
+        endpoint: 'googleapis.com/calendar/v3/freeBusy',
+        statusCode: 500,
+        success: false,
+        errorCategory: 'NETWORK_EXCEPTION',
+      });
       return [];
     }
   }

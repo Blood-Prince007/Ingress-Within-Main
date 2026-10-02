@@ -3,6 +3,7 @@ import { EmailEvents } from './emailEvents';
 import { EmailTemplates } from './emailTemplates';
 import { getEmailProvider } from './emailProvider';
 import { SendEmailOptions, EmailDeliveryRecord } from './emailTypes';
+import { ApiUsageService } from '../admin/apiUsageService';
 
 const DEFAULT_SENDER = process.env.EMAIL_FROM || 'care@ingresswithin.com';
 const OPS_TEAM_EMAIL = process.env.OPS_TEAM_EMAIL || 'clinical-ops@ingresswithin.com';
@@ -58,12 +59,28 @@ export class EmailService {
 
       // 2. Dispatch via provider
       const provider = getEmailProvider();
+      const emailStart = Date.now();
       const sendResult = await provider.send({
         to: options.recipient.email,
         from: DEFAULT_SENDER,
         subject: rendered.subject,
         html: rendered.html,
         text: rendered.text,
+      });
+      const emailLatency = Date.now() - emailStart;
+
+      ApiUsageService.recordEvent({
+        provider: 'email',
+        service: options.eventType || 'transactional_email',
+        endpoint: 'emailProvider.send',
+        statusCode: sendResult.success ? 200 : 500,
+        success: sendResult.success,
+        latencyMs: emailLatency,
+        metadata: {
+          templateKey: options.templateKey,
+          recipientType: options.recipient.type,
+        },
+        errorCategory: sendResult.success ? null : 'DISPATCH_FAILURE',
       });
 
       // 3. Update delivery status

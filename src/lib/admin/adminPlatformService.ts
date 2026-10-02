@@ -1233,6 +1233,26 @@ export class AdminPlatformService {
       message: jwtSecret && jwtSecret !== 'jwt_default_secret_dev' ? 'HMAC-SHA256 JWT key configured.' : 'Using fallback development secret.',
     };
 
+    // 3b. AI Provider Ecosystem (Anthropic Claude, Groq, Gemini)
+    const claudeKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+
+    checks['claude_ai'] = {
+      status: claudeKey ? 'healthy' : 'degraded',
+      message: claudeKey ? 'Claude 3.5 Sonnet (Primary AI) configured.' : 'Primary AI key missing, running fallback.',
+    };
+
+    checks['groq_ai'] = {
+      status: groqKey ? 'healthy' : 'degraded',
+      message: groqKey ? 'Groq Llama 3.3 (Secondary AI) configured.' : 'Groq fallback key missing.',
+    };
+
+    checks['gemini_ai'] = {
+      status: geminiKey ? 'healthy' : 'degraded',
+      message: geminiKey ? 'Gemini 2.0 (Tertiary AI) configured.' : 'Gemini tertiary key missing.',
+    };
+
     // 4. Payment Gateway (Razorpay)
     const rzpKey = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
     const rzpSecret = process.env.RAZORPAY_KEY_SECRET;
