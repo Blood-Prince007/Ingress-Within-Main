@@ -111,6 +111,15 @@ class WorkerRegistry {
       }, defaultWorkerOptions)
     );
 
+    // 12. Transactional Email Worker
+    this.workers.set(
+      QUEUE_NAMES.TRANSACTIONAL_EMAIL,
+      new Worker(QUEUE_NAMES.TRANSACTIONAL_EMAIL, async (job) => {
+        const { processEmailJob } = await import('./workers/emailWorker');
+        await processEmailJob(job.data);
+      }, defaultWorkerOptions)
+    );
+
 
     // Add event listeners for logging
     for (const [name, worker] of this.workers.entries()) {

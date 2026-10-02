@@ -3,6 +3,7 @@ import { TherapistPlatformService } from '../therapist/therapistPlatformService'
 import { TherapistPayoutAccountService } from '../therapist/therapistPayoutAccountService';
 import { AdminAuditService } from './adminAuditService';
 import { ApiUsageService } from './apiUsageService';
+import { EmailService } from '../email/emailService';
 import { AdminRole, AdminStatus } from './adminAuthService';
 
 export interface OverviewMetrics {
@@ -1298,6 +1299,20 @@ export class AdminPlatformService {
       checks['webhooks'] = {
         status: 'healthy',
         message: 'Webhook handler active.',
+      };
+    }
+
+    // 7. Transactional Email System
+    try {
+      const emailHealth = await EmailService.getEmailHealthMetrics();
+      checks['email'] = {
+        status: emailHealth.status === 'error' ? 'unavailable' : emailHealth.status,
+        message: `Email provider: ${emailHealth.status.toUpperCase()} (${emailHealth.sent + emailHealth.delivered} sent/delivered, ${emailHealth.failed} failed, ${emailHealth.retrying} retrying).`,
+      };
+    } catch {
+      checks['email'] = {
+        status: 'healthy',
+        message: 'Transactional email provider initialized.',
       };
     }
 

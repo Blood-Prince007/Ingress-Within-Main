@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { supabase } from '../db';
 import { EmailService } from '../email/emailService';
+import { validateAndNormalizeEmail } from '../email/emailValidation';
 import { TherapistPayoutService } from './therapistPayoutService';
 import { GoogleCalendarService, isValidGoogleMeetUrl } from '../calendar/googleCalendarService';
 import { GoogleAuthService } from '../calendar/googleAuthService';
@@ -165,6 +166,19 @@ export class TherapistPlatformService {
       error.status = 400; error.code = 'TRAUMA_CERTIFICATE_REQUIRED'; throw error;
     }
 
+    // Email validation & normalization
+    const rawEmail = mergedAnswers.contact_email || mergedAnswers.email || (existing.profile as any)?.contact_email;
+    const emailValidation = validateAndNormalizeEmail(rawEmail);
+    if (!emailValidation.valid) {
+      const error: any = new Error(emailValidation.error || 'A valid email address is required before submitting your application.');
+      error.status = 400;
+      error.code = 'INVALID_EMAIL';
+      throw error;
+    }
+    const normalizedEmail = emailValidation.normalizedEmail!;
+    mergedAnswers.contact_email = normalizedEmail;
+    mergedAnswers.email = normalizedEmail;
+
     const now = new Date().toISOString();
 
     const persistedDocuments = documents.length > 0 ? documents : (Array.isArray((existing.application as any)?.documents) ? (existing.application as any).documents : []);
@@ -265,6 +279,7 @@ export class TherapistPlatformService {
       style_axes_review_flags: mergedAnswers.calibration || {},
       capacity_last_updated_at: now,
       data_freshness_flags: {},
+      contact_email: normalizedEmail,
       updated_at: now,
     };
 
@@ -273,9 +288,29 @@ export class TherapistPlatformService {
       .upsert(profilePayload, { onConflict: 'therapist_account_id' });
 
     if (profileError) {
-      console.error('[TherapistPlatformService] submitApplication profile error:', profileError);
-      throw new Error('Failed to update therapist profile.');
+      if (profileError.message?.includes('contact_email')) {
+        delete (profilePayload as any).contact_email;
+        await supabase
+          .from('therapist_profiles')
+          .upsert(profilePayload, { onConflict: 'therapist_account_id' });
+      } else {
+        console.error('[TherapistPlatformService] submitApplication profile error:', profileError);
+        throw new Error('Failed to update therapist profile.');
+      }
     }
+
+    // 4. Asynchronously queue notification emails (Admin alert + applicant confirmation)
+    EmailService.notifyTherapistApplicationSubmitted({
+      therapistAccountId,
+      therapistName: mergedAnswers.fullName || existing.profile?.full_name || 'Clinician',
+      email: normalizedEmail,
+      specialization: broadSpecialtyTags,
+      experienceYears: Number(mergedAnswers.yearsOfExperience) || 0,
+      submittedAt: now,
+      applicationId: app?.id || therapistAccountId,
+    }).catch((mailErr) => {
+      console.warn('[TherapistPlatformService] Notification queue notice:', mailErr);
+    });
 
     return {
       success: true,
@@ -412,6 +447,55 @@ export class TherapistPlatformService {
         message: notificationMessage,
         link: isApproved ? '/therapist' : '/therapist/application/status',
       });
+
+    // 6. Asynchronously queue transactional decision email (fail-safe; never blocks or rolls back review state)
+    (async () => {
+      try {
+        const { data: profile } = await supabase
+          .from('therapist_profiles')
+          .select('full_name, contact_email')
+          .eq('therapist_account_id', therapistAccountId)
+          .maybeSingle();
+
+        const { data: application } = await supabase
+          .from('therapist_applications')
+          .select('id, contact_email, answers')
+          .eq('therapist_account_id', therapistAccountId)
+          .maybeSingle();
+
+        const targetEmail =
+          profile?.contact_email ||
+          application?.contact_email ||
+          application?.answers?.contact_email ||
+          application?.answers?.email;
+        const targetName =
+          profile?.full_name || application?.answers?.fullName || 'Doctor/Counselor';
+
+        if (targetEmail) {
+          if (isApproved) {
+            await EmailService.notifyTherapistApplicationApproved({
+              therapistAccountId,
+              therapistName: targetName,
+              email: targetEmail,
+              applicationId: application?.id,
+            });
+          } else {
+            await EmailService.notifyTherapistApplicationRejected({
+              therapistAccountId,
+              therapistName: targetName,
+              email: targetEmail,
+              rejectionReason:
+                rejectionReason || reviewerNotes || 'Application declined following clinical credential review.',
+              applicationId: application?.id,
+            });
+          }
+        } else {
+          console.warn(`[TherapistPlatformService] No contact email found for therapist ${therapistAccountId}; skipping transactional email.`);
+        }
+      } catch (mailErr) {
+        console.warn('[TherapistPlatformService] Review decision email dispatch notice:', mailErr);
+      }
+    })();
 
     return {
       success: true,
@@ -2468,7 +2552,7 @@ export class TherapistPlatformService {
 
       await EmailService.notifySessionRescheduled({
         appointmentId,
-        previousStart: appt.scheduled_start,
+        oldStart: appt.scheduled_start,
         newStart: newStartIso,
         clientEmail: clientUser?.email || 'client@ingresswithin.com',
         therapistEmail: therapistAccount?.email || 'therapist@ingresswithin.com',

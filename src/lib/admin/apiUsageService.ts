@@ -587,6 +587,7 @@ export class ApiUsageService {
    * Fetches recent API usage event log safely.
    */
   static async getRecentEvents(limit = 50, provider?: string): Promise<ApiUsageEvent[]> {
+    let dbEvents: ApiUsageEvent[] = [];
     try {
       let query = supabase
         .from('api_usage_events')
@@ -599,18 +600,27 @@ export class ApiUsageService {
       }
 
       const { data, error } = await query;
-      if (!error && data && data.length > 0) {
-        return data as ApiUsageEvent[];
+      if (!error && data) {
+        dbEvents = data as ApiUsageEvent[];
       }
     } catch {
       // Fall through to memory
     }
 
-    const filtered = provider && provider !== 'all'
+    const filteredMemory = provider && provider !== 'all'
       ? this.inMemoryEvents.filter((e) => e.provider === provider)
       : this.inMemoryEvents;
 
-    return [...filtered]
+    // Merge in-memory and DB events, deduped by ID
+    const mergedMap = new Map<string, ApiUsageEvent>();
+    for (const event of dbEvents) {
+      mergedMap.set(event.id, event);
+    }
+    for (const event of filteredMemory) {
+      mergedMap.set(event.id, event);
+    }
+
+    return Array.from(mergedMap.values())
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, limit);
   }

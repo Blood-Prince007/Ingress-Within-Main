@@ -250,7 +250,11 @@ async function runApiUsageTestSuite() {
   console.log(`================================================================`);
 }
 
-runApiUsageTestSuite().catch((err) => {
-  console.error('Fatal test error:', err);
-  process.exit(1);
-});
+runApiUsageTestSuite()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error('Fatal test error:', err);
+    process.exit(1);
+  });

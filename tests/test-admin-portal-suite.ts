@@ -384,7 +384,11 @@ async function runTestSuite() {
   }
 }
 
-runTestSuite().catch((err) => {
-  console.error('Fatal test error in admin portal suite:', err);
-  process.exit(1);
-});
+runTestSuite()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error('Fatal test error in admin portal suite:', err);
+    process.exit(1);
+  });

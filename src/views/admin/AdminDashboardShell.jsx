@@ -81,6 +81,8 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [applicationsData, setApplicationsData] = useState({ applications: [], pagination: {} });
   const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
+  const [emailsData, setEmailsData] = useState({ deliveries: [], pagination: {}, health: {} });
+  const [emailStatusFilter, setEmailStatusFilter] = useState('all');
 
   const showToast = (msg, isError = false) => {
     setToastMessage({ text: msg, isError });
@@ -109,6 +111,7 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
     { id: 'api-usage', label: 'API Usage & Traffic', icon: Activity },
     { id: 'health', label: 'System Health', icon: HeartPulse },
     { id: 'webhooks', label: 'Webhook Monitor', icon: Webhook },
+    { id: 'emails', label: 'Email Deliveries', icon: Mail },
     { id: 'audit-logs', label: 'Audit Trail', icon: FileSpreadsheet },
     { id: 'security', label: 'Admin Security', icon: Lock },
   ];
@@ -187,6 +190,20 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
         const res = await fetch(`/api/admin/webhooks?page=${currentPage}&limit=20`);
         const data = await res.json();
         if (data.success) setWebhooksData(data);
+      } else if (activeTab === 'emails') {
+        const queryParams = new URLSearchParams({
+          page: String(currentPage),
+          limit: '20',
+        });
+        if (emailStatusFilter && emailStatusFilter !== 'all') {
+          queryParams.set('status', emailStatusFilter);
+        }
+        if (searchQuery) {
+          queryParams.set('search', searchQuery);
+        }
+        const res = await fetch(`/api/admin/emails?${queryParams.toString()}`);
+        const data = await res.json();
+        if (data.success) setEmailsData(data);
       } else if (activeTab === 'audit-logs') {
         const res = await fetch(`/api/admin/audit-logs?page=${currentPage}&limit=30`);
         const data = await res.json();
@@ -1910,7 +1927,175 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 12: AUDIT TRAIL */}
+          {/* TAB 12: EMAIL DELIVERIES & TRANSACTIONAL AUDIT */}
+          {/* ========================================================================= */}
+          {activeTab === 'emails' && (
+            <div className="space-y-6">
+              {/* Health & Volume Metric Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-white border border-[#132A24]/10 rounded-2xl p-4 shadow-xs">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#132A24]/50">Total Dispatches</span>
+                  <div className="text-2xl font-serif font-bold text-[#132A24] mt-1">
+                    {emailsData.health?.total ?? emailsData.deliveries?.length ?? 0}
+                  </div>
+                  <span className="text-[10px] text-[#4E7A66] font-medium">Last 7 Days</span>
+                </div>
+                <div className="bg-white border border-[#132A24]/10 rounded-2xl p-4 shadow-xs">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#132A24]/50">Delivered & Sent</span>
+                  <div className="text-2xl font-serif font-bold text-[#166534] mt-1">
+                    {(emailsData.health?.sent || 0) + (emailsData.health?.delivered || 0)}
+                  </div>
+                  <span className="text-[10px] text-[#166534]">Successful dispatches</span>
+                </div>
+                <div className="bg-white border border-[#132A24]/10 rounded-2xl p-4 shadow-xs">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#132A24]/50">Queued</span>
+                  <div className="text-2xl font-serif font-bold text-[#2563eb] mt-1">
+                    {emailsData.health?.queued || 0}
+                  </div>
+                  <span className="text-[10px] text-[#2563eb]">In BullMQ queue</span>
+                </div>
+                <div className="bg-white border border-[#132A24]/10 rounded-2xl p-4 shadow-xs">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#132A24]/50">Retrying</span>
+                  <div className="text-2xl font-serif font-bold text-[#d97706] mt-1">
+                    {emailsData.health?.retrying || 0}
+                  </div>
+                  <span className="text-[10px] text-[#d97706]">Exponential backoff</span>
+                </div>
+                <div className="bg-white border border-[#132A24]/10 rounded-2xl p-4 shadow-xs">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#132A24]/50">Failed / Bounces</span>
+                  <div className="text-2xl font-serif font-bold text-[#991b1b] mt-1">
+                    {emailsData.health?.failed || 0}
+                  </div>
+                  <span className="text-[10px] text-[#991b1b]">{emailsData.health?.bounceRatePercent || 0}% bounce rate</span>
+                </div>
+              </div>
+
+              {/* Status Filters */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-[#132A24]/10 rounded-2xl p-3 shadow-xs">
+                <div className="flex items-center gap-2 overflow-x-auto text-xs">
+                  {['all', 'sent', 'delivered', 'queued', 'retrying', 'failed'].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => {
+                        setEmailStatusFilter(st);
+                        setCurrentPage(1);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg capitalize transition-colors ${
+                        emailStatusFilter === st
+                          ? 'bg-[#132A24] text-white font-medium'
+                          : 'bg-[#132A24]/5 text-[#132A24]/70 hover:bg-[#132A24]/10'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => fetchTabData()}
+                  disabled={isLoading}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#132A24]/15 bg-white text-xs text-[#132A24] hover:bg-[#132A24]/5 disabled:opacity-50"
+                >
+                  <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+                  Refresh
+                </button>
+              </div>
+
+              {/* Delivery Log Table */}
+              <div className="bg-white border border-[#132A24]/10 rounded-2xl overflow-hidden shadow-xs">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#132A24]/[0.02] border-b border-[#132A24]/10 text-[#132A24]/60 font-semibold uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="py-3.5 px-4">Event Type</th>
+                      <th className="py-3.5 px-4">Recipient</th>
+                      <th className="py-3.5 px-4">Subject</th>
+                      <th className="py-3.5 px-4">Status</th>
+                      <th className="py-3.5 px-4">Attempts</th>
+                      <th className="py-3.5 px-4">Error / Notes</th>
+                      <th className="py-3.5 px-4">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#132A24]/5 text-[#132A24]">
+                    {!emailsData.deliveries || emailsData.deliveries.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-8 text-center text-[#132A24]/50">
+                          No transactional email deliveries found for this filter.
+                        </td>
+                      </tr>
+                    ) : (
+                      emailsData.deliveries.map((d) => (
+                        <tr key={d.id} className="hover:bg-[#132A24]/[0.01]">
+                          <td className="py-3.5 px-4 font-mono font-medium text-[#132A24]">
+                            {d.event_type}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-medium text-[#0f172a]">{d.recipient_email}</div>
+                            <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider bg-[#132A24]/5 text-[#4E7A66]">
+                              {d.recipient_type}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 max-w-[200px] truncate text-[#334155]">
+                            {d.subject}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                                d.status === 'sent' || d.status === 'delivered'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : d.status === 'queued'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  : d.status === 'retrying'
+                                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                  : 'bg-red-50 text-red-700 border border-red-200'
+                              }`}
+                            >
+                              {d.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono text-center">
+                            {d.attempt_count ?? 1}
+                          </td>
+                          <td className="py-3.5 px-4 text-[#991b1b] text-[11px] max-w-[180px] truncate">
+                            {d.last_error_category || d.last_error || '—'}
+                          </td>
+                          <td className="py-3.5 px-4 text-[#132A24]/60 whitespace-nowrap">
+                            {new Date(d.sent_at || d.created_at).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+
+                {/* Pagination */}
+                {emailsData.pagination?.pages > 1 && (
+                  <div className="flex items-center justify-between p-3 border-t border-[#132A24]/10 bg-[#FAFAF8] text-xs">
+                    <span>
+                      Page {emailsData.pagination.page} of {emailsData.pagination.pages}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={emailsData.pagination.page <= 1}
+                        className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage((p) => p + 1)}
+                        disabled={emailsData.pagination.page >= emailsData.pagination.pages}
+                        className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB 13: AUDIT TRAIL */}
           {/* ========================================================================= */}
           {activeTab === 'audit-logs' && (
             <div className="space-y-4">
