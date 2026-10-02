@@ -38,6 +38,13 @@ import {
   Phone,
   ShieldCheck,
   CheckCircle2,
+  User,
+  Image as ImageIcon,
+  Copy,
+  Maximize2,
+  FileBadge,
+  CheckSquare,
+  Sparkles,
 } from 'lucide-react';
 import ApiTrafficCenterView from './ApiTrafficCenterView';
 
@@ -74,6 +81,7 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
   const [selectedApplicationDetail, setSelectedApplicationDetail] = useState(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [signedUrlLoading, setSignedUrlLoading] = useState(null);
+  const [previewImageModal, setPreviewImageModal] = useState(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [rejectionReasonInput, setRejectionReasonInput] = useState('');
@@ -254,8 +262,22 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
     }
   };
 
-  // Generate secure 1-hour signed URL to view uploaded document
-  const handleViewDocument = async (docPath) => {
+  const copyToClipboard = (text, label = 'Text') => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    showToast(`${label} copied to clipboard!`);
+  };
+
+  // Generate secure 1-hour signed URL to view uploaded document or open preview lightbox
+  const handleViewDocument = async (docPath, existingSignedUrl = null, isImage = false, title = 'Document') => {
+    if (isImage && existingSignedUrl) {
+      setPreviewImageModal({ url: existingSignedUrl, title });
+      return;
+    }
+    if (existingSignedUrl) {
+      window.open(existingSignedUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
     if (!selectedApplicationDetail) return;
     setSignedUrlLoading(docPath);
     try {
@@ -267,7 +289,11 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || 'Failed to generate signed document URL');
       if (data.signedUrl) {
-        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+        if (isImage) {
+          setPreviewImageModal({ url: data.signedUrl, title });
+        } else {
+          window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+        }
       }
     } catch (err) {
       showToast(err.message, true);
@@ -1021,33 +1047,50 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                     {/* Drawer Header */}
                     <div className="p-6 bg-white border-b border-[#132A24]/10 flex items-center justify-between shrink-0">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-[#132A24]/5 border border-[#132A24]/10 flex items-center justify-center text-[#132A24] font-serif font-bold text-lg overflow-hidden">
-                          {selectedApplicationDetail?.basicInfo?.photoUrl ? (
-                            <img
-                              src={selectedApplicationDetail.basicInfo.photoUrl}
-                              alt="Profile"
-                              className="w-full h-full object-cover"
-                            />
+                        <div
+                          className="w-14 h-14 rounded-full bg-[#132A24]/5 border-2 border-[#4E7A66]/30 flex items-center justify-center text-[#132A24] font-serif font-bold text-xl overflow-hidden shrink-0 shadow-xs relative group cursor-pointer"
+                          onClick={() => {
+                            const img = selectedApplicationDetail?.basicInfo?.profileImageUrl || selectedApplicationDetail?.basicInfo?.photoUrl;
+                            if (img) setPreviewImageModal({ url: img, title: `${selectedApplicationDetail?.basicInfo?.fullName || 'Therapist'} — Profile Photo` });
+                          }}
+                          title="Click to view full photo"
+                        >
+                          {selectedApplicationDetail?.basicInfo?.profileImageUrl || selectedApplicationDetail?.basicInfo?.photoUrl ? (
+                            <>
+                              <img
+                                src={selectedApplicationDetail.basicInfo.profileImageUrl || selectedApplicationDetail.basicInfo.photoUrl}
+                                alt="Profile Portrait"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <Maximize2 className="w-4 h-4 text-white drop-shadow" />
+                              </div>
+                            </>
                           ) : (
-                            selectedApplicationDetail?.basicInfo?.fullName?.charAt(0) || 'C'
+                            <span>{selectedApplicationDetail?.basicInfo?.fullName?.charAt(0) || 'C'}</span>
                           )}
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h2 className="font-serif font-bold text-xl text-[#132A24]">
                               {selectedApplicationDetail?.basicInfo?.fullName || 'Clinician Application'}
                             </h2>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
                               selectedApplicationDetail?.applicationMeta?.applicationStatus === 'approved'
                                 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                                 : selectedApplicationDetail?.applicationMeta?.applicationStatus === 'rejected'
                                 ? 'bg-rose-50 text-rose-800 border border-rose-200'
                                 : 'bg-amber-50 text-amber-800 border border-amber-200'
                             }`}>
-                              {selectedApplicationDetail?.applicationMeta?.applicationStatus || 'Pending'}
+                              {selectedApplicationDetail?.applicationMeta?.applicationStatus || 'Pending Review'}
                             </span>
+                            {selectedApplicationDetail?.credentials?.rciRegistered && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                                <Award className="w-3 h-3" /> RCI Registered
+                              </span>
+                            )}
                           </div>
-                          <div className="text-xs text-[#132A24]/60">
+                          <div className="text-xs text-[#132A24]/60 mt-0.5">
                             {selectedApplicationDetail?.professionalInfo?.title || 'Psychologist'} &bull; {selectedApplicationDetail?.basicInfo?.phone} &bull; {selectedApplicationDetail?.basicInfo?.email}
                           </div>
                         </div>
@@ -1087,13 +1130,13 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                               <div>
                                 <span className="font-semibold block">
                                   {selectedApplicationDetail.readinessChecklist?.readyForApproval
-                                    ? 'Platform Readiness: Complete & Eligible for Review'
+                                    ? 'Platform Readiness: Complete & Eligible for Authorization'
                                     : 'Platform Readiness: Pending Credentials or Verification'}
                                 </span>
                                 <span className="text-[11px] opacity-80">
                                   {selectedApplicationDetail.readinessChecklist?.readyForApproval
-                                    ? 'All mandatory identity documents, qualifications, and ethical declarations are in order.'
-                                    : 'Carefully verify uploaded certificates and declarations below before deciding.'}
+                                    ? 'All mandatory identity documents, qualifications, vignettes, and ethical declarations are in order.'
+                                    : 'Carefully verify uploaded certificates, vignettes, and declarations below before deciding.'}
                                 </span>
                               </div>
                             </div>
@@ -1115,59 +1158,156 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                             </div>
                           )}
 
-                          {/* SECTION 1: BASIC INFORMATION */}
-                          <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-3">
-                            <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center gap-2">
-                              <UserCheck className="w-4 h-4 text-[#4E7A66]" /> 1. Basic Information
+                          {/* ================================================================= */}
+                          {/* SECTION 1: PERSONAL IDENTITY, CONTACT & PORTRAIT (STEPS 1 & 2) */}
+                          {/* ================================================================= */}
+                          <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-4">
+                            <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center justify-between">
+                              <span className="flex items-center gap-2">
+                                <UserCheck className="w-4 h-4 text-[#4E7A66]" /> 1. Personal Identity & Contact Information
+                              </span>
+                              <span className="text-[11px] text-[#132A24]/50 font-normal font-sans">
+                                Steps 1 & 2 of Onboarding
+                              </span>
                             </h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                              <div>
-                                <span className="text-[#132A24]/40 font-medium block">Full Legal Name</span>
-                                <span className="font-semibold text-[#132A24]">
-                                  {selectedApplicationDetail.basicInfo?.fullName || 'N/A'}
+
+                            <div className="flex flex-col sm:flex-row gap-5">
+                              {/* Portrait Card */}
+                              <div className="sm:w-44 shrink-0 flex flex-col items-center p-3 rounded-xl bg-[#FAFAF8] border border-[#132A24]/10 text-center">
+                                <div className="w-28 h-28 rounded-xl bg-white border border-[#132A24]/10 overflow-hidden shadow-xs relative group flex items-center justify-center">
+                                  {selectedApplicationDetail.basicInfo?.profileImageUrl || selectedApplicationDetail.basicInfo?.photoUrl ? (
+                                    <>
+                                      <img
+                                        src={selectedApplicationDetail.basicInfo.profileImageUrl || selectedApplicationDetail.basicInfo.photoUrl}
+                                        alt="Profile Photo"
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <button
+                                        onClick={() => setPreviewImageModal({
+                                          url: selectedApplicationDetail.basicInfo.profileImageUrl || selectedApplicationDetail.basicInfo.photoUrl,
+                                          title: `${selectedApplicationDetail.basicInfo.fullName} — Profile Portrait`,
+                                        })}
+                                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[11px] font-medium gap-1"
+                                      >
+                                        <Maximize2 className="w-3.5 h-3.5" /> Enlarge
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <div className="text-center p-2 text-[#132A24]/40">
+                                      <ImageIcon className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                                      <span className="text-[10px]">No Photo Uploaded</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="text-[11px] font-medium text-[#132A24] mt-2 block">
+                                  Profile Portrait
                                 </span>
+                                {(selectedApplicationDetail.basicInfo?.profileImageUrl || selectedApplicationDetail.basicInfo?.photoUrl) && (
+                                  <button
+                                    onClick={() => setPreviewImageModal({
+                                      url: selectedApplicationDetail.basicInfo.profileImageUrl || selectedApplicationDetail.basicInfo.photoUrl,
+                                      title: `${selectedApplicationDetail.basicInfo.fullName} — Profile Portrait`,
+                                    })}
+                                    className="mt-1 text-[10px] text-[#4E7A66] hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                                  >
+                                    <Eye className="w-3 h-3" /> View Full Size
+                                  </button>
+                                )}
                               </div>
-                              <div>
-                                <span className="text-[#132A24]/40 font-medium block">Email Address</span>
-                                <span className="text-[#132A24]">
-                                  {selectedApplicationDetail.basicInfo?.email || 'N/A'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[#132A24]/40 font-medium block">Phone Number</span>
-                                <span className="font-mono text-[#132A24]">
-                                  {selectedApplicationDetail.basicInfo?.phone || 'N/A'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[#132A24]/40 font-medium block">Location</span>
-                                <span className="text-[#132A24]">
-                                  {selectedApplicationDetail.basicInfo?.city || ''}
-                                  {selectedApplicationDetail.basicInfo?.state ? `, ${selectedApplicationDetail.basicInfo.state}` : 'Not provided'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[#132A24]/40 font-medium block">Timezone</span>
-                                <span className="text-[#132A24]">
-                                  {selectedApplicationDetail.basicInfo?.timezone || 'Asia/Kolkata'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[#132A24]/40 font-medium block">Account Created</span>
-                                <span className="text-[#132A24]">
-                                  {selectedApplicationDetail.basicInfo?.createdAt
-                                    ? new Date(selectedApplicationDetail.basicInfo.createdAt).toLocaleDateString('en-IN')
-                                    : 'N/A'}
-                                </span>
+
+                              {/* Details Grid */}
+                              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                                <div>
+                                  <span className="text-[#132A24]/40 font-medium block">Full Legal Name</span>
+                                  <span className="font-semibold text-[#132A24] text-sm">
+                                    {selectedApplicationDetail.basicInfo?.fullName || 'N/A'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-[#132A24]/40 font-medium block">Gender Identity</span>
+                                  <span className="font-medium text-[#132A24] capitalize">
+                                    {selectedApplicationDetail.basicInfo?.gender || 'Not specified'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-[#132A24]/40 font-medium block">Authoritative Contact Email</span>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="font-mono text-[#132A24]">
+                                      {selectedApplicationDetail.basicInfo?.email || 'N/A'}
+                                    </span>
+                                    {selectedApplicationDetail.basicInfo?.email && (
+                                      <button
+                                        onClick={() => copyToClipboard(selectedApplicationDetail.basicInfo.email, 'Email')}
+                                        className="p-1 hover:bg-[#132A24]/5 rounded text-[#132A24]/40 hover:text-[#132A24]"
+                                        title="Copy Email"
+                                      >
+                                        <Copy className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-[#132A24]/40 font-medium block">Phone Number</span>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="font-mono text-[#132A24]">
+                                      {selectedApplicationDetail.basicInfo?.phone || 'N/A'}
+                                    </span>
+                                    {selectedApplicationDetail.basicInfo?.phone && (
+                                      <button
+                                        onClick={() => copyToClipboard(selectedApplicationDetail.basicInfo.phone, 'Phone number')}
+                                        className="p-1 hover:bg-[#132A24]/5 rounded text-[#132A24]/40 hover:text-[#132A24]"
+                                        title="Copy Phone"
+                                      >
+                                        <Copy className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-[#132A24]/40 font-medium block">Location</span>
+                                  <span className="text-[#132A24] flex items-center gap-1 mt-0.5">
+                                    <MapPin className="w-3.5 h-3.5 text-[#4E7A66]" />
+                                    {selectedApplicationDetail.basicInfo?.city || ''}
+                                    {selectedApplicationDetail.basicInfo?.state ? `, ${selectedApplicationDetail.basicInfo.state}` : 'India'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-[#132A24]/40 font-medium block">Timezone</span>
+                                  <span className="text-[#132A24] mt-0.5 block">
+                                    {selectedApplicationDetail.basicInfo?.timezone || 'Asia/Kolkata (IST)'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-[#132A24]/40 font-medium block">Account Created / Applied</span>
+                                  <span className="text-[#132A24] mt-0.5 block">
+                                    {selectedApplicationDetail.basicInfo?.createdAt
+                                      ? new Date(selectedApplicationDetail.basicInfo.createdAt).toLocaleString('en-IN')
+                                      : 'N/A'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-[#132A24]/40 font-medium block">Verification Status</span>
+                                  <span className="font-semibold uppercase tracking-wider text-[11px] text-[#4E7A66] mt-0.5 block">
+                                    {selectedApplicationDetail.basicInfo?.verificationStatus || 'Unverified'}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
 
-                          {/* SECTION 2: PROFESSIONAL INFORMATION */}
+                          {/* ================================================================= */}
+                          {/* SECTION 2: PROFESSIONAL PROFILE, BIO & MODALITIES (STEPS 3 & 4) */}
+                          {/* ================================================================= */}
                           <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-4">
-                            <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center gap-2">
-                              <HeartHandshake className="w-4 h-4 text-[#4E7A66]" /> 2. Professional Profile & Practice
+                            <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center justify-between">
+                              <span className="flex items-center gap-2">
+                                <HeartHandshake className="w-4 h-4 text-[#4E7A66]" /> 2. Professional Profile, Bio & Therapeutic Modalities
+                              </span>
+                              <span className="text-[11px] text-[#132A24]/50 font-normal font-sans">
+                                Steps 3 & 4 of Onboarding
+                              </span>
                             </h4>
+
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                               <div>
                                 <span className="text-[#132A24]/40 font-medium block">Professional Title</span>
@@ -1182,170 +1322,240 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[#132A24]/40 font-medium block">Languages</span>
+                                <span className="text-[#132A24]/40 font-medium block">Session Languages</span>
                                 <span className="text-[#132A24]">
-                                  {selectedApplicationDetail.professionalInfo?.languages?.join(', ') || 'English'}
+                                  {selectedApplicationDetail.professionalInfo?.languages?.join(', ') || 'English, Hindi'}
                                 </span>
                               </div>
                             </div>
 
                             {selectedApplicationDetail.professionalInfo?.bio && (
                               <div className="text-xs space-y-1">
-                                <span className="text-[#132A24]/40 font-medium block">Professional Bio</span>
-                                <p className="text-[#132A24]/80 leading-relaxed bg-[#FAFAF8] p-3 rounded-xl border border-[#132A24]/10 italic">
+                                <span className="text-[#132A24]/40 font-medium block">Professional Bio & Philosophy</span>
+                                <p className="text-[#132A24]/85 leading-relaxed bg-[#FAFAF8] p-3.5 rounded-xl border border-[#132A24]/10 italic">
                                   "{selectedApplicationDetail.professionalInfo.bio}"
                                 </p>
                               </div>
                             )}
 
+                            {/* Modalities with Primary Indicator */}
                             <div className="space-y-2 text-xs">
-                              <span className="text-[#132A24]/40 font-medium block">Specializations</span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {selectedApplicationDetail.professionalInfo?.specializations?.map((s) => (
-                                  <span key={s} className="px-2 py-0.5 rounded-full bg-[#132A24]/5 border border-[#132A24]/10 text-[#132A24] text-[11px]">
-                                    {s}
-                                  </span>
-                                )) || <span className="text-[#132A24]/40 italic">None specified</span>}
+                              <div className="flex items-center justify-between">
+                                <span className="text-[#132A24]/40 font-medium block">
+                                  Therapeutic Modalities & Core Frameworks
+                                </span>
+                                <span className="text-[10px] text-[#4E7A66] font-medium">
+                                  ★ Primary modalities require verified certification
+                                </span>
                               </div>
-                            </div>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedApplicationDetail.professionalInfo?.modalities?.map((m) => {
+                                  const isPrimary = selectedApplicationDetail.professionalInfo?.primaryModalities?.includes(m);
+                                  return (
+                                    <span
+                                      key={m}
+                                      className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 ${
+                                        isPrimary
+                                          ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-semibold shadow-2xs'
+                                          : 'bg-white border-[#132A24]/15 text-[#132A24]/80'
+                                      }`}
+                                    >
+                                      {isPrimary && <Sparkles className="w-3.5 h-3.5 text-emerald-600" />}
+                                      {m}
+                                      {isPrimary && (
+                                        <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider ml-1">
+                                          Primary
+                                        </span>
+                                      )}
+                                    </span>
+                                  );
+                                }) || <span className="text-[#132A24]/40 italic">None selected</span>}
 
-                            <div className="space-y-2 text-xs">
-                              <span className="text-[#132A24]/40 font-medium block">Therapeutic Modalities & Approaches</span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {selectedApplicationDetail.professionalInfo?.modalities?.map((m) => (
+                                {selectedApplicationDetail.professionalInfo?.customModalities?.map((cm) => (
                                   <span
-                                    key={m}
-                                    className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${
-                                      selectedApplicationDetail.professionalInfo?.primaryModalities?.includes(m)
-                                        ? 'bg-[#4E7A66]/15 border-[#4E7A66]/30 text-[#132A24] font-semibold'
-                                        : 'bg-white border-[#132A24]/10 text-[#132A24]/70'
-                                    }`}
+                                    key={cm}
+                                    className="px-3 py-1 rounded-full text-xs bg-indigo-50 border border-indigo-200 text-indigo-900 font-medium"
                                   >
-                                    {m} {selectedApplicationDetail.professionalInfo?.primaryModalities?.includes(m) ? '★ (Primary)' : ''}
+                                    + {cm} (Custom)
                                   </span>
                                 ))}
                               </div>
                             </div>
+
+                            {/* Specialties & Tags */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
+                              <div className="space-y-1.5">
+                                <span className="text-[#132A24]/40 font-medium block">Clinical Specialties</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {selectedApplicationDetail.professionalInfo?.specializations?.map((s) => (
+                                    <span key={s} className="px-2.5 py-0.5 rounded-full bg-[#132A24]/5 border border-[#132A24]/10 text-[#132A24] text-[11px]">
+                                      {s}
+                                    </span>
+                                  )) || <span className="text-[#132A24]/40 italic">None specified</span>}
+                                </div>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <span className="text-[#132A24]/40 font-medium block">Broad Clinical Focus Tags</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {selectedApplicationDetail.professionalInfo?.broadSpecialtyTags?.map((tag) => (
+                                    <span key={tag} className="px-2.5 py-0.5 rounded-full bg-[#4E7A66]/10 border border-[#4E7A66]/20 text-[#132A24] text-[11px] font-medium">
+                                      {tag}
+                                    </span>
+                                  )) || <span className="text-[#132A24]/40 italic">None specified</span>}
+                                </div>
+                              </div>
+                            </div>
                           </div>
 
-                          {/* SECTION 3 & 4: CREDENTIALS, LICENSURE & EDUCATION */}
+                          {/* ================================================================= */}
+                          {/* SECTION 3: CLINICAL SCENARIOS & CONSISTENCY CHECK (STEP 5) */}
+                          {/* ================================================================= */}
+                          <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-4">
+                            <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center justify-between">
+                              <span className="flex items-center gap-2">
+                                <Activity className="w-4 h-4 text-[#4E7A66]" /> 3. Clinical Vignettes & Consistency Calibration
+                              </span>
+                              <span className="text-[11px] text-[#132A24]/50 font-normal font-sans">
+                                Step 5 of Onboarding
+                              </span>
+                            </h4>
+
+                            <p className="text-xs text-[#132A24]/60">
+                              These real-world clinical vignettes assess how the therapist reacts instinctively to common therapy moments and whether their response aligns with their declared primary modalities.
+                            </p>
+
+                            <div className="space-y-3">
+                              {selectedApplicationDetail.clinicalVignettes?.map((vig, idx) => (
+                                <div key={idx} className="p-3.5 rounded-xl bg-[#FAFAF8] border border-[#132A24]/10 text-xs space-y-2">
+                                  <div className="flex items-center justify-between font-semibold text-[#132A24]">
+                                    <span className="text-[#4E7A66]">Scenario {vig.scenarioNumber}: {vig.title}</span>
+                                  </div>
+                                  <div className="text-[#132A24]/80 italic">
+                                    "{vig.prompt}"
+                                  </div>
+                                  <div className="p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200/80 text-emerald-950 font-medium flex items-start gap-2">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                    <div>
+                                      <span className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider block">
+                                        Clinician's Selected Response
+                                      </span>
+                                      <span>{vig.selectedAnswer}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* ================================================================= */}
+                          {/* SECTION 4 & 5: EDUCATION & CREDENTIALS / RCI (STEPS 6 & 8) */}
+                          {/* ================================================================= */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* SECTION 3: Education */}
+                            {/* SECTION 4: Education & Degrees */}
                             <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-3">
-                              <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center gap-2">
-                                <GraduationCap className="w-4 h-4 text-[#4E7A66]" /> 3. Education & Degrees
+                              <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                  <GraduationCap className="w-4 h-4 text-[#4E7A66]" /> 4. Education & Degrees
+                                </span>
+                                <span className="text-[10px] text-[#132A24]/40 font-sans">Step 6</span>
                               </h4>
                               {selectedApplicationDetail.education?.length > 0 ? (
                                 <div className="space-y-2 text-xs">
                                   {selectedApplicationDetail.education.map((deg, idx) => (
-                                    <div key={idx} className="p-2.5 rounded-xl bg-[#FAFAF8] border border-[#132A24]/10">
+                                    <div key={idx} className="p-3 rounded-xl bg-[#FAFAF8] border border-[#132A24]/10">
                                       <div className="font-semibold text-[#132A24]">{deg.degree || deg.qualification}</div>
-                                      <div className="text-[11px] text-[#132A24]/60">{deg.institution || 'University / Board'} {deg.year ? `(${deg.year})` : ''}</div>
+                                      <div className="text-[11px] text-[#132A24]/70 mt-0.5">
+                                        {deg.institution || 'University / Board'} {deg.endYear ? `(${deg.endYear})` : ''}
+                                      </div>
+                                      {deg.field && (
+                                        <div className="text-[10px] text-[#132A24]/50 mt-0.5">Field: {deg.field}</div>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
                               ) : (
-                                <div className="text-xs text-[#132A24]/50 italic">
+                                <div className="text-xs text-[#132A24]/50 italic p-3">
                                   {selectedApplicationDetail.professionalInfo?.qualification || 'No explicit degrees recorded.'}
                                 </div>
                               )}
                             </div>
 
-                            {/* SECTION 4: Professional Credentials & Licensure */}
+                            {/* SECTION 5: Professional Licensure & RCI Registry */}
                             <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-3">
-                              <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center gap-2">
-                                <Award className="w-4 h-4 text-[#4E7A66]" /> 4. Licensure & RCI Registry
+                              <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                  <Award className="w-4 h-4 text-[#4E7A66]" /> 5. Licensure & RCI Registry
+                                </span>
+                                <span className="text-[10px] text-[#132A24]/40 font-sans">Step 8</span>
                               </h4>
-                              <div className="space-y-2 text-xs">
+                              <div className="space-y-3 text-xs">
                                 <div>
-                                  <span className="text-[#132A24]/40 font-medium block">Issuing Authority</span>
+                                  <span className="text-[#132A24]/40 font-medium block">Issuing Authority / Board</span>
                                   <span className="font-semibold text-[#132A24]">
                                     {selectedApplicationDetail.credentials?.issuingBody || 'Not specified'}
                                   </span>
                                 </div>
                                 <div>
                                   <span className="text-[#132A24]/40 font-medium block">License / Registration Number</span>
-                                  <span className="font-mono font-semibold text-[#132A24]">
-                                    {selectedApplicationDetail.credentials?.licenseNumber || 'None provided'}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-[#132A24]/40 font-medium block">RCI Status</span>
-                                  <span className="font-semibold text-[#132A24]">
-                                    {selectedApplicationDetail.credentials?.rciRegistered
-                                      ? `Registered (${selectedApplicationDetail.credentials?.rciNumber || 'Verified'})`
-                                      : 'Not RCI registered'}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* SECTION 5: VERIFICATION DOCUMENTS */}
-                          <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-4">
-                            <div className="flex items-center justify-between border-b border-[#132A24]/10 pb-2">
-                              <h4 className="font-serif font-bold text-sm text-[#132A24] flex items-center gap-2">
-                                <FileCheck className="w-4 h-4 text-[#4E7A66]" /> 5. Verification Documents
-                              </h4>
-                              <span className="text-[11px] text-[#132A24]/50">
-                                Stored in private bucket &bull; 1-Hour Ephemeral Signed URLs
-                              </span>
-                            </div>
-
-                            {selectedApplicationDetail.documents?.length === 0 ? (
-                              <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200 text-xs text-amber-900">
-                                No verification documents have been attached to this application yet.
-                              </div>
-                            ) : (
-                              <div className="divide-y divide-[#132A24]/10 border border-[#132A24]/10 rounded-xl overflow-hidden">
-                                {selectedApplicationDetail.documents.map((doc, idx) => (
-                                  <div key={idx} className="p-3.5 flex items-center justify-between bg-white hover:bg-[#FAFAF8] transition-colors text-xs">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 rounded-lg bg-[#132A24]/5 flex items-center justify-center text-[#132A24]">
-                                        <FileText className="w-4 h-4 text-[#4E7A66]" />
-                                      </div>
-                                      <div>
-                                        <div className="font-semibold text-[#132A24] capitalize">
-                                          {doc.name || doc.type?.replace(/_/g, ' ')}
-                                        </div>
-                                        <div className="text-[10px] text-[#132A24]/50 font-mono">
-                                          Type: {doc.type} {doc.isPrimary ? '• Primary Credential' : ''}
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <button
-                                      disabled={signedUrlLoading === doc.path}
-                                      onClick={() => handleViewDocument(doc.path)}
-                                      className="bg-white hover:bg-[#132A24]/5 border border-[#132A24]/20 text-[#132A24] font-medium py-1.5 px-3 rounded-lg text-xs transition-colors cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50"
-                                    >
-                                      {signedUrlLoading === doc.path ? (
-                                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                      ) : (
-                                        <Download className="w-3.5 h-3.5 text-[#4E7A66]" />
-                                      )}
-                                      View / Download
-                                    </button>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="font-mono font-semibold text-[#132A24] bg-[#FAFAF8] px-2 py-0.5 rounded border border-[#132A24]/10">
+                                      {selectedApplicationDetail.credentials?.licenseNumberFull || 'None provided'}
+                                    </span>
+                                    {selectedApplicationDetail.credentials?.licenseNumberFull && selectedApplicationDetail.credentials?.licenseNumberFull !== 'None provided' && (
+                                      <button
+                                        onClick={() => copyToClipboard(selectedApplicationDetail.credentials.licenseNumberFull, 'License Number')}
+                                        className="p-1 hover:bg-[#132A24]/5 rounded text-[#132A24]/40 hover:text-[#132A24]"
+                                        title="Copy License Number"
+                                      >
+                                        <Copy className="w-3 h-3" />
+                                      </button>
+                                    )}
                                   </div>
-                                ))}
+                                </div>
+                                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAFAF8] border border-[#132A24]/10">
+                                  <div>
+                                    <span className="text-[#132A24]/40 font-medium block">RCI Registration</span>
+                                    <span className="font-semibold text-[#132A24]">
+                                      {selectedApplicationDetail.credentials?.rciRegistered
+                                        ? `Registered (${selectedApplicationDetail.credentials?.rciNumber || 'Verified'})`
+                                        : 'Not RCI registered'}
+                                    </span>
+                                  </div>
+                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                    selectedApplicationDetail.credentials?.rciRegistered
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {selectedApplicationDetail.credentials?.rciRegistered ? 'RCI ACTIVE' : 'NON-RCI'}
+                                  </span>
+                                </div>
                               </div>
-                            )}
+                            </div>
                           </div>
 
-                          {/* SECTION 6: PRACTICE DETAILS & CASELOAD */}
-                          <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-3">
-                            <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-[#4E7A66]" /> 6. Practice Logistics & Capacity
+                          {/* ================================================================= */}
+                          {/* SECTION 6: CASELOAD, CAPACITY & DEMOGRAPHICS (STEP 7) */}
+                          {/* ================================================================= */}
+                          <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-4">
+                            <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center justify-between">
+                              <span className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-[#4E7A66]" /> 6. Caseload Logistics & Practice Capacity
+                              </span>
+                              <span className="text-[11px] text-[#132A24]/50 font-normal font-sans">
+                                Step 7 of Onboarding
+                              </span>
                             </h4>
+
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                               <div>
                                 <span className="text-[#132A24]/40 font-medium block">Per-Session Fee</span>
-                                <span className="font-semibold font-mono text-[#132A24]">
+                                <span className="font-semibold font-mono text-[#132A24] text-sm">
                                   ₹{selectedApplicationDetail.practiceInfo?.feePerSession || 1500}
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[#132A24]/40 font-medium block">Capacity (Current / Max)</span>
+                                <span className="text-[#132A24]/40 font-medium block">Caseload Capacity</span>
                                 <span className="font-semibold text-[#132A24]">
                                   {selectedApplicationDetail.practiceInfo?.currentCapacity || 0} / {selectedApplicationDetail.practiceInfo?.maxCapacity || 0} clients
                                 </span>
@@ -1358,26 +1568,280 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                               </div>
                               <div>
                                 <span className="text-[#132A24]/40 font-medium block">Severity Ceiling</span>
-                                <span className="text-[#132A24]">
+                                <span className="text-[#132A24] font-medium">
                                   Level {selectedApplicationDetail.practiceInfo?.severityCeiling || 3} of 5
                                 </span>
                               </div>
                             </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
+                              <div>
+                                <span className="text-[#132A24]/40 font-medium block mb-1.5">Target Age Groups</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {selectedApplicationDetail.practiceInfo?.ageGroups?.map((ag) => (
+                                    <span key={ag} className="px-2.5 py-0.5 rounded-full bg-[#132A24]/5 border border-[#132A24]/10 text-[#132A24] text-[11px]">
+                                      {ag}
+                                    </span>
+                                  )) || <span className="text-[#132A24]/40 italic">Adults (18-64)</span>}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-[#132A24]/40 font-medium block mb-1.5">Session Delivery Formats</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {selectedApplicationDetail.practiceInfo?.sessionFormats?.map((fmt) => (
+                                    <span key={fmt} className="px-2.5 py-0.5 rounded-full bg-[#4E7A66]/10 border border-[#4E7A66]/20 text-[#132A24] text-[11px] font-medium">
+                                      {fmt}
+                                    </span>
+                                  )) || <span className="text-[#132A24]/40 italic">Telehealth (Video)</span>}
+                                </div>
+                              </div>
+                            </div>
                           </div>
 
-                          {/* SECTION 7: PLATFORM READINESS CHECKLIST */}
+                          {/* ================================================================= */}
+                          {/* SECTION 7: CLINICAL SUPERVISION PATH (STEP 8) */}
+                          {/* ================================================================= */}
                           <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-3">
-                            <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center gap-2">
-                              <ShieldCheck className="w-4 h-4 text-[#4E7A66]" /> 7. Platform Readiness & Ethics Audit
+                            <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center justify-between">
+                              <span className="flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-[#4E7A66]" /> 7. Clinical Supervision Governance
+                              </span>
+                              <span className="text-[11px] text-[#132A24]/50 font-normal font-sans">
+                                Step 8 of Onboarding
+                              </span>
+                            </h4>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                              <div>
+                                <span className="text-[#132A24]/40 font-medium block">Supervision Requirement</span>
+                                <span className="font-semibold text-[#132A24] capitalize">
+                                  {selectedApplicationDetail.supervision?.status === 'not_required'
+                                    ? 'Exempt (≥3 years clinical experience)'
+                                    : selectedApplicationDetail.supervision?.status === 'own' || selectedApplicationDetail.supervision?.status === 'arranged'
+                                    ? 'Arranged with existing supervisor'
+                                    : selectedApplicationDetail.supervision?.status === 'opted_in'
+                                    ? 'Opted into Ingress Within supervision'
+                                    : selectedApplicationDetail.supervision?.status || 'Pending'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[#132A24]/40 font-medium block">Supervision Format</span>
+                                <span className="text-[#132A24]">
+                                  {selectedApplicationDetail.supervision?.format || 'Individual / Peer'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[#132A24]/40 font-medium block">Supervisor Contact</span>
+                                <span className="text-[#132A24]">
+                                  {selectedApplicationDetail.supervision?.supervisorContact || 'On file'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {selectedApplicationDetail.supervision?.confirmationLetter && (
+                              <div className="p-3 rounded-xl bg-[#FAFAF8] border border-[#132A24]/10 flex items-center justify-between text-xs mt-2">
+                                <div className="flex items-center gap-2">
+                                  <FileCheck className="w-4 h-4 text-[#4E7A66]" />
+                                  <span className="font-medium text-[#132A24]">Supervision Confirmation Letter Attached</span>
+                                </div>
+                                <button
+                                  disabled={signedUrlLoading === selectedApplicationDetail.supervision.confirmationLetter?.path}
+                                  onClick={() => handleViewDocument(
+                                    selectedApplicationDetail.supervision.confirmationLetter?.path,
+                                    selectedApplicationDetail.supervision.confirmationLetterSignedUrl,
+                                    false,
+                                    'Supervision Confirmation Letter'
+                                  )}
+                                  className="text-xs text-[#4E7A66] hover:underline font-medium cursor-pointer inline-flex items-center gap-1"
+                                >
+                                  <Download className="w-3.5 h-3.5" /> View Letter
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* ================================================================= */}
+                          {/* SECTION 8: HIGHER-ACUITY REFERRALS & CRISIS EXP (STEP 9) */}
+                          {/* ================================================================= */}
+                          <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-3">
+                            <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center justify-between">
+                              <span className="flex items-center gap-2">
+                                <AlertTriangle className="w-4 h-4 text-[#4E7A66]" /> 8. Higher-Acuity Referral Consideration
+                              </span>
+                              <span className="text-[11px] text-[#132A24]/50 font-normal font-sans">
+                                Step 9 of Onboarding
+                              </span>
+                            </h4>
+
+                            <div className="flex items-center gap-4 text-xs">
+                              <div>
+                                <span className="text-[#132A24]/40 font-medium block">Interested in Higher Acuity</span>
+                                <span className={`font-semibold inline-block px-2.5 py-0.5 rounded-full mt-1 ${
+                                  selectedApplicationDetail.higherAcuity?.interested === 'Yes'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {selectedApplicationDetail.higherAcuity?.interested || 'No'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[#132A24]/40 font-medium block">Acuity Clearance Level</span>
+                                <span className="font-mono text-[#132A24] uppercase mt-1 block">
+                                  {selectedApplicationDetail.higherAcuity?.clearanceLevel || 'None'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {selectedApplicationDetail.higherAcuity?.experience ? (
+                              <div className="text-xs space-y-1 pt-1">
+                                <span className="text-[#132A24]/40 font-medium block">
+                                  Clinical Experience with Crisis, Trauma & High Acuity
+                                </span>
+                                <p className="text-[#132A24]/85 leading-relaxed bg-[#FAFAF8] p-3.5 rounded-xl border border-[#132A24]/10 whitespace-pre-wrap">
+                                  {selectedApplicationDetail.higherAcuity.experience}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-[#132A24]/40 italic">
+                                No crisis / higher-acuity clinical experience narrative was submitted.
+                              </div>
+                            )}
+                          </div>
+
+                          {/* ================================================================= */}
+                          {/* SECTION 9: COMPLETE UPLOADED VERIFICATION DOCUMENTS (STEP 8) */}
+                          {/* ================================================================= */}
+                          <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-4">
+                            <div className="flex items-center justify-between border-b border-[#132A24]/10 pb-2">
+                              <h4 className="font-serif font-bold text-sm text-[#132A24] flex items-center gap-2">
+                                <FileCheck className="w-4 h-4 text-[#4E7A66]" /> 9. Uploaded Verification Documents & Visual Previews
+                              </h4>
+                              <span className="text-[11px] text-[#132A24]/50">
+                                Protected Storage &bull; 1-Hour Ephemeral Signed URLs
+                              </span>
+                            </div>
+
+                            {(!selectedApplicationDetail.documents || selectedApplicationDetail.documents.length === 0) ? (
+                              <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200 text-xs text-amber-900">
+                                No verification documents have been attached to this application yet.
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                {selectedApplicationDetail.documents.map((doc, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="p-3.5 rounded-xl bg-[#FAFAF8] border border-[#132A24]/10 hover:border-[#4E7A66]/30 transition-colors flex flex-col justify-between text-xs space-y-3"
+                                  >
+                                    <div className="space-y-2">
+                                      {/* Visual thumbnail if image */}
+                                      {doc.isImage && doc.signedUrl ? (
+                                        <div
+                                          onClick={() => setPreviewImageModal({
+                                            url: doc.signedUrl,
+                                            title: doc.title || doc.name || doc.category || 'Uploaded Document',
+                                          })}
+                                          className="w-full h-32 rounded-lg bg-white border border-[#132A24]/10 overflow-hidden relative group cursor-pointer flex items-center justify-center shadow-2xs"
+                                        >
+                                          <img
+                                            src={doc.signedUrl}
+                                            alt={doc.title || doc.name}
+                                            className="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform"
+                                          />
+                                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-medium gap-1.5">
+                                            <Maximize2 className="w-4 h-4" /> Click to Zoom
+                                          </div>
+                                        </div>
+                                      ) : null}
+
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-7 h-7 rounded-lg bg-[#4E7A66]/10 flex items-center justify-center text-[#4E7A66] shrink-0">
+                                            {doc.isImage ? <ImageIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                                          </div>
+                                          <div>
+                                            <div className="font-semibold text-[#132A24] leading-snug line-clamp-1">
+                                              {doc.title || doc.name || doc.category}
+                                            </div>
+                                            <span className="text-[10px] text-[#132A24]/50 capitalize">
+                                              {doc.category || doc.type?.replace(/_/g, ' ')}
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        {doc.isPrimary && (
+                                          <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold uppercase tracking-wider shrink-0">
+                                            Primary
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {doc.filename && (
+                                        <div className="text-[10px] text-[#132A24]/40 font-mono truncate" title={doc.filename}>
+                                          {doc.filename} {doc.sizeFormatted ? `(${doc.sizeFormatted})` : ''}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 pt-1 border-t border-[#132A24]/5">
+                                      <button
+                                        disabled={signedUrlLoading === doc.path}
+                                        onClick={() => handleViewDocument(
+                                          doc.path,
+                                          doc.signedUrl,
+                                          doc.isImage,
+                                          doc.title || doc.name || 'Document'
+                                        )}
+                                        className="flex-1 bg-white hover:bg-[#132A24]/5 border border-[#132A24]/20 text-[#132A24] font-medium py-1.5 px-2.5 rounded-lg text-xs transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                      >
+                                        {signedUrlLoading === doc.path ? (
+                                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                        ) : doc.isImage ? (
+                                          <Eye className="w-3.5 h-3.5 text-[#4E7A66]" />
+                                        ) : (
+                                          <ExternalLink className="w-3.5 h-3.5 text-[#4E7A66]" />
+                                        )}
+                                        {doc.isImage ? 'Preview Image' : 'Open Document'}
+                                      </button>
+
+                                      {doc.signedUrl && (
+                                        <a
+                                          href={doc.signedUrl}
+                                          download={doc.filename || 'document'}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="p-1.5 bg-white hover:bg-[#132A24]/5 border border-[#132A24]/20 text-[#132A24]/70 hover:text-[#132A24] rounded-lg transition-colors"
+                                          title="Direct Download"
+                                        >
+                                          <Download className="w-3.5 h-3.5" />
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* ================================================================= */}
+                          {/* SECTION 10: ETHICAL DECLARATIONS & PLATFORM READINESS (STEP 10) */}
+                          {/* ================================================================= */}
+                          <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-3">
+                            <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center justify-between">
+                              <span className="flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-[#4E7A66]" /> 10. Platform Readiness & Ethics Audit
+                              </span>
+                              <span className="text-[11px] text-[#132A24]/50 font-normal font-sans">
+                                Step 10 of Onboarding
+                              </span>
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                               {[
-                                { label: 'Basic Profile Completed', value: selectedApplicationDetail.readinessChecklist?.profileCompleted },
+                                { label: 'Basic Profile & Bio Completed', value: selectedApplicationDetail.readinessChecklist?.profileCompleted },
                                 { label: 'Credentials & Licensure Declared', value: selectedApplicationDetail.readinessChecklist?.credentialsProvided },
                                 { label: 'Verification Documents Uploaded', value: selectedApplicationDetail.readinessChecklist?.documentsUploaded },
-                                { label: 'Ethics & Privacy Code Accepted', value: selectedApplicationDetail.readinessChecklist?.ethicsAccepted },
-                                { label: 'Truthfulness Confirmed', value: selectedApplicationDetail.readinessChecklist?.truthfulnessConfirmed },
-                                { label: 'Background Check Consent', value: selectedApplicationDetail.readinessChecklist?.backgroundCheckConsent },
+                                { label: 'Ethics & Privacy Code Accepted', value: selectedApplicationDetail.declarations?.ethicsDeclaration ?? selectedApplicationDetail.readinessChecklist?.ethicsAccepted },
+                                { label: 'Truthfulness Declaration Confirmed', value: selectedApplicationDetail.declarations?.truthfulnessConfirmed ?? selectedApplicationDetail.readinessChecklist?.truthfulnessConfirmed },
+                                { label: 'Background Check Consent Given', value: selectedApplicationDetail.declarations?.backgroundCheckConsent ?? selectedApplicationDetail.readinessChecklist?.backgroundCheckConsent },
                                 { label: 'Supervision Path Compliant', value: selectedApplicationDetail.readinessChecklist?.supervisionCompliant },
                                 { label: 'Payout Account Configured', value: selectedApplicationDetail.readinessChecklist?.payoutAccountReady },
                               ].map((item, idx) => (
@@ -1393,11 +1857,13 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                             </div>
                           </div>
 
-                          {/* SECTION 8: REVIEW HISTORY & AUDIT TRAIL */}
+                          {/* ================================================================= */}
+                          {/* SECTION 11: REVIEW HISTORY & AUDIT TRAIL */}
+                          {/* ================================================================= */}
                           {selectedApplicationDetail.reviewHistory?.length > 0 && (
                             <div className="bg-white border border-[#132A24]/10 rounded-2xl p-5 shadow-xs space-y-3">
                               <h4 className="font-serif font-bold text-sm text-[#132A24] border-b border-[#132A24]/10 pb-2 flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-[#4E7A66]" /> 8. Historical Review Audit Trail
+                                <Clock className="w-4 h-4 text-[#4E7A66]" /> 11. Historical Review Audit Trail
                               </h4>
                               <div className="space-y-2 text-xs">
                                 {selectedApplicationDetail.reviewHistory.map((rev, idx) => (
@@ -1457,6 +1923,7 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                   </div>
                 </div>
               )}
+
 
               {/* ========================================================================= */}
               {/* APPROVE CONFIRMATION MODAL */}
@@ -1551,6 +2018,53 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                       >
                         {isSubmittingReview ? 'Declining...' : 'Confirm Rejection'}
                       </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ========================================================================= */}
+              {/* IMAGE PREVIEW LIGHTBOX DIALOG */}
+              {/* ========================================================================= */}
+              {previewImageModal && (
+                <div
+                  className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+                  onClick={() => setPreviewImageModal(null)}
+                >
+                  <div
+                    className="relative max-w-4xl max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col w-full"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="p-4 bg-white border-b border-[#132A24]/10 flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-[#4E7A66]" />
+                        <h4 className="font-serif font-bold text-sm text-[#132A24] truncate">
+                          {previewImageModal.title || 'Document Image Preview'}
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a
+                          href={previewImageModal.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1 text-xs text-[#132A24]/70 hover:text-[#132A24] rounded-lg hover:bg-[#132A24]/5 inline-flex items-center gap-1 font-medium border border-[#132A24]/10 transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" /> Full Size
+                        </a>
+                        <button
+                          onClick={() => setPreviewImageModal(null)}
+                          className="p-1.5 text-[#132A24]/60 hover:text-[#132A24] rounded-lg hover:bg-[#132A24]/5 cursor-pointer transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-4 overflow-auto flex items-center justify-center bg-[#FAFAF8] max-h-[calc(90vh-65px)]">
+                      <img
+                        src={previewImageModal.url}
+                        alt={previewImageModal.title || 'Preview'}
+                        className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-sm border border-[#132A24]/10"
+                      />
                     </div>
                   </div>
                 </div>

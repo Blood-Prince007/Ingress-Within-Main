@@ -603,7 +603,7 @@ export class AdminPlatformService {
     const answers = (application?.answers || {}) as Record<string, any>;
     const rawDocs = Array.isArray(application?.documents) ? application.documents : [];
 
-    // Helper: Mask sensitive identifiers (e.g. license/RCI numbers)
+    // Helper: Mask sensitive identifiers for regular display if needed
     const maskIdentifier = (val?: string | null) => {
       if (!val || typeof val !== 'string') return null;
       const trimmed = val.trim();
@@ -611,14 +611,144 @@ export class AdminPlatformService {
       return `${trimmed.slice(0, 2)}****${trimmed.slice(-4)}`;
     };
 
-    // 2. Structured Sections
+    // 1. Gather all documents from application.documents AND answers object
+    const collectedDocsMap = new Map<string, any>();
+
+    // Add from application.documents array
+    for (const d of rawDocs) {
+      if (d && (d.path || d.filename)) {
+        const docPath = d.path || '';
+        collectedDocsMap.set(docPath, {
+          id: d.id || `doc_${collectedDocsMap.size}`,
+          category: d.category || d.type || 'credential',
+          title: d.title || d.name || (d.category || d.type || 'Verification Document').replace(/_/g, ' '),
+          filename: d.filename || docPath.split('/').pop() || 'document.pdf',
+          mimeType: d.mimeType || (docPath.match(/\.(jpg|jpeg|png|webp)$/i) ? 'image/jpeg' : 'application/pdf'),
+          sizeBytes: d.size || 0,
+          path: docPath,
+          uploadedAt: d.uploadedAt || application?.created_at,
+          verificationStatus: d.verificationStatus || 'pending',
+          metadata: d.metadata || {},
+        });
+      }
+    }
+
+    // Add named documents from answers
+    const addAnswerDoc = (docObj: any, category: string, defaultTitle: string, extraMeta: Record<string, any> = {}) => {
+      if (!docObj) return;
+      const docPath = typeof docObj === 'string' ? docObj : (docObj.path || '');
+      if (!docPath) return;
+      if (!collectedDocsMap.has(docPath)) {
+        const filename = docObj.filename || docPath.split('/').pop() || `${category}.pdf`;
+        const mimeType = docObj.mimeType || (docPath.match(/\.(jpg|jpeg|png|webp)$/i) ? 'image/jpeg' : 'application/pdf');
+        collectedDocsMap.set(docPath, {
+          id: docObj.id || `doc_${collectedDocsMap.size}`,
+          category,
+          title: defaultTitle,
+          filename,
+          mimeType,
+          sizeBytes: docObj.size || 0,
+          path: docPath,
+          uploadedAt: docObj.uploadedAt || application?.created_at,
+          verificationStatus: docObj.verificationStatus || 'pending',
+          metadata: { ...(docObj.metadata || {}), ...extraMeta },
+        });
+      }
+    };
+
+    addAnswerDoc(answers.degreeCertificate, 'degree_certificate', 'Degree / Qualification Certificate');
+    addAnswerDoc(answers.traumaCertification, 'trauma_certification', 'Trauma-Focused Training Certificate');
+    addAnswerDoc(answers.supervision?.confirmationLetter, 'supervision_confirmation', 'Supervision Confirmation Letter');
+    addAnswerDoc(answers.photo, 'profile_photo', 'Profile Picture');
+
+    if (answers.primaryCertificates && typeof answers.primaryCertificates === 'object') {
+      for (const [modality, doc] of Object.entries(answers.primaryCertificates)) {
+        addAnswerDoc(doc, 'primary_modality_certificate', `Primary Modality: ${modality}`, { modality, isPrimary: true });
+      }
+    }
+
+    if (answers.secondaryCertificates && typeof answers.secondaryCertificates === 'object') {
+      for (const [modality, doc] of Object.entries(answers.secondaryCertificates)) {
+        addAnswerDoc(doc, 'secondary_modality_certificate', `Secondary Modality: ${modality}`, { modality, isPrimary: false });
+      }
+    }
+
+    const allDocuments = Array.from(collectedDocsMap.values());
+
+    // 2. Determine raw profile photo path
+    const rawPhotoPath =
+      profile?.profile_image_url ||
+      answers.photo?.path ||
+      (typeof answers.photo === 'string' ? answers.photo : null) ||
+      allDocuments.find((d) => d.category === 'profile_photo')?.path ||
+      null;
+
+    // 3. Batch generate 1-hour signed URLs for documents and profile photo
+    const pathsToSign: string[] = [];
+    if (rawPhotoPath && !rawPhotoPath.startsWith('http')) {
+      pathsToSign.push(rawPhotoPath);
+    }
+    for (const doc of allDocuments) {
+      if (doc.path && !doc.path.startsWith('http') && !pathsToSign.includes(doc.path)) {
+        pathsToSign.push(doc.path);
+      }
+    }
+
+    const signedUrlMap = new Map<string, string>();
+    if (pathsToSign.length > 0) {
+      try {
+        const { data: signedData, error: signError } = await supabase.storage
+          .from('therapist-verification')
+          .createSignedUrls(pathsToSign, 3600);
+
+        if (!signError && Array.isArray(signedData)) {
+          for (const item of signedData) {
+            if (item && item.signedUrl && !item.error && item.path) {
+              signedUrlMap.set(item.path, item.signedUrl);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[AdminPlatformService] Batch createSignedUrls notice:', err);
+      }
+    }
+
+    const profileImageUrl = rawPhotoPath
+      ? (rawPhotoPath.startsWith('http') ? rawPhotoPath : (signedUrlMap.get(rawPhotoPath) || null))
+      : null;
+
+    const documentsWithSignedUrls = allDocuments.map((doc) => {
+      const isImg = Boolean(
+        doc.mimeType?.startsWith('image/') ||
+        doc.path?.match(/\.(jpg|jpeg|png|webp|avif)$/i)
+      );
+      const signed = doc.path.startsWith('http')
+        ? doc.path
+        : (signedUrlMap.get(doc.path) || null);
+
+      return {
+        ...doc,
+        signedUrl: signed,
+        isImage: isImg,
+        sizeFormatted: doc.sizeBytes > 0
+          ? (doc.sizeBytes < 1024 * 1024
+              ? `${(doc.sizeBytes / 1024).toFixed(1)} KB`
+              : `${(doc.sizeBytes / (1024 * 1024)).toFixed(2)} MB`)
+          : 'N/A',
+      };
+    });
+
+    // 4. Structured Sections
     const basicInfo = {
       fullName: profile?.full_name || answers.fullName || 'Clinician Applicant',
-      email: account.email || answers.email || null,
-      phone: account.phone_number,
+      email: account.email || answers.contact_email || answers.email || profile?.contact_email || null,
+      phone: account.phone_number || answers.phone || profile?.phone,
       city: profile?.city || answers.city || null,
       state: profile?.state || answers.state || null,
-      profileImageUrl: profile?.profile_image_url || answers.photo?.path || null,
+      gender: answers.gender || profile?.gender || null,
+      profileImagePath: rawPhotoPath,
+      profileImageUrl: profileImageUrl,
+      photoUrl: profileImageUrl,
       timezone: 'Asia/Kolkata',
       createdAt: account.created_at,
       status: account.status,
@@ -635,14 +765,101 @@ export class AdminPlatformService {
       specializations: Array.isArray(profile?.specializations) && profile.specializations.length
         ? profile.specializations
         : (Array.isArray(answers.specialties) ? answers.specialties : []),
+      broadSpecialtyTags: Array.isArray(profile?.broad_specialty_tags) && profile.broad_specialty_tags.length
+        ? profile.broad_specialty_tags
+        : (Array.isArray(answers.broadSpecialtyTags) ? answers.broadSpecialtyTags : []),
       modalities: Array.isArray(answers.modalities) ? answers.modalities : (profile?.modalities || []),
+      customModalities: Array.isArray(answers.customModalities) ? answers.customModalities : [],
       primaryModalities: Array.isArray(answers.primaryModalities) ? answers.primaryModalities : [],
       languages: Array.isArray(profile?.languages) ? profile.languages : (answers.languages || ['English', 'Hindi']),
-      ageGroups: Array.isArray(answers.ageGroups) ? answers.ageGroups : [],
-      vignetteAnswers: answers.vignetteAnswers || {},
+      sessionFormats: Array.isArray(profile?.session_formats) ? profile.session_formats : (answers.sessionFormats || ['Telehealth']),
+      feePerSession: Number(answers.feePerSession || account.per_session_fee || 1500),
     };
 
-    // 3. Education Parsing
+    // 5. Clinical Scenarios (Vignettes - Step 5 Consistency Check)
+    const VIGNETTE_DEFINITIONS = [
+      {
+        scenarioNumber: 1,
+        title: 'Mid-Session Silence on Painful Topic',
+        prompt: "A client goes quiet mid-session after you ask about a painful topic. What's closest to how you'd respond?",
+        options: [
+          'Gently name what I’m noticing and let them decide when to continue',
+          'Ask a direct follow-up to keep momentum',
+          'Sit in the silence without prompting',
+        ],
+      },
+      {
+        scenarioNumber: 2,
+        title: 'Repeated Behaviour Pattern Despite Insight',
+        prompt: 'A client says they already know their pattern but keep repeating it anyway. Your instinct?',
+        options: [
+          'Explore where the pattern first came from',
+          'Set a concrete behavioural experiment for the week',
+          'Point out the gap between insight and action directly',
+        ],
+      },
+      {
+        scenarioNumber: 3,
+        title: 'Session Structure & Agenda',
+        prompt: 'How do you typically structure a session?',
+        options: [
+          'Loose — we follow whatever comes up',
+          'A rough agenda, but I stay flexible',
+          'Clear structure — check-in, focus area, close',
+        ],
+      },
+    ];
+
+    const clinicalVignettes = VIGNETTE_DEFINITIONS.map((def, idx) => ({
+      ...def,
+      selectedAnswer: answers.vignetteAnswers?.[idx] || 'Not answered',
+      evidencedModalities: answers.vignetteEvidence?.[idx] || [],
+    }));
+
+    const calibration = answers.calibration || {};
+
+    // 6. Supervision Details
+    const supervisionDetails = {
+      status: answers.supervision?.status || (Number(answers.yearsOfExperience || 0) >= 3 ? 'not_required' : 'pending'),
+      format: answers.supervision?.format || null,
+      supervisorContact: answers.supervision?.supervisorContact || null,
+      confirmationLetter: answers.supervision?.confirmationLetter || null,
+      confirmationLetterSignedUrl: answers.supervision?.confirmationLetter?.path
+        ? (signedUrlMap.get(answers.supervision.confirmationLetter.path) || null)
+        : null,
+    };
+
+    // 7. Caseload & Practice Logistics
+    const caseloadAndCapacity = {
+      capacitySource: answers.capacitySource || 'Not specified',
+      currentCapacity: Number(answers.currentCapacity || profile?.capacity_current || 0),
+      maxCapacity: Number(answers.maxCapacity || profile?.capacity_max || 0),
+      soonestOpeningDays: answers.soonestOpeningDays !== undefined && answers.soonestOpeningDays !== ''
+        ? Number(answers.soonestOpeningDays)
+        : (profile?.soonest_opening_days ?? null),
+      severityCeiling: Number(answers.severityCeiling || profile?.concern_severity_ceiling || 3),
+      ageGroups: Array.isArray(answers.ageGroups) && answers.ageGroups.length > 0
+        ? answers.ageGroups
+        : (Array.isArray(profile?.age_group_specialization) ? profile.age_group_specialization : []),
+      practiceState: answers.state || profile?.licensure_state_region || null,
+    };
+
+    // 8. Higher-Acuity Referral Consideration
+    const higherAcuity = {
+      interested: answers.higherAcuityInterest || 'No',
+      experience: answers.higherAcuityExperience || '',
+      clearanceLevel: application?.acuity_clearance_level || 'none',
+    };
+
+    // 9. Ethics, Declarations & Legal Consents
+    const declarations = {
+      backgroundCheckConsent: Boolean(answers.backgroundCheckConsent),
+      ethicsDeclaration: Boolean(answers.ethicsDeclaration),
+      truthfulnessConfirmed: Boolean(answers.truthfulnessConfirmed),
+      submittedAt: application?.submitted_at || account.created_at,
+    };
+
+    // 10. Education
     let educationList: any[] = [];
     if (Array.isArray(answers.education) && answers.education.length > 0) {
       educationList = answers.education.map((edu: any) => ({
@@ -663,34 +880,23 @@ export class AdminPlatformService {
       ];
     }
 
-    // 4. Professional Credentials & RCI
+    // 11. Professional Credentials & RCI
     const credentials = {
       issuingBody: answers.issuingBody || (account.rci_registered ? 'Rehabilitation Council of India' : 'Professional Board'),
       licenseNumberMasked: maskIdentifier(answers.licenseNumber || account.rci_number),
-      licenseNumberFull: answers.licenseNumber || account.rci_number || null,
+      licenseNumberFull: answers.licenseNumber || account.rci_number || 'None provided',
       rciRegistered: Boolean(account.rci_registered),
       rciNumber: account.rci_number || null,
-      traumaCertification: Boolean(answers.traumaCertification),
-      primaryModalityCertified: Boolean(answers.primaryModalityCertificate),
-      supervisionConfirmed: Boolean(answers.supervisionConfirmation),
+      traumaCertification: Boolean(answers.traumaCertification || answers.traumaListed === 'Yes'),
+      traumaCertificationDoc: answers.traumaCertification || null,
+      primaryModalityCertified: Boolean(answers.primaryCertificates && Object.keys(answers.primaryCertificates).length > 0),
+      supervisionConfirmed: Boolean(supervisionDetails.status === 'not_required' || supervisionDetails.confirmationLetter),
     };
 
-    // 5. Verification Documents
-    const documents = rawDocs.map((doc: any, index: number) => ({
-      id: doc.id || `doc_${index}`,
-      category: doc.category || 'credential',
-      filename: doc.filename || doc.path?.split('/').pop() || 'document.pdf',
-      mimeType: doc.mimeType || 'application/pdf',
-      sizeBytes: doc.size || 0,
-      path: doc.path,
-      uploadedAt: doc.uploadedAt || application?.created_at,
-      verificationStatus: doc.verificationStatus || 'pending',
-    }));
-
-    // 6. Practice Information
+    // 12. Practice Information
     const practiceInfo = {
-      sessionFormats: Array.isArray(profile?.session_formats) ? profile.session_formats : ['telehealth'],
-      perSessionFee: Number(account.per_session_fee || 1500),
+      sessionFormats: professionalInfo.sessionFormats,
+      feePerSession: professionalInfo.feePerSession,
       commissionRate: Number(account.commission_rate || 15.0),
       availabilityHours: profile?.availability_hours || {
         mon: ['09:00-17:00'],
@@ -699,28 +905,36 @@ export class AdminPlatformService {
         thu: ['09:00-17:00'],
         fri: ['09:00-17:00'],
       },
+      ...caseloadAndCapacity,
     };
 
-    // 7. Platform Readiness Checklist
+    // 13. Platform Readiness Checklist
     const hasProfile = Boolean(basicInfo.fullName && professionalInfo.bio);
-    const hasCredentials = Boolean(credentials.licenseNumberFull && credentials.issuingBody);
-    const hasDocuments = documents.length > 0;
-    const hasEthics = answers.ethicsDeclaration !== false;
-    const hasBackgroundCheck = answers.backgroundCheckConsent !== false;
+    const hasCredentials = Boolean(credentials.licenseNumberFull !== 'None provided' && credentials.issuingBody);
+    const hasDocuments = documentsWithSignedUrls.length > 0;
+    const hasEthics = declarations.ethicsDeclaration;
+    const hasTruthfulness = declarations.truthfulnessConfirmed;
+    const hasBackgroundCheck = declarations.backgroundCheckConsent;
     const hasPayout = Boolean(payoutAccount?.id);
+    const isSupervisionCompliant = supervisionDetails.status === 'not_required' || supervisionDetails.status === 'opted_in' || Boolean(supervisionDetails.confirmationLetter);
 
     const readiness = {
       profileCompleted: hasProfile,
       credentialsSubmitted: hasCredentials,
+      credentialsProvided: hasCredentials,
       documentsUploaded: hasDocuments,
-      ethicsDeclared: hasEthics,
+      ethicsAccepted: hasEthics,
+      truthfulnessConfirmed: hasTruthfulness,
+      backgroundCheckConsent: hasBackgroundCheck,
       backgroundCheckConsented: hasBackgroundCheck,
+      supervisionCompliant: isSupervisionCompliant,
+      payoutAccountReady: hasPayout,
       payoutConfigured: hasPayout,
-      overallReadyForReview: hasProfile && hasCredentials && hasDocuments,
+      readyForApproval: hasProfile && hasCredentials && hasDocuments && hasEthics && hasTruthfulness && hasBackgroundCheck,
       isVerified: account.verification_status === 'verified' && account.can_practice === true,
     };
 
-    // 8. Review History
+    // 14. Review History
     const rawReviews = (reviews && reviews.length > 0)
       ? reviews
       : await TherapistPlatformService.getReviewHistory(therapistAccountId);
@@ -748,8 +962,14 @@ export class AdminPlatformService {
       professionalInfo,
       education: educationList,
       credentials,
-      documents,
+      documents: documentsWithSignedUrls,
       practiceInfo,
+      clinicalVignettes,
+      calibration,
+      supervision: supervisionDetails,
+      caseloadAndCapacity,
+      higherAcuity,
+      declarations,
       readiness,
       readinessChecklist: readiness,
       applicationMeta: {
@@ -762,6 +982,7 @@ export class AdminPlatformService {
         reviewedAt: application?.reviewed_at || null,
       },
       reviewHistory: history,
+      answersRaw: answers,
     };
   }
 
