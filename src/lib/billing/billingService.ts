@@ -310,8 +310,8 @@ export class BillingService {
 
     if (razorpay) {
       try {
-        // Create or use plan
-        let planId = product.gateway_plan_id || process.env.RAZORPAY_PLAN_ID;
+        // Prioritize process.env.RAZORPAY_PLAN_ID over database value to prevent stale test plan IDs from overriding live config
+        let planId = process.env.RAZORPAY_PLAN_ID || product.gateway_plan_id;
         if (!planId) {
           const plan = await razorpay.plans.create({
             period: 'monthly',
