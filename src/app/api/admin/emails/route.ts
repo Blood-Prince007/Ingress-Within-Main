@@ -35,3 +35,37 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+/**
+ * POST /api/admin/emails
+ * Sends a real, controlled smoke-test transactional email via the production provider pipeline.
+ * Available only to authorized administrators for live provider verification.
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const admin = await requireAuthorizedAdmin(request);
+
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch {
+      body = {};
+    }
+
+    const recipientEmail = body.recipientEmail || admin.email || 'contactus@ingresswithin.com';
+
+    const smokeResult = await EmailService.sendSmokeTestEmail({
+      recipientEmail,
+    });
+
+    return NextResponse.json({
+      success: smokeResult.success,
+      smokeTest: smokeResult,
+    }, { status: smokeResult.success ? 200 : 422 });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: { code: err.code || 'SMOKE_TEST_ERROR', message: err.message } },
+      { status: err.status || 500 }
+    );
+  }
+}

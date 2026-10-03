@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { EmailService } from '../../../../lib/email/emailService';
+import { getEmailConfig } from '../../../../lib/email/emailConfig';
 import { supabase } from '../../../../lib/db';
 
 function getWebhookSecret(): string {
-  return process.env.RESEND_WEBHOOK_SECRET || process.env.EMAIL_WEBHOOK_SECRET || '';
+  return getEmailConfig().webhookSecret || '';
 }
 
 /**
  * Validates HMAC SHA-256 signature for incoming provider webhooks.
+ * Supports both Resend Svix standard (whsec_ key with base64 digest)
+ * and legacy/direct hex HMAC headers.
  */
-function verifySignature(payload: string, signatureHeader: string | null): boolean {
+function verifySignature(
+  payload: string,
+  signatureHeader: string | null,
+  svixId?: string | null,
+  svixTimestamp?: string | null
+): boolean {
   const secret = getWebhookSecret();
   if (!secret) {
     // If no webhook secret is configured in dev/test, warn but permit if test flag is active
@@ -22,14 +30,42 @@ function verifySignature(payload: string, signatureHeader: string | null): boole
   }
 
   try {
-    const expected = crypto
+    // 1. Resend / Svix signature format
+    if (svixId && svixTimestamp) {
+      const secretKey = secret.startsWith('whsec_')
+        ? Buffer.from(secret.slice(6), 'base64')
+        : Buffer.from(secret, 'utf-8');
+
+      const toSign = `${svixId}.${svixTimestamp}.${payload}`;
+      const expectedBase64 = crypto
+        .createHmac('sha256', secretKey)
+        .update(toSign)
+        .digest('base64');
+
+      const expectedSig = `v1,${expectedBase64}`;
+      const candidateSignatures = signatureHeader.split(' ');
+
+      for (const candidate of candidateSignatures) {
+        if (candidate.length === expectedSig.length) {
+          if (crypto.timingSafeEqual(Buffer.from(candidate), Buffer.from(expectedSig))) {
+            return true;
+          }
+        }
+      }
+    }
+
+    // 2. Standard HMAC SHA-256 (hex or v1=hex)
+    const expectedHex = crypto
       .createHmac('sha256', secret)
       .update(payload)
       .digest('hex');
 
-    // Support both raw hex or "v1=hex" formats
     const cleanSig = signatureHeader.replace(/^v\d+=/, '').trim();
-    return crypto.timingSafeEqual(Buffer.from(cleanSig), Buffer.from(expected));
+    if (cleanSig.length === expectedHex.length) {
+      return crypto.timingSafeEqual(Buffer.from(cleanSig), Buffer.from(expectedHex));
+    }
+
+    return false;
   } catch {
     return false;
   }
@@ -37,7 +73,7 @@ function verifySignature(payload: string, signatureHeader: string | null): boole
 
 /**
  * POST /api/webhooks/email
- * Receives delivery status events from transactional email provider (Resend / SendGrid).
+ * Receives delivery status events from transactional email provider (Resend).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -47,13 +83,13 @@ export async function POST(request: NextRequest) {
       request.headers.get('x-resend-signature') ||
       request.headers.get('x-webhook-signature');
 
-    const eventId =
-      request.headers.get('svix-id') ||
-      request.headers.get('x-resend-event-id') ||
-      `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const svixId = request.headers.get('svix-id') || request.headers.get('x-resend-event-id');
+    const svixTimestamp = request.headers.get('svix-timestamp');
+
+    const eventId = svixId || `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     // 1. Signature Verification
-    if (getWebhookSecret() && !verifySignature(rawBody, signature)) {
+    if (getWebhookSecret() && !verifySignature(rawBody, signature, svixId, svixTimestamp)) {
       console.warn('[Email Webhook] Signature verification failed.');
       return NextResponse.json(
         { error: { code: 'INVALID_SIGNATURE', message: 'Webhook signature verification failed.' } },

@@ -2,18 +2,12 @@ import { supabase } from '../db';
 import { EmailEvents } from './emailEvents';
 import { EmailTemplates } from './emailTemplates';
 import { getEmailProvider } from './emailProvider';
+import { getEmailConfig, getFormattedSender, getReplyToAddress } from './emailConfig';
 import { SendEmailOptions, EmailDeliveryRecord, EmailDeliveryStatus } from './emailTypes';
 import { validateAndNormalizeEmail } from './emailValidation';
 import { ApiUsageService } from '../admin/apiUsageService';
 import { processEmailJob } from '../queue/workers/emailWorker';
 import { queueRegistry } from '../queue/registry';
-
-const DEFAULT_SENDER = process.env.EMAIL_FROM || 'care@ingresswithin.com';
-const ADMIN_NOTIFICATION_EMAIL =
-  process.env.THERAPIST_APPLICATION_NOTIFICATION_EMAIL ||
-  process.env.OPS_TEAM_EMAIL ||
-  'contactus@ingresswithin.com';
-const OPS_TEAM_EMAIL = process.env.OPS_TEAM_EMAIL || 'care@ingresswithin.com';
 
 export class EmailService {
   /**
@@ -34,13 +28,87 @@ export class EmailService {
   }
 
   /**
+   * Controlled smoke-test sending ONE real email via the real provider pipeline.
+   * Exercises: EmailService -> email_deliveries -> processEmailJob -> Resend API -> provider_message_id.
+   * Exposes diagnostic details without leaking any API keys or secrets.
+   */
+  static async sendSmokeTestEmail(options: {
+    recipientEmail: string;
+    senderEmail?: string;
+  }): Promise<{
+    success: boolean;
+    provider: 'resend' | 'mock';
+    recipient?: string;
+    messageId?: string;
+    deliveryId?: string;
+    status: string;
+    errorCategory?: string;
+    error?: string;
+  }> {
+    const validation = validateAndNormalizeEmail(options.recipientEmail);
+    if (!validation.valid) {
+      return {
+        success: false,
+        provider: 'resend',
+        recipient: options.recipientEmail,
+        status: 'failed',
+        errorCategory: 'INVALID_RECIPIENT_EMAIL',
+        error: validation.error || 'Invalid recipient email address',
+      };
+    }
+
+    const testIdempotencyKey = `smoke_test_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    try {
+      const deliveryRecord = await processEmailJob({
+        eventType: 'smoke_test',
+        recipient: {
+          email: validation.normalizedEmail!,
+          name: 'Authorized Administrator',
+          type: 'admin',
+        },
+        templateKey: 'therapist_application_received',
+        templateData: {
+          therapistName: 'System Administrator (Live Smoke Test)',
+          statusUrl: 'https://ingresswithin.com/admin/emails',
+        },
+        idempotencyKey: testIdempotencyKey,
+        metadata: {
+          isSmokeTest: true,
+          triggeredAt: new Date().toISOString(),
+        },
+      });
+
+      return {
+        success: deliveryRecord?.status === 'sent',
+        provider: (deliveryRecord?.provider as any) || 'resend',
+        recipient: validation.normalizedEmail!,
+        messageId: deliveryRecord?.providerMessageId || undefined,
+        deliveryId: deliveryRecord?.id || undefined,
+        status: deliveryRecord?.status || 'failed',
+        errorCategory: deliveryRecord?.lastErrorCategory || undefined,
+        error: deliveryRecord?.lastError || undefined,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        provider: 'resend',
+        recipient: validation.normalizedEmail!,
+        status: 'failed',
+        errorCategory: err.errorCategory || 'SMOKE_TEST_FAILURE',
+        error: err.message || 'Controlled smoke test failed to deliver',
+      };
+    }
+  }
+
+  /**
    * Asynchronously queues an email job into BullMQ (or runs background task).
    * Guarantees zero blocking of the calling API request.
    */
   static async queueEmail(
     options: SendEmailOptions,
     jobIdPrefix = 'email'
-  ): Promise<{ queued: boolean; jobId?: string }> {
+  ): Promise<{ queued: boolean; jobId?: string; deliveryRecord?: EmailDeliveryRecord | null }> {
     try {
       const emailValidation = validateAndNormalizeEmail(options.recipient.email);
       if (!emailValidation.valid) {
@@ -57,6 +125,7 @@ export class EmailService {
       };
 
       const finalJobId = options.idempotencyKey || `${jobIdPrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const config = getEmailConfig();
 
       // 1. Record queued state in DB (fail-safe)
       const now = new Date().toISOString();
@@ -91,9 +160,20 @@ export class EmailService {
         console.warn('[EmailService.queueEmail] DB record notice:', dbErr);
       }
 
-      // 2. Enqueue in BullMQ or inline background executor
+      // 2. Direct immediate dispatch (ideal for Vercel / serverless or when BYPASS_REDIS=true)
+      if (config.dispatchMode === 'immediate') {
+        try {
+          const deliveryRecord = await processEmailJob(normalizedOptions);
+          return { queued: true, jobId: finalJobId, deliveryRecord };
+        } catch (jobErr: any) {
+          console.error('[EmailService.queueEmail] Immediate delivery execution error:', jobErr.message || jobErr);
+          return { queued: false, jobId: finalJobId };
+        }
+      }
+
+      // 3. Enqueue in BullMQ if dispatchMode is 'queue'
       try {
-        await queueRegistry.addJob(
+        const enqueuePromise = queueRegistry.addJob(
           'transactional_email',
           `send_${options.templateKey}`,
           normalizedOptions,
@@ -104,24 +184,29 @@ export class EmailService {
             removeOnComplete: true,
           }
         );
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('BullMQ Redis connection timed out after 2000ms')), 2000)
+        );
+        await Promise.race([enqueuePromise, timeoutPromise]);
+        return { queued: true, jobId: finalJobId };
       } catch (qErr) {
-        // Fallback: spawn async background task without blocking request
-        console.warn('[EmailService.queueEmail] Queue enqueue fallback to setImmediate:', qErr);
-        setImmediate(async () => {
-          try {
-            await processEmailJob(normalizedOptions);
-          } catch (jobErr) {
-            console.error('[EmailService] Async background email failed:', jobErr);
-          }
-        });
+        // Fail-safe fallback: execute direct dispatch so emails are NEVER dropped or hung
+        console.warn('[EmailService.queueEmail] BullMQ queueing unavailable or timed out, executing direct dispatch:', qErr);
+        try {
+          const deliveryRecord = await processEmailJob(normalizedOptions);
+          return { queued: true, jobId: finalJobId, deliveryRecord };
+        } catch (jobErr) {
+          console.error('[EmailService] Direct fallback delivery failed:', jobErr);
+          return { queued: false, jobId: finalJobId };
+        }
       }
 
-      return { queued: true, jobId: finalJobId };
     } catch (err: any) {
       console.warn('[EmailService.queueEmail] Non-blocking notice:', err.message || err);
       return { queued: false };
     }
   }
+
 
   // =========================================================================
   // THERAPIST WORKFLOW NOTIFICATIONS (ONBOARDING, VERIFICATION, DECISIONS)
@@ -148,7 +233,7 @@ export class EmailService {
     await this.queueEmail({
       eventType: EmailEvents.THERAPIST_APPLICATION_SUBMITTED_ADMIN,
       recipient: {
-        email: ADMIN_NOTIFICATION_EMAIL,
+        email: getEmailConfig().adminNotificationEmail,
         name: 'Ingress Within Clinical Admin',
         type: 'admin',
       },
@@ -294,7 +379,7 @@ export class EmailService {
     await this.sendEmail({
       eventType: EmailEvents.FIRST_SESSION_COORDINATION_REQUIRED,
       recipient: {
-        email: OPS_TEAM_EMAIL,
+        email: getEmailConfig().opsTeamEmail,
         name: 'Clinical Ops Team',
         type: 'team',
       },

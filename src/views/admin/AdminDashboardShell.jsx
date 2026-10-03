@@ -91,11 +91,44 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
   const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
   const [emailsData, setEmailsData] = useState({ deliveries: [], pagination: {}, health: {} });
   const [emailStatusFilter, setEmailStatusFilter] = useState('all');
+  const [showSmokeTestModal, setShowSmokeTestModal] = useState(false);
+  const [smokeTestEmail, setSmokeTestEmail] = useState('');
+  const [smokeTestLoading, setSmokeTestLoading] = useState(false);
+  const [smokeTestResult, setSmokeTestResult] = useState(null);
 
   const showToast = (msg, isError = false) => {
     setToastMessage({ text: msg, isError });
     setTimeout(() => setToastMessage(null), 4000);
   };
+
+  const handleRunSmokeTest = async () => {
+    if (!smokeTestEmail || !smokeTestEmail.includes('@')) {
+      showToast('Please provide a valid recipient email address', true);
+      return;
+    }
+    setSmokeTestLoading(true);
+    setSmokeTestResult(null);
+    try {
+      const res = await fetch('/api/admin/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientEmail: smokeTestEmail }),
+      });
+      const data = await res.json();
+      setSmokeTestResult(data.smokeTest || data);
+      if (data.success) {
+        showToast('Smoke test email sent and accepted by provider!');
+        fetchTabData();
+      } else {
+        showToast(`Smoke test failed: ${data.smokeTest?.error || data.error?.message || 'Error'}`, true);
+      }
+    } catch (err) {
+      showToast(err.message, true);
+    } finally {
+      setSmokeTestLoading(false);
+    }
+  };
+
 
   // Helper to format paise to INR
   const formatInr = (paise) => {
@@ -2484,6 +2517,26 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                 </div>
               </div>
 
+              {/* Observability Info Banner & Live Smoke Test Action */}
+              <div className="bg-white border border-[#132A24]/10 rounded-2xl p-4 text-xs text-[#132A24]/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <ShieldCheck className="w-5 h-5 text-[#4E7A66] shrink-0" />
+                  <div>
+                    <span className="font-semibold text-[#132A24]">Transactional Email Observability:</span> Status <strong className="text-emerald-700">SENT</strong> confirms the message was verified and accepted by Resend's API. Status <strong className="text-green-800">DELIVERED</strong> confirms recipient mailbox arrival via Resend Svix webhook callback.
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowSmokeTestModal(true);
+                    setSmokeTestResult(null);
+                  }}
+                  className="px-3.5 py-2 bg-[#4E7A66] hover:bg-[#3D6353] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Run Live Smoke Test
+                </button>
+              </div>
+
               {/* Status Filters */}
               <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-[#132A24]/10 rounded-2xl p-3 shadow-xs">
                 <div className="flex items-center gap-2 overflow-x-auto text-xs">
@@ -2523,15 +2576,16 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                       <th className="py-3.5 px-4">Recipient</th>
                       <th className="py-3.5 px-4">Subject</th>
                       <th className="py-3.5 px-4">Status</th>
-                      <th className="py-3.5 px-4">Attempts</th>
-                      <th className="py-3.5 px-4">Error / Notes</th>
+                      <th className="py-3.5 px-4">Provider / ID</th>
+                      <th className="py-3.5 px-4 text-center">Attempts</th>
+                      <th className="py-3.5 px-4">Error / Category</th>
                       <th className="py-3.5 px-4">Time</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#132A24]/5 text-[#132A24]">
                     {!emailsData.deliveries || emailsData.deliveries.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-8 text-center text-[#132A24]/50">
+                        <td colSpan={8} className="py-8 text-center text-[#132A24]/50">
                           No transactional email deliveries found for this filter.
                         </td>
                       </tr>
@@ -2547,32 +2601,65 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                               {d.recipient_type}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 max-w-[200px] truncate text-[#334155]">
+                          <td className="py-3.5 px-4 max-w-[180px] truncate text-[#334155]" title={d.subject}>
                             {d.subject}
                           </td>
                           <td className="py-3.5 px-4">
-                            <span
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                                d.status === 'sent' || d.status === 'delivered'
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : d.status === 'queued'
-                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                  : d.status === 'retrying'
-                                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                  : 'bg-red-50 text-red-700 border border-red-200'
-                              }`}
-                            >
-                              {d.status}
-                            </span>
+                            <div className="flex flex-col items-start gap-0.5">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                                  d.status === 'delivered'
+                                    ? 'bg-green-100 text-green-900 border border-green-300'
+                                    : d.status === 'sent'
+                                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                    : d.status === 'queued'
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                    : d.status === 'sending'
+                                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                    : d.status === 'retrying'
+                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                    : 'bg-red-50 text-red-700 border border-red-200'
+                                }`}
+                              >
+                                {d.status}
+                              </span>
+                              <span className="text-[9px] text-[#132A24]/40">
+                                {d.status === 'sent' ? 'Accepted by Resend' : d.status === 'delivered' ? 'Inbox Confirmed' : ''}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                d.provider === 'resend'
+                                  ? 'bg-[#132A24]/5 text-[#132A24] border border-[#132A24]/10'
+                                  : 'bg-amber-100 text-amber-900'
+                              }`}>
+                                {d.provider || 'resend'}
+                              </span>
+                              {d.provider_message_id && (
+                                <div className="flex items-center gap-1 font-mono text-[10px] text-[#132A24]/70 max-w-[120px] truncate" title={d.provider_message_id}>
+                                  <span>{d.provider_message_id}</span>
+                                  <button
+                                    onClick={() => copyToClipboard(d.provider_message_id, 'Message ID')}
+                                    className="p-0.5 hover:bg-[#132A24]/5 rounded text-[#132A24]/40 hover:text-[#132A24]"
+                                    title="Copy Provider Message ID"
+                                  >
+                                    <Copy className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3.5 px-4 font-mono text-center">
                             {d.attempt_count ?? 1}
                           </td>
-                          <td className="py-3.5 px-4 text-[#991b1b] text-[11px] max-w-[180px] truncate">
+                          <td className="py-3.5 px-4 text-[#991b1b] text-[11px] max-w-[180px] truncate" title={d.last_error || ''}>
                             {d.last_error_category || d.last_error || '—'}
                           </td>
                           <td className="py-3.5 px-4 text-[#132A24]/60 whitespace-nowrap">
-                            {new Date(d.sent_at || d.created_at).toLocaleString()}
+                            <div>{new Date(d.sent_at || d.created_at).toLocaleDateString()}</div>
+                            <div className="text-[10px] text-[#132A24]/40">{new Date(d.sent_at || d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                           </td>
                         </tr>
                       ))
@@ -2605,6 +2692,123 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                   </div>
                 )}
               </div>
+
+              {/* Controlled Smoke Test Modal */}
+              {showSmokeTestModal && (
+                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+                  <div className="bg-white border border-[#132A24]/10 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#132A24]/10">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-[#4E7A66]/10 flex items-center justify-center text-[#4E7A66]">
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="font-serif font-bold text-base text-[#132A24]">
+                            Live Email Provider Smoke Test
+                          </h4>
+                          <span className="text-[11px] text-[#132A24]/60">
+                            Tests end-to-end dispatch through the real Resend provider pipeline
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowSmokeTestModal(false)}
+                        className="p-1.5 text-[#132A24]/40 hover:text-[#132A24] rounded-lg hover:bg-[#132A24]/5"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-3 text-xs">
+                      <div>
+                        <label className="font-semibold text-[#132A24] block mb-1">
+                          Test Recipient Email Address
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="e.g. yourname@ingresswithin.com"
+                          value={smokeTestEmail}
+                          onChange={(e) => setSmokeTestEmail(e.target.value)}
+                          className="w-full bg-[#FAFAF8] border border-[#132A24]/15 rounded-xl px-3 py-2 text-xs text-[#132A24] placeholder-[#132A24]/30 focus:outline-none focus:border-[#4E7A66]"
+                        />
+                        <span className="text-[10px] text-[#132A24]/50 mt-1 block">
+                          Note: In Resend unverified sandbox mode, only account owner can receive emails. Once domain is verified in Resend, emails deliver to any recipient.
+                        </span>
+                      </div>
+
+                      {smokeTestResult && (
+                        <div className={`p-3.5 rounded-xl border text-xs space-y-2 ${
+                          smokeTestResult.success
+                            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                            : 'bg-rose-50/80 border-rose-200 text-rose-950'
+                        }`}>
+                          <div className="flex items-center gap-2 font-semibold">
+                            {smokeTestResult.success ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-rose-700" />
+                            )}
+                            <span>{smokeTestResult.success ? 'Provider Accepted Dispatch' : 'Provider Dispatch Failed'}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[11px]">
+                            <div>
+                              <span className="opacity-60 block">Provider:</span>
+                              <span className="font-semibold uppercase">{smokeTestResult.provider || 'resend'}</span>
+                            </div>
+                            <div>
+                              <span className="opacity-60 block">Status:</span>
+                              <span className="font-semibold uppercase">{smokeTestResult.status}</span>
+                            </div>
+                            {smokeTestResult.messageId && (
+                              <div className="col-span-2">
+                                <span className="opacity-60 block">Provider Message ID:</span>
+                                <span className="font-mono bg-white/70 px-1.5 py-0.5 rounded border border-current">{smokeTestResult.messageId}</span>
+                              </div>
+                            )}
+                            {smokeTestResult.errorCategory && (
+                              <div className="col-span-2">
+                                <span className="opacity-60 block">Error Category:</span>
+                                <span className="font-semibold text-rose-700">{smokeTestResult.errorCategory}</span>
+                              </div>
+                            )}
+                            {smokeTestResult.error && (
+                              <div className="col-span-2 text-rose-800 break-words">
+                                {smokeTestResult.error}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#132A24]/10">
+                      <button
+                        onClick={() => setShowSmokeTestModal(false)}
+                        className="px-4 py-2 rounded-xl border border-[#132A24]/15 text-xs text-[#132A24]/70 hover:text-[#132A24] cursor-pointer"
+                      >
+                        Close
+                      </button>
+                      <button
+                        disabled={smokeTestLoading || !smokeTestEmail}
+                        onClick={handleRunSmokeTest}
+                        className="bg-[#4E7A66] hover:bg-[#3D6353] text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                      >
+                        {smokeTestLoading ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            Dispatched via Provider...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5" />
+                            Dispatch Smoke Test
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

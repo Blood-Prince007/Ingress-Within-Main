@@ -1,11 +1,10 @@
 import { supabase } from '../../db';
 import { EmailTemplates } from '../../email/emailTemplates';
 import { getEmailProvider } from '../../email/emailProvider';
+import { getFormattedSender, getReplyToAddress } from '../../email/emailConfig';
 import { SendEmailOptions, EmailDeliveryRecord } from '../../email/emailTypes';
 import { validateAndNormalizeEmail } from '../../email/emailValidation';
 import { ApiUsageService } from '../../admin/apiUsageService';
-
-const DEFAULT_SENDER = process.env.EMAIL_FROM || 'care@ingresswithin.com';
 
 // In-memory idempotency cache to protect against microsecond double-clicks / concurrent worker ticks
 const memoryIdempotencySet = new Map<string, { status: string; timestamp: number }>();
@@ -137,21 +136,26 @@ export async function processEmailJob(
 
   // 5. Provider Dispatch & Safe Latency Telemetry
   const provider = getEmailProvider();
+  const formattedSender = getFormattedSender();
+  const replyTo = getReplyToAddress();
   const emailStart = Date.now();
   let sendResult;
 
   try {
     sendResult = await provider.send({
       to: normalizedTo,
-      from: DEFAULT_SENDER,
+      from: formattedSender,
       subject: rendered.subject,
       html: rendered.html,
       text: rendered.text,
+      replyTo,
     });
   } catch (dispatchErr: any) {
     sendResult = {
       success: false,
+      provider: 'resend' as const,
       error: dispatchErr.message || 'Network exception in email provider',
+      errorCategory: 'NETWORK_ERROR',
     };
   }
 
@@ -162,22 +166,23 @@ export async function processEmailJob(
     provider: 'email',
     service: jobData.eventType || 'transactional_email',
     endpoint: 'emailProvider.send',
-    statusCode: sendResult.success ? 200 : 500,
+    statusCode: sendResult.statusCode || (sendResult.success ? 200 : 500),
     success: sendResult.success,
     latencyMs: emailLatency,
     metadata: {
       templateKey: jobData.templateKey,
       recipientType: jobData.recipient.type,
       attempt,
+      providerType: sendResult.provider,
     },
-    errorCategory: sendResult.success ? null : 'DISPATCH_FAILURE',
+    errorCategory: sendResult.success ? null : (sendResult.errorCategory || 'DISPATCH_FAILURE'),
   });
 
   // 6. Handle Outcome (Success vs Retry vs Permanent Failure)
   const finishTime = new Date().toISOString();
 
   if (sendResult.success) {
-    const messageId = sendResult.messageId || `msg_${Date.now()}`;
+    const messageId = sendResult.messageId!;
     if (idempotencyKey) {
       memoryIdempotencySet.set(idempotencyKey, { status: 'sent', timestamp: Date.now() });
     }
@@ -188,6 +193,7 @@ export async function processEmailJob(
         .update({
           status: 'sent',
           sent_at: finishTime,
+          provider: sendResult.provider,
           provider_message_id: messageId,
           last_error: null,
           last_error_category: null,
@@ -211,7 +217,7 @@ export async function processEmailJob(
       entityId: jobData.entityId || null,
       status: 'sent',
       idempotencyKey,
-      provider: 'resend',
+      provider: sendResult.provider,
       providerMessageId: messageId,
       attemptCount: attempt,
       lastError: null,
@@ -222,8 +228,17 @@ export async function processEmailJob(
 
   // Failure scenario
   const rawErr = sendResult.error || 'Unknown email dispatch failure';
-  const isPermanent = /invalid email|suppressed|blacklisted|hard bounce|malformed/i.test(rawErr);
-  const errorCategory = isPermanent ? 'PERMANENT_RECIPIENT_ERROR' : 'TRANSIENT_NETWORK_ERROR';
+  const category = sendResult.errorCategory || 'TRANSIENT_PROVIDER_ERROR';
+
+  // Permanent failure classification:
+  // Missing credentials, unverified domain, invalid email, auth errors MUST NOT be blindly retried in loops
+  const isPermanent =
+    category === 'MISSING_PROVIDER_CREDENTIALS' ||
+    category === 'AUTHENTICATION_ERROR' ||
+    category === 'DOMAIN_NOT_VERIFIED' ||
+    category === 'VALIDATION_ERROR' ||
+    category === 'INVALID_RECIPIENT_EMAIL' ||
+    /invalid email|suppressed|blacklisted|hard bounce|malformed|missing|not verified/i.test(rawErr);
 
   const willRetry = !isPermanent && attempt < maxAttempts;
   const nextStatus = willRetry ? 'retrying' : 'failed';
@@ -234,8 +249,9 @@ export async function processEmailJob(
       .update({
         status: nextStatus,
         failed_at: willRetry ? null : finishTime,
+        provider: sendResult.provider,
         last_error: rawErr,
-        last_error_category: errorCategory,
+        last_error_category: category,
       })
       .match(deliveryId ? { id: deliveryId } : { idempotency_key: idempotencyKey });
   } catch (statusErr) {
@@ -243,10 +259,10 @@ export async function processEmailJob(
   }
 
   if (willRetry) {
-    console.warn(`[EmailWorker] Transient email failure (attempt ${attempt}/${maxAttempts}). Will retry. Error: ${rawErr}`);
-    throw new EmailWorkerError(rawErr, false, errorCategory);
+    console.warn(`[EmailWorker] Transient email failure (attempt ${attempt}/${maxAttempts}). Will retry. Category: ${category}. Error: ${rawErr}`);
+    throw new EmailWorkerError(rawErr, false, category);
   } else {
-    console.error(`[EmailWorker] Permanent or terminal email failure (attempt ${attempt}/${maxAttempts}). Halting retries. Error: ${rawErr}`);
-    throw new EmailWorkerError(rawErr, true, errorCategory);
+    console.error(`[EmailWorker] Permanent or terminal email failure (attempt ${attempt}/${maxAttempts}). Category: ${category}. Halting retries. Error: ${rawErr}`);
+    throw new EmailWorkerError(rawErr, true, category);
   }
 }
