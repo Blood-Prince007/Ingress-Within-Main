@@ -1,5 +1,6 @@
 import { supabase } from '../db';
 import { EntitlementService } from './entitlementService';
+import { ComplimentaryAccessService } from './complimentaryAccessService';
 
 export type CustomerState = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED_PENDING' | 'DORMANT';
 
@@ -286,7 +287,39 @@ export class AccessControlService {
       if (therapyOrder) hasPaidTherapySession = true;
     } catch (e) {}
 
-    // 3. Query latest subscription
+    // 5. Authoritative Complimentary Entitlement Check (Section 5 Conceptual Order)
+    // Order: Authenticated User -> Load Authoritative Entitlement -> Active Complimentary?
+    // YES -> Allow paid features without payment (permanent: expires_at = NULL)
+    // NO  -> Proceed to normal Razorpay subscription / payment logic
+    const complimentary = await ComplimentaryAccessService.getActiveEntitlement(userId);
+    if (complimentary && complimentary.status === 'active') {
+      return this.buildAccessPayload({
+        userId,
+        state: 'ACTIVE',
+        capabilities: {
+          canWriteJournal: true,
+          canStartSession: true,
+          canPerformExercise: true,
+          canGenerateReports: true,
+          canReadHistory: true
+        },
+        currentPeriodEnd: null, // Permanent: expires_at = NULL
+        trialDaysRemaining: 0,
+        banner: null,
+        subscription: {
+          id: complimentary.subscriptionId || `sub_complimentary_${userId}`,
+          gatewaySubscriptionId: complimentary.gatewaySubscriptionId || `sub_internal_complimentary_${userId}`,
+          status: 'active',
+          cancelAtPeriodEnd: false,
+          currentPeriodEnd: null
+        },
+        purchasedModules,
+        purchasedWorkshops,
+        hasPaidTherapySession
+      });
+    }
+
+    // 6. Query latest subscription
     let subscriptionRec: any = null;
     try {
       const { data: sub } = await supabase

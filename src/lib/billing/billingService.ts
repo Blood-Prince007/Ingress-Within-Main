@@ -2,6 +2,7 @@ import { supabase } from '../db';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import { ApiUsageService } from '../admin/apiUsageService';
+import { ComplimentaryAccessService } from './complimentaryAccessService';
 
 export const GST_RATE = 0.18; // 18% standard GST
 
@@ -108,6 +109,7 @@ export interface BillingOverview {
     current_period_start: string | null;
     current_period_end: string | null;
     cancel_at_period_end: boolean;
+    is_complimentary?: boolean;
   } | null;
   payment_methods: PaymentMethodRecord[];
   invoices: {
@@ -302,9 +304,32 @@ export class BillingService {
       throw new Error(`Product '${sku}' is not a subscription.`);
     }
 
+    const key_id = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mock_key';
+
+    // Guard: Accounts with active permanent complimentary entitlement never require checkout or Razorpay charge
+    if (await ComplimentaryAccessService.hasActiveComplimentaryAccess(userId)) {
+      return {
+        success: true,
+        already_subscribed: true,
+        message: 'Account has active permanent complimentary access. No payment required.',
+        subscription_id: `sub_internal_complimentary_${userId}`,
+        key_id,
+        product: {
+          sku: product.sku,
+          name: product.name,
+          price_inr: 0
+        },
+        pricing: {
+          totalPaise: 0,
+          subtotalPaise: 0,
+          gstPaise: 0,
+          formattedTotal: '₹0.00'
+        }
+      };
+    }
+
     const pricing = this.calculatePricing(product.price_inr, product.gst_rate);
     const razorpay = this.getRazorpayClient();
-    const key_id = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mock_key';
 
     let gatewaySubscriptionId = `sub_test_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
@@ -716,35 +741,53 @@ export class BillingService {
    * If user has no subscription: returns subscription = null (never fake data).
    */
   public static async getBillingOverview(userId: string): Promise<BillingOverview> {
-    // 1. Fetch Subscription
+    // 1. Fetch Subscription (Authoritative complimentary entitlement takes precedence)
     let activeSub: any = null;
     try {
-      const { data: sub } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (sub) {
-        const pricing = this.calculatePricing(
-          sub.metadata?.total_paise || this.DEFAULT_SELF_HELP_PRODUCT.price_inr,
-          this.DEFAULT_SELF_HELP_PRODUCT.gst_rate
-        );
-
+      const complimentary = await ComplimentaryAccessService.getActiveEntitlement(userId);
+      if (complimentary && complimentary.status === 'active') {
         activeSub = {
-          id: sub.id,
-          gateway_subscription_id: sub.gateway_subscription_id,
-          status: sub.status,
-          plan_name: this.DEFAULT_SELF_HELP_PRODUCT.name,
-          amount_subtotal: pricing.subtotalPaise,
-          amount_gst: pricing.gstPaise,
-          amount_total: pricing.totalPaise,
-          current_period_start: sub.current_period_start,
-          current_period_end: sub.current_period_end,
-          cancel_at_period_end: sub.cancel_at_period_end
+          id: complimentary.subscriptionId || `sub_complimentary_${userId}`,
+          gateway_subscription_id: complimentary.gatewaySubscriptionId || `sub_internal_complimentary_${userId}`,
+          status: 'active',
+          plan_name: 'Ingress Within Self-Work (Complimentary)',
+          amount_subtotal: 0,
+          amount_gst: 0,
+          amount_total: 0,
+          current_period_start: complimentary.grantedAt,
+          current_period_end: null, // Permanent: expires_at = NULL
+          cancel_at_period_end: false,
+          is_complimentary: true
         };
+      } else {
+        const { data: sub } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (sub) {
+          const pricing = this.calculatePricing(
+            sub.metadata?.total_paise || this.DEFAULT_SELF_HELP_PRODUCT.price_inr,
+            this.DEFAULT_SELF_HELP_PRODUCT.gst_rate
+          );
+
+          activeSub = {
+            id: sub.id,
+            gateway_subscription_id: sub.gateway_subscription_id,
+            status: sub.status,
+            plan_name: this.DEFAULT_SELF_HELP_PRODUCT.name,
+            amount_subtotal: pricing.subtotalPaise,
+            amount_gst: pricing.gstPaise,
+            amount_total: pricing.totalPaise,
+            current_period_start: sub.current_period_start,
+            current_period_end: sub.current_period_end,
+            cancel_at_period_end: sub.cancel_at_period_end,
+            is_complimentary: false
+          };
+        }
       }
     } catch (e) {}
 
