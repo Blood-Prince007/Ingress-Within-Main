@@ -37,7 +37,7 @@ export default function ContinuousJourneySection() {
   ];
 
   return (
-    <section className="relative py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden bg-[#FAF7F2]">
+    <section className="relative py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden bg-warm-paper paper-grain">
       <div className="max-w-6xl mx-auto text-center space-y-4">
         
         {/* Eyebrow Pill */}

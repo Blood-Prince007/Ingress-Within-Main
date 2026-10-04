@@ -31,25 +31,6 @@ export default function WatercolorBackground({ className = '', activeTab = 'home
       className={`fixed inset-0 pointer-events-none select-none z-0 overflow-hidden bg-[#FAF7F2] ${className}`}
       aria-hidden="true"
     >
-      <style>{`
-        @keyframes ambientCanvasFloat {
-          0% {
-            transform: translate3d(0px, 0px, 0px);
-          }
-          50% {
-            transform: translate3d(-7px, 5px, 0px);
-          }
-          100% {
-            transform: translate3d(0px, 0px, 0px);
-          }
-        }
-        .ambient-canvas-drift {
-          animation: ambientCanvasFloat 28s ease-in-out infinite alternate;
-          backface-visibility: hidden;
-          will-change: transform;
-        }
-      `}</style>
-
       {/* Hardware-accelerated Framer Motion AnimatePresence fade on initial load AND every page/tab switch */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -64,8 +45,8 @@ export default function WatercolorBackground({ className = '', activeTab = 'home
           }}
           className="w-full h-full"
         >
-          {/* Inner wrapper: gentle ambient drift */}
-          <div className="absolute -inset-[32px] ambient-canvas-drift">
+          {/* Inner wrapper: stable authentic watercolor canvas without GPU-heavy continuous drift */}
+          <div className="absolute inset-0">
             <picture className="w-full h-full block">
               <source srcSet="/soft-watercolor-bg.webp?v=perimeter" type="image/webp" />
               <img
@@ -78,12 +59,12 @@ export default function WatercolorBackground({ className = '', activeTab = 'home
             </picture>
           </div>
 
-          {/* Soft Warm Ivory Center Vignette: guarantees wide, calm, legible center column for typography */}
+          {/* Soft Warm Ivory Center Vignette: guarantees wide, calm, quiet, highly legible center column for typography while keeping perimeter watercolor expressive */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
               background:
-                'radial-gradient(ellipse 70% 60% at 50% 48%, rgba(250, 247, 242, 0.92) 0%, rgba(250, 247, 242, 0.65) 40%, transparent 80%)'
+                'radial-gradient(ellipse 72% 62% at 50% 46%, rgba(246, 241, 234, 0.86) 0%, rgba(246, 241, 234, 0.62) 38%, rgba(246, 241, 234, 0.20) 70%, transparent 95%)'
             }}
           />
         </motion.div>

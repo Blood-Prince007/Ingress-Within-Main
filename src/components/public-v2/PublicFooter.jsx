@@ -17,7 +17,7 @@ export default function PublicFooter({ onSelectTab, onOpenPolicy }) {
   };
 
   return (
-    <footer data-dark-section="true" className="relative z-20 bg-[#011627] text-[#DCE2E7] py-20 sm:py-28 px-6 sm:px-8 lg:px-12 border-t border-[#1E2A2E] overflow-hidden">
+    <footer data-dark-section="true" className="relative z-20 bg-[#011627] text-[#DCE2E7] py-20 sm:py-28 px-6 sm:px-8 lg:px-12 border-t border-[rgba(246,241,234,0.14)] overflow-hidden">
       <div className="max-w-6xl mx-auto">
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 sm:gap-12 pb-14 border-b border-white/10">

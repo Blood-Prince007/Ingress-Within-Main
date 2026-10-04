@@ -51,7 +51,7 @@ export default function FourStageRhythmSection() {
   ];
 
   return (
-    <section className="relative py-24 md:py-32 px-4 sm:px-8 overflow-hidden bg-[#FAF7F2]">
+    <section className="relative py-24 md:py-32 px-4 sm:px-8 overflow-hidden bg-warm-paper paper-grain">
       <div className="max-w-6xl mx-auto space-y-4 relative">
         
         {/* Editorial Margin Notes on Left & Right */}

@@ -26,10 +26,19 @@ export default function DashboardScrollPreview({ onActionClick }) {
     let currentProgress = 0;
     let isRunning = false;
     let rafId = null;
+    let isVisible = false;
+    let containerOffsetTop = 0;
+
+    const measureOffset = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        containerOffsetTop = rect.top + window.scrollY;
+      }
+    };
 
     const tick = () => {
-      // Smooth momentum easing (lerp) for silky fluid motion without lag
-      currentProgress += (targetProgress - currentProgress) * 0.09;
+      // Snappier, fluid lerp interpolation with quick convergence
+      currentProgress += (targetProgress - currentProgress) * 0.14;
 
       if (cardRef.current) {
         const translateY = ((1 - currentProgress) * 55).toFixed(1);
@@ -38,7 +47,7 @@ export default function DashboardScrollPreview({ onActionClick }) {
         cardRef.current.style.transform = `perspective(1400px) translateY(${translateY}px) rotateX(${rotateX}deg) scale(${scale})`;
       }
 
-      if (Math.abs(targetProgress - currentProgress) > 0.0005) {
+      if (Math.abs(targetProgress - currentProgress) > 0.002) {
         rafId = window.requestAnimationFrame(tick);
       } else {
         currentProgress = targetProgress;
@@ -60,22 +69,23 @@ export default function DashboardScrollPreview({ onActionClick }) {
     };
 
     const calculateTarget = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
+      if (!isVisible) return;
       const windowHeight = window.innerHeight || 800;
-
-      // Skip calculation when far outside viewport
-      if (rect.bottom < -150 || rect.top > windowHeight + 150) return;
+      const rectTop = containerOffsetTop - window.scrollY;
 
       const start = windowHeight * 0.95;
       const end = windowHeight * 0.25;
-      targetProgress = Math.min(Math.max((start - rect.top) / (start - end), 0), 1);
-      startLoop();
+      const newTarget = Math.min(Math.max((start - rectTop) / (start - end), 0), 1);
+      
+      if (Math.abs(newTarget - targetProgress) > 0.005) {
+        targetProgress = newTarget;
+        startLoop();
+      }
     };
 
     let scrollTicking = false;
     const handleScroll = () => {
-      if (!scrollTicking) {
+      if (!scrollTicking && isVisible) {
         window.requestAnimationFrame(() => {
           calculateTarget();
           scrollTicking = false;
@@ -84,13 +94,39 @@ export default function DashboardScrollPreview({ onActionClick }) {
       }
     };
 
-    calculateTarget();
+    const handleResize = () => {
+      measureOffset();
+      calculateTarget();
+    };
+
+    // Use IntersectionObserver to only compute when near/in viewport
+    let observer = null;
+    if (typeof window !== 'undefined' && 'IntersectionObserver' in window && containerRef.current) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          isVisible = entry.isIntersecting;
+          if (isVisible) {
+            measureOffset();
+            calculateTarget();
+          }
+        },
+        { rootMargin: '200px 0px 200px 0px' }
+      );
+      observer.observe(containerRef.current);
+    } else {
+      isVisible = true;
+      measureOffset();
+      calculateTarget();
+    }
+
     window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
+      window.removeEventListener('resize', handleResize);
+      if (observer) observer.disconnect();
       if (rafId) window.cancelAnimationFrame(rafId);
     };
   }, []);
