@@ -1338,7 +1338,8 @@
 }
 
 /* Inline text accent for headline brand color moments */
-.v2-wrapper .accent-rose   { color: #B07567; }
-.v2-wrapper .accent-thistle { color: #4A7550; }
-.v2-wrapper .accent-gold   { color: #9A6E2A; }
-.v2-wrapper .accent-fog    { color: #4E788E; }
+.v2-wrapper .accent-rose    { color: #B07264; }
+.v2-wrapper .accent-thistle { color: #4F7553; }
+.v2-wrapper .accent-fog     { color: #436A7D; }
+.v2-wrapper .accent-royal   { color: #795663; }
+.v2-wrapper .accent-gold    { color: #A77C38; }

@@ -128,13 +128,13 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
           className="max-w-5xl mx-auto text-center space-y-6"
         >
           <div className="flex flex-col items-center">
-            <div className="badge-thistle inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
+            <div className="badge-rose inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
               SOUND FAMILIAR?
             </div>
           </div>
           <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal leading-snug">
             Most of this starts as{' '}
-            <span className="italic accent-thistle">ordinary life</span>,{' '}
+            <span className="italic accent-rose">ordinary life</span>,{' '}
             not a clinical complaint.
           </h2>
           <div className="pt-4 flex flex-wrap justify-center gap-3">
@@ -207,12 +207,12 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
             className="text-center space-y-3"
           >
             <div className="flex flex-col items-center">
-              <div className="badge-rose inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
+              <div className="badge-fog inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
                 WHY PEOPLE START HERE
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal">
-              Three common <span className="italic accent-rose">starting points</span>.
+              Three common <span className="italic accent-fog">starting points</span>.
             </h2>
           </motion.div>
 
@@ -244,7 +244,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               <motion.div
                 key={card.num}
                 {...getCardEmergence(idx, 3)}
-                className="card-hover-rose group relative rounded-xl p-6 sm:p-7 min-h-[190px] sm:min-h-[210px] bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] flex flex-col justify-between transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs cursor-pointer"
+                className="card-hover-fog group relative rounded-xl p-6 sm:p-7 min-h-[190px] sm:min-h-[210px] bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] flex flex-col justify-between transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs cursor-pointer"
               >
                 <div>
                   {/* Top Bar: Minimal Tag Pill & Number */}
@@ -305,12 +305,12 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
             className="space-y-3"
           >
             <div className="flex flex-col items-center">
-              <div className="badge-gold inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
+              <div className="badge-royal inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
                 A QUICK LOOK
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal">
-              From a journal entry to a <span className="italic accent-gold">clearer pattern</span>, in three steps.
+              From a journal entry to a <span className="italic accent-royal">clearer pattern</span>, in three steps.
             </h2>
           </motion.div>
 
@@ -346,7 +346,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
                 <motion.div
                   key={step.num}
                   {...getCardEmergence(idx, 3)}
-                  className="card-hover-gold group relative rounded-xl p-6 sm:p-7 min-h-[180px] bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] flex flex-col justify-between transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs text-left"
+                  className="card-hover-royal group relative rounded-xl p-6 sm:p-7 min-h-[180px] bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] flex flex-col justify-between transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs text-left"
                 >
                   <div>
                     {/* Top Bar: Minimal Tag Pill & Step Number */}
@@ -406,12 +406,12 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
             className="text-center space-y-3"
           >
             <div className="flex flex-col items-center">
-              <div className="badge-gold inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
+              <div className="badge-thistle inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
                 PRICING, IN SHORT
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal">
-              Simple, <span className="italic accent-gold">transparent</span>, in rupees.
+              Simple, <span className="italic accent-thistle">transparent</span>, in rupees.
             </h2>
           </motion.div>
 
@@ -1609,7 +1609,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-[42px] text-[#162723] font-normal leading-[1.18] mx-auto">
-              What actually happens when you <span className="italic accent-thistle">sign up</span>.
+              What actually happens when you <span className="italic accent-rose">sign up</span>.
             </h2>
             <p className="font-zen text-sm sm:text-base text-[#5C6873] leading-relaxed max-w-2xl mx-auto">
               Zero confusion. Here is what your first hour looks like on either path.
@@ -2081,7 +2081,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-5xl text-[#162723] font-normal leading-tight mx-auto">
-              The two sides can <span className="italic accent-gold">feed each other</span>.
+              The two sides can <span className="italic accent-rose">feed each other</span>.
             </h2>
             <p className="font-zen text-base sm:text-lg text-[#5C6873] leading-relaxed max-w-2xl mx-auto">
               The platform connects self-directed reflection with clinical guidance without locking you into either.

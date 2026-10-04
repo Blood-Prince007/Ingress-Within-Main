@@ -214,12 +214,14 @@
 
 /* =========================================================================
    ACCENT TEXT — Italic colored inline spans within headings
+   Harmonized with each section's watercolor background palette
    ========================================================================= */
-.accent-rose   { color: #C49A8F; }
-.accent-thistle { color: #56795A; }
-.accent-gold   { color: #A77C38; }
-.accent-fog    { color: #4F7080; }
-.accent-ink    { color: #162723; }
+.accent-rose    { color: #B07264; }
+.accent-thistle { color: #4F7553; }
+.accent-fog     { color: #436A7D; }
+.accent-royal   { color: #795663; }
+.accent-gold    { color: #A77C38; }
+.accent-ink     { color: #162723; }
 
 /* =========================================================================
    BACKGROUND SYSTEM — 3 Restrained Primary Treatments:
