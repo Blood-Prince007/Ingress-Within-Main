@@ -11,7 +11,7 @@ import React from 'react';
  */
 export default function SpectrumOfInquirySection() {
   return (
-    <section className="relative py-20 md:py-28 px-4 sm:px-6 overflow-hidden bg-[#FAF6F0]">
+    <section className="relative py-20 md:py-28 px-4 sm:px-6 overflow-hidden bg-warm-paper paper-grain">
 
       <div className="max-w-7xl mx-auto text-center space-y-4">
         {/* Eyebrow */}

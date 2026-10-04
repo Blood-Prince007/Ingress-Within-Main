@@ -73,7 +73,7 @@
 
 .v2-wrapper {
   margin: 0;
-  background: var(--bg);
+  background: transparent;
   color: var(--ink);
   font: 16px/1.7 var(--body-font);
   -webkit-font-smoothing: antialiased;
@@ -113,6 +113,8 @@
 .v2-wrapper .wrap {
   width: min(1140px, calc(100% - 48px));
   margin: auto;
+  position: relative;
+  z-index: 2;
 }
 
 /* ========================================================================= */
@@ -125,14 +127,14 @@
   justify-content: space-between;
   position: sticky;
   top: 0;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.38) 0%, rgba(253, 251, 247, 0.22) 100%);
+  background: linear-gradient(to bottom, rgba(246, 241, 234, 0.94) 0%, rgba(246, 241, 234, 0.84) 100%);
   backdrop-filter: blur(24px) saturate(180%) contrast(102%);
   -webkit-backdrop-filter: blur(24px) saturate(180%) contrast(102%);
   z-index: 100;
   padding: 0 24px;
   border: none;
-  border-bottom: none;
-  box-shadow: none;
+  border-bottom: 1px solid rgba(22, 39, 35, 0.08);
+  box-shadow: 0 4px 20px -4px rgba(22, 39, 35, 0.03);
   transform: translate3d(0, 0, 0);
   transition: all 0.3s ease;
 }
@@ -299,16 +301,81 @@
   position: relative;
 }
 
-.v2-wrapper .page section:nth-of-type(even):not(.hero):not(.band) {
-  background: rgba(244, 239, 235, 0.5);
-  border-top: 1px solid var(--line-light);
-  border-bottom: 1px solid var(--line-light);
+/* Treatment A: Subtle Watercolor Paper */
+.v2-wrapper .hero,
+.v2-wrapper .treatment-watercolor {
+  background-color: transparent;
+  position: relative;
 }
 
-.v2-wrapper .hero {
-  padding: 88px 0 96px;
-  background: radial-gradient(ellipse 750px 440px at 90% -5%, var(--rose-soft), transparent 65%),
-              radial-gradient(ellipse 650px 400px at 5% 105%, var(--fog-soft), transparent 60%);
+/* Treatment B: Clean Warm Paper */
+.v2-wrapper .bg-warm-paper,
+.v2-wrapper .treatment-warm-paper,
+.v2-wrapper .page section:not(.hero):not(.treatment-watercolor):not(.band) {
+  background-color: #F8F4EE;
+  position: relative;
+}
+
+/* Alternate sections with subtle dynamic brand watercolor washes */
+.v2-wrapper .page section:nth-of-type(even):not(.hero):not(.treatment-watercolor):not(.band) {
+  background-color: #F7F9F6;
+  border-top: 1px solid rgba(138, 166, 136, 0.14);
+  border-bottom: 1px solid rgba(138, 166, 136, 0.14);
+}
+.v2-wrapper .page section:nth-of-type(even):not(.hero):not(.treatment-watercolor):not(.band)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 68% 55% at 8% 22%, rgba(138, 166, 136, 0.10) 0%, rgba(138, 166, 136, 0.03) 55%, transparent 80%),
+    radial-gradient(ellipse 58% 52% at 92% 78%, rgba(138, 166, 136, 0.08) 0%, rgba(138, 166, 136, 0.02) 60%, transparent 80%);
+  pointer-events: none;
+  z-index: 0;
+  transform: translateZ(0);
+}
+
+.v2-wrapper .page section:nth-of-type(4n):not(.hero):not(.treatment-watercolor):not(.band) {
+  background-color: #FAF6F4;
+  border-top: 1px solid rgba(217, 188, 175, 0.15);
+  border-bottom: 1px solid rgba(217, 188, 175, 0.15);
+}
+.v2-wrapper .page section:nth-of-type(4n):not(.hero):not(.treatment-watercolor):not(.band)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 72% 58% at 90% 18%, rgba(217, 188, 175, 0.11) 0%, rgba(217, 188, 175, 0.03) 52%, transparent 80%),
+    radial-gradient(ellipse 60% 52% at 10% 82%, rgba(217, 188, 175, 0.08) 0%, rgba(217, 188, 175, 0.02) 58%, transparent 80%);
+  pointer-events: none;
+  z-index: 0;
+  transform: translateZ(0);
+}
+
+.v2-wrapper .paper-grain,
+.v2-wrapper .page section:not(.hero):not(.treatment-watercolor):not(.band) {
+  position: relative;
+}
+
+.v2-wrapper .paper-grain::before,
+.v2-wrapper .page section:not(.hero):not(.treatment-watercolor):not(.band)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url('/paper-cold-press.webp');
+  background-repeat: repeat;
+  background-size: 420px auto;
+  opacity: 0.03;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Treatment C: Deep Blue Noir */
+.v2-wrapper .bg-blue-noir,
+.v2-wrapper .treatment-blue-noir {
+  background-color: #011627;
+  color: #FFFFFF;
+  position: relative;
 }
 
 .v2-wrapper .grid {
@@ -511,35 +578,18 @@
 /* Philosophy Band (Deep Evergreen / Midnight Contrast)                      */
 /* ========================================================================= */
 .v2-wrapper .band {
-  background: var(--forest);
+  background: var(--forest, #162723);
   color: #FFFFFF;
   position: relative;
   overflow: hidden;
   padding: 104px 0;
+  border-top: 1px solid rgba(246, 241, 234, 0.1);
+  border-bottom: 1px solid rgba(246, 241, 234, 0.1);
 }
 
-.v2-wrapper .band:before {
-  content: "";
-  position: absolute;
-  width: 420px;
-  height: 420px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(121, 86, 99, 0.16), transparent 70%);
-  top: -180px;
-  right: -100px;
-  pointer-events: none;
-}
-
+.v2-wrapper .band:before,
 .v2-wrapper .band:after {
-  content: "";
-  position: absolute;
-  width: 380px;
-  height: 380px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(167, 124, 56, 0.14), transparent 70%);
-  bottom: -160px;
-  left: -80px;
-  pointer-events: none;
+  display: none;
 }
 
 .v2-wrapper .band h2 {
@@ -1053,7 +1103,7 @@
   background: var(--forest);
   color: #D6DFDB;
   padding: 72px 0 36px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(246, 241, 234, 0.14);
 }
 
 .v2-wrapper .foot {
@@ -1264,15 +1314,32 @@
 
 /* Subtle section background tints — for alternating rhythm */
 .v2-wrapper .section-tint-thistle {
-  background: rgba(234, 242, 237, 0.35);
+  background: #F7F9F6;
+  border-top: 1px solid rgba(138, 166, 136, 0.16);
+  border-bottom: 1px solid rgba(138, 166, 136, 0.16);
+}
+
+.v2-wrapper .section-tint-rose {
+  background: #FAF6F4;
+  border-top: 1px solid rgba(217, 188, 175, 0.18);
+  border-bottom: 1px solid rgba(217, 188, 175, 0.18);
 }
 
 .v2-wrapper .section-tint-fog {
-  background: rgba(191, 202, 215, 0.12);
+  background: #F4F7F9;
+  border-top: 1px solid rgba(191, 202, 215, 0.19);
+  border-bottom: 1px solid rgba(191, 202, 215, 0.19);
+}
+
+.v2-wrapper .section-tint-royal {
+  background: #F8F5F6;
+  border-top: 1px solid rgba(121, 86, 99, 0.15);
+  border-bottom: 1px solid rgba(121, 86, 99, 0.15);
 }
 
 /* Inline text accent for headline brand color moments */
-.v2-wrapper .accent-rose   { color: #B07567; }
-.v2-wrapper .accent-thistle { color: #4A7550; }
-.v2-wrapper .accent-gold   { color: #9A6E2A; }
-.v2-wrapper .accent-fog    { color: #4E788E; }
+.v2-wrapper .accent-rose    { color: #B07264; }
+.v2-wrapper .accent-thistle { color: #4F7553; }
+.v2-wrapper .accent-fog     { color: #436A7D; }
+.v2-wrapper .accent-royal   { color: #795663; }
+.v2-wrapper .accent-gold    { color: #A77C38; }

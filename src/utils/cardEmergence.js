@@ -11,12 +11,7 @@
 export function getCardEmergence(index, total, is2D = false, cols = 3) {
   // Ultra-smooth, non-elastic deceleration curve (Cubic Bezier - no spring/bounce)
   const ease = [0.16, 1, 0.3, 1];
-  const duration = 0.65;
-
-  const hoverConfig = {
-    y: -3,
-    transition: { type: 'tween', duration: 0.18, ease: 'easeOut' }
-  };
+  const duration = 0.55;
 
   // 2D Grid calculation (e.g. 6 cards in 2x3): animate sideways outward from center column
   if (is2D && cols > 1) {
@@ -27,12 +22,12 @@ export function getCardEmergence(index, total, is2D = false, cols = 3) {
 
     if (cols % 2 === 1) {
       if (colDiff < 0) {
-        xOffset = 55; // Left column: starts toward center, slides left
+        xOffset = 50; // Left column: starts toward center, slides left
       } else if (colDiff > 0) {
-        xOffset = -55; // Right column: starts toward center, slides right
+        xOffset = -50; // Right column: starts toward center, slides right
       }
     } else {
-      xOffset = colDiff < 0 ? 50 : -50;
+      xOffset = colDiff < 0 ? 45 : -45;
     }
 
     return {
@@ -50,8 +45,7 @@ export function getCardEmergence(index, total, is2D = false, cols = 3) {
         duration,
         ease,
         delay: 0
-      },
-      whileHover: hoverConfig
+      }
     };
   }
 
@@ -64,7 +58,7 @@ export function getCardEmergence(index, total, is2D = false, cols = 3) {
 
     // Left cards start shifted right (+x) towards center and slide left to 0
     // Right cards start shifted left (-x) towards center and slide right to 0
-    const distance = total === 2 ? 55 : 35 + (rank - 0.5) * 35;
+    const distance = total === 2 ? 50 : 30 + (rank - 0.5) * 30;
     const xOffset = isLeft ? distance : -distance;
 
     return {
@@ -82,8 +76,7 @@ export function getCardEmergence(index, total, is2D = false, cols = 3) {
         duration,
         ease,
         delay: 0
-      },
-      whileHover: hoverConfig
+      }
     };
   }
 
@@ -107,15 +100,14 @@ export function getCardEmergence(index, total, is2D = false, cols = 3) {
         duration,
         ease,
         delay: 0
-      },
-      whileHover: hoverConfig
+      }
     };
   }
 
   // Outer cards: appear from center and slide left/right into position
   const isLeft = index < centerIndex;
   const dist = Math.abs(index - centerIndex);
-  const xOffset = isLeft ? dist * 60 : -dist * 60;
+  const xOffset = isLeft ? dist * 50 : -dist * 50;
 
   return {
     initial: {
@@ -132,7 +124,6 @@ export function getCardEmergence(index, total, is2D = false, cols = 3) {
       duration,
       ease,
       delay: 0
-    },
-    whileHover: hoverConfig
+    }
   };
 }

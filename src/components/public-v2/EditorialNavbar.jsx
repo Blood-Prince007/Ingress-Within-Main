@@ -12,53 +12,52 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const checkState = () => {
-      try {
-        const scrollY = window.scrollY;
-        setIsScrolled(scrollY > 20);
+    let lastScrolled = typeof window !== 'undefined' ? window.scrollY > 20 : false;
+    setIsScrolled(lastScrolled);
 
-        // Height of the sticky navbar container
-        const navHeight = 88;
-        const darkElements = document.querySelectorAll('[data-dark-section="true"], footer');
-
-        let overBlue = false;
-        for (let i = 0; i < darkElements.length; i++) {
-          const rect = darkElements[i].getBoundingClientRect();
-          // Overlap condition: element has reached top navbar zone and hasn't scrolled completely above it
-          if (rect.top <= navHeight && rect.bottom >= 10) {
-            overBlue = true;
-            break;
-          }
-        }
-        setIsOnBlue(overBlue);
-      } catch (err) {
-        // Safe fallback in case DOM query is interrupted during hydration
-      }
-    };
-
-    checkState();
-
-    let ticking = false;
     const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          checkState();
-          ticking = false;
-        });
-        ticking = true;
+      const currentScrolled = window.scrollY > 20;
+      if (currentScrolled !== lastScrolled) {
+        lastScrolled = currentScrolled;
+        setIsScrolled(currentScrolled);
       }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll, { passive: true });
 
-    // Recheck after initial render & whenever activeTab changes
-    const timer = setTimeout(checkState, 150);
+    // Use IntersectionObserver to track dark sections & footer without layout thrashing
+    let observer = null;
+    const timer = setTimeout(() => {
+      if (typeof window !== 'undefined' && 'IntersectionObserver' in window) {
+        const navHeight = 88;
+        const activeIntersections = new Set();
+
+        observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                activeIntersections.add(entry.target);
+              } else {
+                activeIntersections.delete(entry.target);
+              }
+            });
+            setIsOnBlue(activeIntersections.size > 0);
+          },
+          {
+            rootMargin: `0px 0px -${Math.max(window.innerHeight - navHeight, 100)}px 0px`,
+            threshold: 0
+          }
+        );
+
+        const darkElements = document.querySelectorAll('[data-dark-section="true"], footer');
+        darkElements.forEach((el) => observer.observe(el));
+      }
+    }, 100);
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
       clearTimeout(timer);
+      if (observer) observer.disconnect();
     };
   }, [activeTab]);
 
@@ -95,14 +94,18 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
     <header
       style={{
         background: isOnBlue
-          ? 'linear-gradient(to bottom, rgba(1, 22, 39, 0.85) 0%, rgba(1, 22, 39, 0.72) 100%)'
+          ? 'linear-gradient(to bottom, rgba(1, 22, 39, 0.92) 0%, rgba(1, 22, 39, 0.85) 100%)'
           : isScrolled
-          ? 'linear-gradient(to bottom, rgba(255, 255, 255, 0.62) 0%, rgba(254, 252, 249, 0.48) 100%)'
-          : 'linear-gradient(to bottom, rgba(255, 255, 255, 0.38) 0%, rgba(253, 251, 247, 0.22) 100%)',
-        backdropFilter: isOnBlue ? 'blur(16px) saturate(160%)' : 'blur(12px) saturate(140%)',
-        WebkitBackdropFilter: isOnBlue ? 'blur(16px) saturate(160%)' : 'blur(12px) saturate(140%)',
+          ? 'linear-gradient(to bottom, rgba(246, 241, 234, 0.94) 0%, rgba(246, 241, 234, 0.88) 100%)'
+          : 'linear-gradient(to bottom, rgba(246, 241, 234, 0.82) 0%, rgba(246, 241, 234, 0.60) 100%)',
+        backdropFilter: isOnBlue ? 'blur(16px) saturate(160%)' : 'blur(14px) saturate(140%)',
+        WebkitBackdropFilter: isOnBlue ? 'blur(16px) saturate(160%)' : 'blur(14px) saturate(140%)',
         border: 'none',
-        borderBottom: isOnBlue ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
+        borderBottom: isOnBlue
+          ? '1px solid rgba(255, 255, 255, 0.08)'
+          : isScrolled
+          ? '1px solid rgba(22, 39, 35, 0.08)'
+          : '1px solid rgba(22, 39, 35, 0.05)',
         boxShadow: isOnBlue
           ? '0 10px 30px -10px rgba(0, 0, 0, 0.45)'
           : isScrolled
