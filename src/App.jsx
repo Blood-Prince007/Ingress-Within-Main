@@ -309,6 +309,30 @@ export default function App({ initialRoute = 'home' }) {
     }
   }, [authChecked, isLoading, user, profile, currentRoute, authError]);
 
+  // Privacy-safe client activity heartbeat (throttled; captures active users in real-time)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sendHeartbeat = () => {
+      try {
+        fetch('/api/telemetry/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user?.id || null,
+            role: user ? (user.role || (user.is_admin ? 'admin' : 'client')) : 'guest',
+            route: window.location.pathname || '/',
+          }),
+        }).catch(() => {});
+      } catch {
+        // fail-safe ignore
+      }
+    };
+
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 120000); // every 2 minutes
+    return () => clearInterval(interval);
+  }, [currentRoute, user?.id]);
+
   const handleAuthSuccess = (authData) => {
     console.log('[App.jsx] handleAuthSuccess received authData:', authData ? { userId: authData.user?.id } : null);
     if (authData?.user) {
@@ -662,6 +686,7 @@ export default function App({ initialRoute = 'home' }) {
       case 'admin':
       case 'admin/login':
       case 'admin/overview':
+      case 'admin/analytics':
       case 'admin/users':
       case 'admin/therapists':
       case 'admin/applications':
@@ -672,6 +697,7 @@ export default function App({ initialRoute = 'home' }) {
       case 'admin/api-usage':
       case 'admin/health':
       case 'admin/webhooks':
+      case 'admin/emails':
       case 'admin/audit-logs':
       case 'admin/security':
         return <AdminPlatformView />;

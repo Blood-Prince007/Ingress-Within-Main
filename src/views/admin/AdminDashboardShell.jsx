@@ -45,8 +45,10 @@ import {
   FileBadge,
   CheckSquare,
   Sparkles,
+  TrendingUp,
 } from 'lucide-react';
 import ApiTrafficCenterView from './ApiTrafficCenterView';
+import AnalyticsDashboardView from './AnalyticsDashboardView';
 
 export default function AdminDashboardShell({ admin, onLogout, initialTab = 'overview' }) {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -142,6 +144,7 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
   // Navigation tabs definition
   const navigationItems = [
     { id: 'overview', label: 'Command Center', icon: LayoutDashboard },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
     { id: 'users', label: 'User Directory', icon: Users },
     { id: 'therapists', label: 'Therapist Roster', icon: UserCheck },
     { id: 'applications', label: 'Application Queue', icon: FileText, badge: overviewMetrics?.pendingApplications },
@@ -706,6 +709,13 @@ export default function AdminDashboardShell({ admin, onLogout, initialTab = 'ove
                 </div>
               </div>
             </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB: ANALYTICS & OBSERVABILITY */}
+          {/* ========================================================================= */}
+          {activeTab === 'analytics' && (
+            <AnalyticsDashboardView />
           )}
 
           {/* ========================================================================= */}
