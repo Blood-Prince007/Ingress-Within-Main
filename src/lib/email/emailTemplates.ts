@@ -23,6 +23,33 @@ function formatDate(isoString: string): string {
  * Client health evaluations and clinical notes are strictly segregated.
  */
 export const EmailTemplates: Record<string, (data: Record<string, any>) => EmailRenderedContent> = {
+  therapist_match_request: (data) => {
+    const therapistName = data.therapistName || 'Therapist';
+    const dashboardUrl = data.dashboardUrl || 'https://ingresswithin.com/therapist';
+    const matchId = data.matchId || '';
+    const rank = data.rank || '';
+
+    return {
+      subject: 'New client matching request on Ingress Within',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 32px 24px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color:#132A24; margin:0 0 16px;">New Client Matching Request</h2>
+          <p>Hello ${therapistName},</p>
+          <p>A new client has been matched to your profile based on the information in your approved therapist profile and the client's intake.</p>
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin:20px 0;">
+            <p style="margin:0 0 6px;"><strong>Match request:</strong> ${matchId}</p>
+            ${rank ? `<p style="margin:0;"><strong>Shortlist rank:</strong> ${rank}</p>` : ''}
+          </div>
+          <p style="font-size:13px; color:#64748b;">For privacy, clinical intake details are not included in this email. Please sign in to the therapist dashboard to review the request and take the appropriate action.</p>
+          <div style="margin:28px 0; text-align:center;">
+            <a href="${dashboardUrl}" target="_blank" style="display:inline-block; background:#132A24; color:#fff; text-decoration:none; padding:12px 28px; border-radius:8px; font-weight:600;">Open Therapist Dashboard</a>
+          </div>
+          <p style="font-size:14px; color:#64748b;">Warm regards,<br/><strong>The Ingress Within Care Team</strong></p>
+        </div>
+      `,
+      text: `Hello ${therapistName},\n\nA new client has been matched to your profile on Ingress Within.\n\nMatch request: ${matchId}\n${rank ? `Shortlist rank: ${rank}\n` : ''}\nFor privacy, clinical intake details are not included in this email. Please sign in to the therapist dashboard to review the request.\n\nOpen Therapist Dashboard:\n${dashboardUrl}\n\nWarm regards,\nThe Ingress Within Care Team`,
+    };
+  },
   therapist_accepted_client: (data) => {
     const clientName = data.clientName || 'Valued Client';
     const therapistName = data.therapistName || 'Your Therapist';
