@@ -19,6 +19,7 @@ import {
 import { DashboardService } from '../services/dashboardService';
 import DashboardNavbar from '../components/DashboardNavbar';
 import SearchInput from '../components/search/SearchInput';
+import HighlightText from '../components/search/HighlightText';
 
 export default function ThreadsPage({ user, profile, onSignOut }) {
   const [threads, setThreads] = useState([]);
@@ -282,6 +283,22 @@ export default function ThreadsPage({ user, profile, onSignOut }) {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Active Search Result Indicator */}
+            {query && (
+              <div className="flex items-center justify-between text-xs text-mid/90 bg-accent/5 border border-accent/15 rounded-xl px-3.5 py-2">
+                <span>
+                  Showing <strong className="text-primary font-semibold">{filteredThreads.length}</strong> {filteredThreads.length === 1 ? 'thread' : 'threads'} matching &ldquo;<strong className="text-accent font-semibold">{searchQuery}</strong>&rdquo;
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-accent hover:underline font-semibold text-[11px] cursor-pointer"
+                >
+                  Clear search
+                </button>
+              </div>
+            )}
+
             {filteredThreads.map(thread => {
               const isOpen = thread.status === 'Open';
               const textVal = draftTexts[thread.id] || '';
@@ -334,7 +351,7 @@ export default function ThreadsPage({ user, profile, onSignOut }) {
                         AI Reflection Context
                       </div>
                       <p className="text-[13.5px] font-serif leading-relaxed text-primary/80 italic">
-                        "{thread.reflection_text || 'Reflection generated for daily entry.'}"
+                        &ldquo;<HighlightText text={thread.reflection_text || 'Reflection generated for daily entry.'} query={searchQuery} />&rdquo;
                       </p>
                     </div>
 
@@ -344,7 +361,7 @@ export default function ThreadsPage({ user, profile, onSignOut }) {
                         Closing Question
                       </div>
                       <h3 className="font-serif text-base md:text-lg text-primary font-semibold leading-relaxed">
-                        {thread.closing_question}
+                        <HighlightText text={thread.closing_question || thread.prompt_question} query={searchQuery} />
                       </h3>
                     </div>
 

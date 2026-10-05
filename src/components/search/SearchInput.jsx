@@ -5,13 +5,15 @@ import { Search, X, Loader2 } from 'lucide-react';
  * Shared reusable SearchInput component for Ingress Within self-help launch.
  *
  * Supports:
- * - Controlled or uncontrolled value
- * - Configurable debounce (default 300ms)
- * - Clear button (accessible with keyboard)
+ * - Fluid, instantaneous native typing feedback (no swallowed/frozen keystrokes)
+ * - Immediate parent synchronization via `onChange`
+ * - Debounced search queries via `onSearch` (default 250ms)
+ * - Controlled and uncontrolled external reset / synchronization
+ * - Clear button (keyboard accessible)
  * - Loading indicator
  * - Accessible ARIA labels and roles
- * - Optional result count indicator
- * - Escape key behavior to clear
+ * - Result count indicator
+ * - Escape key to clear
  */
 export default function SearchInput({
   value: controlledValue,
@@ -20,7 +22,7 @@ export default function SearchInput({
   onSearch,
   onClear,
   placeholder = 'Search...',
-  debounceMs = 300,
+  debounceMs = 250,
   isLoading = false,
   resultCount = null,
   ariaLabel = 'Search',
@@ -32,18 +34,18 @@ export default function SearchInput({
   size = 'md', // 'sm' | 'md' | 'lg'
 }) {
   const isControlled = controlledValue !== undefined;
-  const [internalValue, setInternalValue] = useState(isControlled ? controlledValue : defaultValue);
+  const [inputValue, setInputValue] = useState(isControlled ? (controlledValue || '') : defaultValue);
   const inputRef = useRef(null);
   const debounceTimerRef = useRef(null);
 
-  // Sync internal value if controlled
+  // Sync internal display value when controlled prop changes externally
   useEffect(() => {
-    if (isControlled) {
-      setInternalValue(controlledValue || '');
+    if (isControlled && controlledValue !== inputValue) {
+      setInputValue(controlledValue || '');
     }
   }, [controlledValue, isControlled]);
 
-  // Clean up timer on unmount
+  // Clean up debounce timer on unmount
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
@@ -52,32 +54,32 @@ export default function SearchInput({
     };
   }, []);
 
-  const triggerChange = (newVal) => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = setTimeout(() => {
-      if (onChange) onChange(newVal);
-      if (onSearch) onSearch(newVal);
-    }, debounceMs);
-  };
-
   const handleInputChange = (e) => {
     const newVal = e.target.value;
-    if (!isControlled) {
-      setInternalValue(newVal);
+    // Always update local state immediately so typing is buttery smooth
+    setInputValue(newVal);
+
+    // Call immediate onChange if provided so parent stays in sync
+    if (onChange) {
+      onChange(newVal);
     }
-    triggerChange(newVal);
+
+    // Call debounced onSearch if provided
+    if (onSearch) {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        onSearch(newVal);
+      }, debounceMs);
+    }
   };
 
   const handleClear = () => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    if (!isControlled) {
-      setInternalValue('');
-    }
+    setInputValue('');
     if (onChange) onChange('');
     if (onSearch) onSearch('');
     if (onClear) onClear();
@@ -87,13 +89,11 @@ export default function SearchInput({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Escape' && internalValue) {
+    if (e.key === 'Escape' && inputValue) {
       e.preventDefault();
       handleClear();
     }
   };
-
-  const currentVal = isControlled ? controlledValue : internalValue;
 
   const sizeClasses = {
     sm: 'py-1.5 pl-8 pr-8 text-xs',
@@ -130,22 +130,22 @@ export default function SearchInput({
         aria-label={ariaLabel}
         autoFocus={autoFocus}
         disabled={disabled}
-        value={currentVal || ''}
+        value={inputValue}
         placeholder={placeholder}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         className={`w-full rounded-xl bg-warm-paper/70 border border-primary/15 text-primary placeholder:text-mid/50 focus:outline-none focus:border-accent/60 focus:bg-white focus:ring-2 focus:ring-accent/10 transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed ${sizeClasses[size]} ${inputClassName}`}
       />
 
-      {/* Trailing actions: result count badge or clear button */}
+      {/* Trailing actions: result count badge and clear button */}
       <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-        {resultCount !== null && currentVal && (
+        {resultCount !== null && Boolean(inputValue) && (
           <span className="text-[10px] font-mono font-medium text-mid/70 px-1.5 py-0.5 rounded bg-primary/5 hidden sm:inline-block">
             {resultCount} {resultCount === 1 ? 'result' : 'results'}
           </span>
         )}
 
-        {Boolean(currentVal) && !disabled && (
+        {Boolean(inputValue) && !disabled && (
           <button
             type="button"
             onClick={handleClear}

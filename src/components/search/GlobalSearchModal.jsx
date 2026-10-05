@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Loader2, ArrowRight, BookOpen, Compass, Activity, Sparkles, Layers, CornerDownLeft } from 'lucide-react';
+import HighlightText from './HighlightText';
 
 const CATEGORY_ICONS = {
   modules: BookOpen,
@@ -19,6 +20,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
   const inputRef = useRef(null);
   const debounceTimerRef = useRef(null);
+  const cacheRef = useRef({});
   const listRef = useRef(null);
 
   // Flattened list of items for keyboard navigation
@@ -33,11 +35,21 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
     );
   }, [results]);
 
-  // Execute search request with debounce
+  // Execute search request with debounce & in-memory cache
   const executeSearch = useCallback(async (searchTerm) => {
     const q = (searchTerm || '').trim();
     if (q.length < 2) {
       setResults(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // Check cache first
+    const cacheKey = q.toLowerCase();
+    if (cacheRef.current[cacheKey]) {
+      setResults(cacheRef.current[cacheKey]);
+      setSelectedIndex(0);
       setLoading(false);
       setError(null);
       return;
@@ -58,6 +70,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
       }
       const data = await res.json();
       if (data.success) {
+        cacheRef.current[cacheKey] = data;
         setResults(data);
         setSelectedIndex(0);
       } else {
@@ -71,7 +84,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
     }
   }, []);
 
-  // Handle query input with 300ms debounce
+  // Handle query input with 200ms debounce
   const handleQueryChange = (val) => {
     setQuery(val);
     if (debounceTimerRef.current) {
@@ -85,10 +98,19 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
       return;
     }
 
+    // If already in cache, load immediately!
+    const cacheKey = val.trim().toLowerCase();
+    if (cacheRef.current[cacheKey]) {
+      setResults(cacheRef.current[cacheKey]);
+      setSelectedIndex(0);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     debounceTimerRef.current = setTimeout(() => {
       executeSearch(val);
-    }, 300);
+    }, 200);
   };
 
   // Keyboard navigation & Shortcut listeners
@@ -270,6 +292,21 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
             {/* Results Grouping */}
             {results && results.groups && results.groups.length > 0 && (
               <div className="space-y-4">
+                {/* Result Count & Category Summary Banner */}
+                {(() => {
+                  const totalCount = results.groups.reduce((acc, g) => acc + g.items.length, 0);
+                  return (
+                    <div className="flex items-center justify-between px-2 pb-1 text-xs text-mid/80 border-b border-primary/5">
+                      <span>
+                        Found <strong className="text-primary font-semibold">{totalCount}</strong> {totalCount === 1 ? 'result' : 'results'} for &ldquo;<strong className="text-accent font-semibold">{query}</strong>&rdquo;
+                      </span>
+                      <span className="text-[10.5px] font-mono text-mid/60 uppercase tracking-wider">
+                        {results.groups.length} {results.groups.length === 1 ? 'category' : 'categories'}
+                      </span>
+                    </div>
+                  );
+                })()}
+
                 {results.groups.map((group) => {
                   const Icon = CATEGORY_ICONS[group.key] || Sparkles;
 
@@ -300,11 +337,13 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                             >
                               <div className="space-y-0.5 flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={`text-[13px] font-bold transition-colors ${
-                                    isSelected ? 'text-accent' : 'text-primary'
-                                  }`}>
-                                    {item.title}
-                                  </span>
+                                  <HighlightText
+                                    text={item.title}
+                                    query={query}
+                                    className={`text-[13px] font-bold transition-colors ${
+                                      isSelected ? 'text-accent' : 'text-primary'
+                                    }`}
+                                  />
                                   {item.badge && (
                                     <span className="text-[9.5px] font-semibold px-2 py-0.2 rounded-full bg-primary/5 text-mid/80 border border-primary/10">
                                       {item.badge}
@@ -314,12 +353,12 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
                                 {item.subtitle && (
                                   <div className="text-[11px] font-medium text-secondary">
-                                    {item.subtitle}
+                                    <HighlightText text={item.subtitle} query={query} />
                                   </div>
                                 )}
 
                                 <p className="text-[11.5px] text-mid line-clamp-1 leading-normal font-light">
-                                  {item.description}
+                                  <HighlightText text={item.description} query={query} />
                                 </p>
                               </div>
 

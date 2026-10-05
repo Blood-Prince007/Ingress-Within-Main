@@ -5,6 +5,7 @@ import DashboardNavbar from '../components/DashboardNavbar';
 import Footer from '../components/Footer';
 import { InterventionPlayer } from '../components/interventions/player/InterventionPlayer';
 import SearchInput from '../components/search/SearchInput';
+import HighlightText from '../components/search/HighlightText';
 
 export default function InterventionsPage() {
   const [categories, setCategories] = useState([]);
@@ -33,10 +34,17 @@ export default function InterventionsPage() {
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
   const [showCrisisModal, setShowCrisisModal] = useState(false);
 
-  // Load Categories & Catalog
+  // Load Categories on mount
   useEffect(() => {
     fetchCategories();
-    fetchCatalog();
+  }, []);
+
+  // Debounced Catalog fetch when filters or search change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchCatalog();
+    }, 200);
+    return () => clearTimeout(timer);
   }, [selectedCategory, durationFilter, searchQuery]);
 
   const fetchCategories = async () => {
@@ -281,52 +289,83 @@ export default function InterventionsPage() {
                 Loading interventions catalog...
               </div>
             ) : interventions.length === 0 ? (
-              <div className="py-16 text-center text-mid font-sans text-sm bg-white/60 rounded-xl border border-primary/5">
-                No techniques match your criteria. Try widening your search or clearing filters.
+              <div className="py-16 text-center text-mid font-sans text-sm bg-white/60 rounded-xl border border-primary/5 space-y-2">
+                <p>No techniques match your criteria{searchQuery ? ` for "${searchQuery}"` : ''}.</p>
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSelectedCategory(null);
+                      setDurationFilter('');
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-[#654652] transition-colors cursor-pointer border-none"
+                  >
+                    Reset All Filters
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {interventions.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    whileHover={{ y: -3 }}
-                    onClick={() => openInterventionDetail(item)}
-                    className={`bg-white rounded-xl p-5 border border-primary/8 shadow-xs hover:border-secondary transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${item.category === 'crisis_safety' ? 'border-l-4 border-l-accent' : 'border-l-4 border-l-secondary'
-                      }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">
-                          {item.category.replace(/_/g, ' ')}
-                        </span>
-                        <div className="flex items-center gap-1 text-[11px] text-mid font-mono bg-mint-grey px-2 py-0.5 rounded">
-                          <Clock size={11} /> {item.duration_minutes || item.estimated_duration || item.duration || 5}m
-                        </div>
-                      </div>
+              <div className="space-y-4">
+                {/* Search result active indicator */}
+                {searchQuery && (
+                  <div className="flex items-center justify-between text-xs text-mid/90 bg-accent/5 border border-accent/15 rounded-xl px-3.5 py-2">
+                    <span>
+                      Showing <strong className="text-primary font-semibold">{interventions.length}</strong> {interventions.length === 1 ? 'technique' : 'techniques'} found for &ldquo;<strong className="text-accent font-semibold">{searchQuery}</strong>&rdquo;
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="text-accent hover:underline font-semibold text-[11px] cursor-pointer"
+                    >
+                      Clear search
+                    </button>
+                  </div>
+                )}
 
-                      <h3 className="font-serif text-xl text-primary font-normal italic mb-2 group-hover:text-secondary-dark transition-colors">
-                        {item.title}
-                      </h3>
-
-                      <p className="text-mid text-xs leading-relaxed line-clamp-3 mb-4 font-light">
-                        {item.description}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-3 border-t border-primary/5">
-                      <div className="flex gap-1.5 flex-wrap">
-                        {item.tags?.slice(0, 2).map((t, idx) => (
-                          <span key={idx} className="text-[9px] bg-mint-grey text-mid px-2 py-0.5 rounded uppercase tracking-wider font-semibold">
-                            {t}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {interventions.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      whileHover={{ y: -3 }}
+                      onClick={() => openInterventionDetail(item)}
+                      className={`bg-white rounded-xl p-5 border border-primary/8 shadow-xs hover:border-secondary transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden group ${item.category === 'crisis_safety' ? 'border-l-4 border-l-accent' : 'border-l-4 border-l-secondary'
+                        }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">
+                            <HighlightText text={item.category.replace(/_/g, ' ')} query={searchQuery} />
                           </span>
-                        ))}
+                          <div className="flex items-center gap-1 text-[11px] text-mid font-mono bg-mint-grey px-2 py-0.5 rounded">
+                            <Clock size={11} /> {item.duration_minutes || item.estimated_duration || item.duration || 5}m
+                          </div>
+                        </div>
+
+                        <h3 className="font-serif text-xl text-primary font-normal italic mb-2 group-hover:text-secondary-dark transition-colors">
+                          <HighlightText text={item.title} query={searchQuery} />
+                        </h3>
+
+                        <p className="text-mid text-xs leading-relaxed line-clamp-3 mb-4 font-light">
+                          <HighlightText text={item.description || item.short_description} query={searchQuery} />
+                        </p>
                       </div>
-                      <span className="text-xs font-semibold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                        Practice &rarr;
-                      </span>
-                    </div>
-                  </motion.div>
-                ))}
+
+                      <div className="flex items-center justify-between pt-3 border-t border-primary/5">
+                        <div className="flex gap-1.5 flex-wrap">
+                          {item.tags?.slice(0, 2).map((t, idx) => (
+                            <span key={idx} className="text-[9px] bg-mint-grey text-mid px-2 py-0.5 rounded uppercase tracking-wider font-semibold">
+                              <HighlightText text={t} query={searchQuery} />
+                            </span>
+                          ))}
+                        </div>
+                        <span className="text-xs font-semibold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                          Practice &rarr;
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
             )
           )}

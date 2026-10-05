@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import SearchInput from '../components/search/SearchInput';
+import HighlightText from '../components/search/HighlightText';
 import './KnowledgeBankPage.css';
 import { FAMILIES, DICTIONARY_EMOTIONS, SURFACE, PATTERNS, SITUATIONS, WORD_INDEX } from '../lib/knowledge/dictionaryData';
 
@@ -943,13 +944,12 @@ export default function KnowledgeBankPage({ user, profile: initialProfile, onSig
                         placeholder='Type your own word — e.g. "burnt out", "on edge", "numb"…'
                         ariaLabel="Search emotions and moods"
                         value={searchQuery}
-                        onChange={(val) => {
-                          setSearchQuery(val);
+                        onChange={(val) => setSearchQuery(val)}
+                        onSearch={(val) => {
                           if (val && val.trim().length >= 2) {
                             handleSearch(null, val);
                           }
                         }}
-                        onSearch={(val) => handleSearch(null, val)}
                         onClear={() => {
                           setSearchQuery('');
                           setSearchResults(null);
@@ -1082,16 +1082,22 @@ export default function KnowledgeBankPage({ user, profile: initialProfile, onSig
                             </div>
                             <div className="match-body">
                               <div className="match-name">
-                                {name}
+                                <HighlightText text={name} query={searchQuery} />
                                 {isVisited && <span className="visited-badge">visited</span>}
                               </div>
                               {scenario ? (
                                 <>
-                                  <div className="match-scenario-tag">{scenario.s}</div>
-                                  <div className="match-plain">{scenario.f}</div>
+                                  <div className="match-scenario-tag">
+                                    <HighlightText text={scenario.s} query={searchQuery} />
+                                  </div>
+                                  <div className="match-plain">
+                                    <HighlightText text={scenario.f} query={searchQuery} />
+                                  </div>
                                 </>
                               ) : (
-                                <div className="match-plain">{emo.aka}</div>
+                                <div className="match-plain">
+                                  <HighlightText text={emo.aka} query={searchQuery} />
+                                </div>
                               )}
                             </div>
                             <TiIcon name="chevron-right" className="match-chev" />

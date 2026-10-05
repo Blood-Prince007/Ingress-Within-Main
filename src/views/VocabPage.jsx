@@ -18,6 +18,7 @@ import {
 import DashboardNavbar from '../components/DashboardNavbar';
 import { DashboardService } from '../services/dashboardService';
 import SearchInput from '../components/search/SearchInput';
+import HighlightText from '../components/search/HighlightText';
 
 export default function VocabPage({ user, profile, onSignOut }) {
   const [loading, setLoading] = useState(true);
@@ -245,7 +246,7 @@ export default function VocabPage({ user, profile, onSignOut }) {
                       <div className={`flex flex-wrap gap-1.5 ${filteredTiers.frequent.length > 18 ? 'max-h-[150px] overflow-y-auto pr-0.5' : ''}`}>
                         {filteredTiers.frequent.map((w, idx) => (
                           <span key={idx} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#1E2A2E]/5 text-[#1E2A2E] border border-[#1E2A2E]/10">
-                            {w.word}
+                            <HighlightText text={w.word} query={awpSearchQuery} />
                             <span className="text-[10.5px] font-bold text-[#8A3020] font-mono">×{w.count}</span>
                           </span>
                         ))}
@@ -261,7 +262,7 @@ export default function VocabPage({ user, profile, onSignOut }) {
                       <div className={`flex flex-wrap gap-1.5 ${filteredTiers.occasional.length > 18 ? 'max-h-[150px] overflow-y-auto pr-0.5' : ''}`}>
                         {filteredTiers.occasional.map((w, idx) => (
                           <span key={idx} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#1E2A2E]/5 text-[#1E2A2E] border border-[#1E2A2E]/10">
-                            {w.word}
+                            <HighlightText text={w.word} query={awpSearchQuery} />
                             <span className="text-[10.5px] font-bold text-[#8A3020] font-mono">×{w.count}</span>
                           </span>
                         ))}
@@ -283,7 +284,7 @@ export default function VocabPage({ user, profile, onSignOut }) {
                         <div className={`flex flex-wrap gap-1.5 mt-2 ${filteredTiers.usedOnce.length > 18 ? 'max-h-[150px] overflow-y-auto pr-0.5' : ''}`}>
                           {filteredTiers.usedOnce.map((w, idx) => (
                             <span key={idx} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#1E2A2E]/5 text-[#1E2A2E]/65 border border-[#1E2A2E]/10">
-                              {w.word}
+                              <HighlightText text={w.word} query={awpSearchQuery} />
                               <span className="text-[10.5px] font-bold text-[#4A6A64] font-mono">×{w.count}</span>
                             </span>
                           ))}

@@ -52,52 +52,54 @@ export default function DashboardNavbar({ activeTab }) {
             </span>
           </div>
           
-          <nav className="hidden md:flex gap-5 lg:gap-6 shrink-0">
+          <nav className="hidden md:flex items-center gap-5 lg:gap-6 shrink-0">
             <button className={getTabClass('home')} onClick={() => window.navigateTo('/dashboard')}>Home</button>
             <button className={getTabClass('write')} onClick={() => window.navigateTo('/write')}>Write</button>
             <button className={getTabClass('interventions')} onClick={() => window.navigateTo('/interventions')}>Interventions</button>
             <button className={getTabClass('reports')} onClick={() => window.navigateTo('/reports')}>Reports</button>
             <button className={getTabClass('patterns')} onClick={() => window.navigateTo('/patterns')}>Patterns</button>
             <button className={getTabClass('knowledge')} onClick={() => window.navigateTo('/knowledge')}>Knowledge</button>
-            <button className={getTabClass('settings')} onClick={() => window.navigateTo('/settings')}>Settings</button>
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Global Search Trigger (Desktop) */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Global Search Trigger (Desktop & Tablet) */}
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}
-              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-warm-paper/70 hover:bg-white border border-primary/10 text-mid/70 hover:text-primary transition-all text-xs cursor-pointer shadow-xs"
-              title="Search self-help resources (Ctrl+K)"
+              className="hidden sm:flex items-center gap-2 px-2.5 lg:px-3 py-1.5 rounded-full bg-white/70 hover:bg-white border border-primary/10 hover:border-accent/40 text-mid/70 hover:text-primary transition-all text-xs cursor-pointer shadow-2xs group"
+              title="Search self-help resources (⌘K / Ctrl+K)"
               aria-label="Search self-help resources"
             >
-              <Search size={14} className="text-mid/60" />
-              <span className="font-normal text-[12px]">Search resources...</span>
-              <kbd className="text-[10px] font-mono bg-primary/5 border border-primary/10 px-1.5 py-0.5 rounded text-mid/60 ml-1">
+              <Search size={13} className="text-mid/70 group-hover:text-accent transition-colors shrink-0" />
+              <span className="font-normal text-[11.5px] text-mid/80 hidden xl:inline">Search resources...</span>
+              <span className="font-normal text-[11.5px] text-mid/80 xl:hidden">Search</span>
+              <kbd className="text-[10px] font-mono bg-primary/5 border border-primary/10 px-1.5 py-0.2 rounded text-mid/60 ml-0.5">
                 ⌘K
               </kbd>
             </button>
 
-            {/* Global Search Trigger (Mobile & Tablet) */}
+            {/* Global Search Trigger (Mobile icon only) */}
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}
-              className="lg:hidden w-8 h-8 rounded-full border border-primary/10 bg-white-paper flex items-center justify-center text-mid hover:text-primary hover:border-accent/40 transition-all cursor-pointer"
+              className="sm:hidden w-8 h-8 rounded-full border border-primary/10 bg-white/80 flex items-center justify-center text-mid hover:text-primary hover:border-accent/40 transition-all cursor-pointer"
               aria-label="Open self-help search"
               title="Search self-help resources"
             >
-              <Search size={15} />
+              <Search size={14} />
             </button>
+
+            <div className="hidden sm:block h-4 w-px bg-primary/10 mx-0.5" />
 
             <button 
               onClick={() => window.navigateTo('/support')}
-              className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer shrink-0 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg border text-[11px] font-bold tracking-wider uppercase transition-all cursor-pointer shrink-0 ${
                 activeTab === 'support' 
                   ? 'bg-accent border-accent text-white' 
                   : 'bg-supporting/20 border-supporting/40 text-primary hover:bg-supporting/30'
               }`}
             >
-              Find Support
+              Support
             </button>
             <button 
               onClick={() => window.navigateTo('/settings')}
@@ -106,7 +108,7 @@ export default function DashboardNavbar({ activeTab }) {
                   ? 'bg-accent border-accent text-white' 
                   : 'bg-white-paper border-primary/10 text-mid hover:border-accent/40'
               }`}
-              title="Settings"
+              title="Account & Settings"
             >
               <User size={15} />
             </button>

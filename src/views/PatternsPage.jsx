@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronDown, Link2, Activity, Sparkles, Loader2 } from 'luci
 import DashboardNavbar from '../components/DashboardNavbar';
 import { DashboardService } from '../services/dashboardService';
 import SearchInput from '../components/search/SearchInput';
+import HighlightText from '../components/search/HighlightText';
 
 const dotLabels = {
   active: 'bg-[#E0A898]',
@@ -489,6 +490,22 @@ export default function PatternsPage({ user, profile, onSignOut }) {
               />
             </div>
 
+            {/* Active Search Result Indicator */}
+            {query && filteredPatterns.length > 0 && (
+              <div className="flex items-center justify-between text-xs text-mid/90 bg-accent/5 border border-accent/15 rounded-xl px-3.5 py-2">
+                <span>
+                  Showing <strong className="text-primary font-semibold">{filteredPatterns.length}</strong> {filteredPatterns.length === 1 ? 'pattern' : 'patterns'} matching &ldquo;<strong className="text-accent font-semibold">{searchQuery}</strong>&rdquo;
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-accent hover:underline font-semibold text-[11px] cursor-pointer"
+                >
+                  Clear search
+                </button>
+              </div>
+            )}
+
             {/* Empty Search Result State */}
             {query && filteredPatterns.length === 0 && (
               <div className="bg-white-paper border border-primary/10 rounded-xl p-8 text-center space-y-2 shadow-xs">
@@ -540,12 +557,16 @@ export default function PatternsPage({ user, profile, onSignOut }) {
                       >
                         <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#B8A8D4]" />
                         <div className="flex justify-between items-center mb-1.5">
-                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#8A68B8] transition-colors">{p.name}</h3>
+                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#8A68B8] transition-colors">
+                            <HighlightText text={p.name} query={searchQuery} />
+                          </h3>
                           <span className={`px-2 py-0.5 rounded text-[9px] font-semibold ${badge.className}`}>
                             {badge.text}
                           </span>
                         </div>
-                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">{p.body}</p>
+                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">
+                          <HighlightText text={p.body} query={searchQuery} />
+                        </p>
 
                         <div className="flex flex-wrap items-center gap-2 text-[10px] text-mid/80 mb-2.5">
                           <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
@@ -600,12 +621,16 @@ export default function PatternsPage({ user, profile, onSignOut }) {
                       >
                         <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#8DBFB4]" />
                         <div className="flex justify-between items-center mb-1.5">
-                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#2E7A70] transition-colors">{p.name}</h3>
+                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#2E7A70] transition-colors">
+                            <HighlightText text={p.name} query={searchQuery} />
+                          </h3>
                           <span className={`px-2 py-0.5 rounded text-[9px] font-semibold ${badge.className}`}>
                             {badge.text}
                           </span>
                         </div>
-                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">{p.body}</p>
+                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">
+                          <HighlightText text={p.body} query={searchQuery} />
+                        </p>
 
                         <div className="flex flex-wrap items-center gap-2 text-[10px] text-mid/80 mb-2.5">
                           <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
@@ -660,12 +685,16 @@ export default function PatternsPage({ user, profile, onSignOut }) {
                       >
                         <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#1E2A2E]/15" />
                         <div className="flex justify-between items-center mb-1.5">
-                          <h3 className="text-[14px] font-bold text-primary/85 group-hover:text-primary transition-colors">{p.name}</h3>
+                          <h3 className="text-[14px] font-bold text-primary/85 group-hover:text-primary transition-colors">
+                            <HighlightText text={p.name} query={searchQuery} />
+                          </h3>
                           <span className={`px-2 py-0.5 rounded text-[9px] font-semibold ${badge.className}`}>
                             {badge.text}
                           </span>
                         </div>
-                        <p className="text-[12px] text-mid leading-relaxed mb-3">{p.body}</p>
+                        <p className="text-[12px] text-mid leading-relaxed mb-3">
+                          <HighlightText text={p.body} query={searchQuery} />
+                        </p>
 
                         <div className="flex flex-wrap items-center gap-2 text-[10px] text-mid/70 mb-2.5">
                           <span className="px-2 py-0.5 bg-mint-grey/60 rounded text-[9.5px] font-medium text-primary/80">
@@ -720,12 +749,16 @@ export default function PatternsPage({ user, profile, onSignOut }) {
                       >
                         <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#E0A898]" />
                         <div className="flex justify-between items-center mb-1.5">
-                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#E0A898] transition-colors">{p.name}</h3>
+                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#E0A898] transition-colors">
+                            <HighlightText text={p.name} query={searchQuery} />
+                          </h3>
                           <span className={`px-2 py-0.5 rounded text-[9px] font-semibold ${badge.className}`}>
                             {badge.text}
                           </span>
                         </div>
-                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">{p.body}</p>
+                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">
+                          <HighlightText text={p.body} query={searchQuery} />
+                        </p>
 
                         <div className="flex flex-wrap items-center gap-2 text-[10px] text-mid/80 mb-2.5">
                           <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
