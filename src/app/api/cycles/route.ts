@@ -64,6 +64,16 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Check existing assessments table for user
+    const { data: userAssessments } = await supabase
+      .from('assessments')
+      .select('cycle_id, generation_status')
+      .eq('user_id', userId);
+
+    const assessmentCycleMap = new Set<string>(
+      (userAssessments || []).map((a: any) => String(a.cycle_id))
+    );
+
     const cyclesMetadata = cyclesToProcess.map((cy: any) => {
       let activeDay = cy.current_day || 1;
       const isCycleActive = cy.status?.toUpperCase() === 'ACTIVE' || cy.status?.toUpperCase() === 'ARCHIVED';
@@ -76,10 +86,15 @@ export async function GET(request: NextRequest) {
       }
       const progressPercentage = Math.round((activeDay / (cy.total_days || 30)) * 100);
       const actualEntriesCount = countsMap[cy.id] !== undefined ? countsMap[cy.id] : (cy.entries_count || 0);
+
+      const cycleNum = cy.cycle_number !== undefined ? cy.cycle_number : cy.number;
+      const hasAssessment = assessmentCycleMap.has(String(cy.id)) || assessmentCycleMap.has(String(cycleNum));
+      const isCompleted = Boolean(cy.assessment_completed || hasAssessment || cy.status?.toLowerCase() === 'completed');
+      const isAvailable = Boolean(cy.assessment_available || hasAssessment || isCompleted || activeDay >= 28);
       
       return {
         id: cy.id,
-        cycle_number: cy.cycle_number !== undefined ? cy.cycle_number : cy.number,
+        cycle_number: cycleNum,
         status: cy.status,
         current_day: activeDay,
         total_days: cy.total_days || 30,
@@ -90,8 +105,9 @@ export async function GET(request: NextRequest) {
         vocabulary_count: 0, // Loaded on-demand
         start_date: cy.start_date || cy.started_at,
         end_date: cy.end_date || cy.ended_at,
-        assessment_completed: cy.assessment_completed,
-        assessment_available: cy.assessment_available,
+        assessment_completed: isCompleted,
+        assessment_available: isAvailable,
+        has_assessment: hasAssessment,
         entries: null // Loaded on-demand
       };
     });

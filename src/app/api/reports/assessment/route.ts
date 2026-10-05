@@ -156,11 +156,26 @@ export async function GET(request: NextRequest) {
     if (assessment.report_text && assessment.report_text.startsWith('{')) {
       try {
         const parsed = JSON.parse(assessment.report_text);
-        // Verify that report text belongs to THIS cycle number
-        if (parsed.cycleNumber === cycleNum || !parsed.cycleNumber) {
+        // Verify that report text belongs to THIS cycle number and has all required sections
+        const matchesCycle = parsed.cycleNumber === cycleNum || !parsed.cycleNumber;
+        const hasRequiredSections = Boolean(
+          parsed.whatThisCycleShowed?.openingObs &&
+          parsed.whatThisCycleShowed?.narrative &&
+          parsed.whereLeavesYou?.body &&
+          Array.isArray(parsed.patterns) && parsed.patterns.length > 0 &&
+          parsed.stats &&
+          parsed.chartData?.arcChart &&
+          parsed.chartData?.radarChart &&
+          parsed.wordsReachedFor &&
+          parsed.saidVsShowed &&
+          parsed.exercises &&
+          parsed.closingQuote
+        );
+
+        if (matchesCycle && hasRequiredSections) {
           validJsonReport = true;
-          parsedExisting = parsed;
         }
+        parsedExisting = parsed;
       } catch (e) {
         validJsonReport = false;
       }
@@ -170,6 +185,23 @@ export async function GET(request: NextRequest) {
       console.log(`[API Assessment GET] Compiling real data structured report JSON for user ${userId} cycle ${effectiveCycleId} (Cycle ${cycleNum})`);
 
       const realCompiledReport = compileRealCycleReport(reportContext);
+
+      // Preserve existing rich exercise details if available in parsedExisting
+      if (parsedExisting?.exercises?.items?.length) {
+        const existingItemsMap = new Map(parsedExisting.exercises.items.map((it: any) => [it.id || it.name, it]));
+        realCompiledReport.exercises.items = realCompiledReport.exercises.items.map((newItem: any) => {
+          const cached: any = existingItemsMap.get(newItem.id) || existingItemsMap.get(newItem.name);
+          if (cached) {
+            return {
+              ...newItem,
+              entriesSaid: cached.entriesSaid || newItem.entriesSaid,
+              exerciseShowed: cached.exerciseShowed || newItem.exerciseShowed
+            };
+          }
+          return newItem;
+        });
+      }
+
       const realReportText = JSON.stringify(realCompiledReport);
 
       if (assessment.id && !assessment.id.startsWith('ass_synthetic_')) {

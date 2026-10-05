@@ -82,13 +82,21 @@ export default function ReportsPage({ user, profile, onSignOut }) {
           const existingChart = window.Chart.getChart(arcCtx);
           if (existingChart) existingChart.destroy();
 
+          const totalDays = reportData.stats?.totalDays || 30;
+          const writtenDays = Array.isArray(reportData.chartData?.arcChart?.writtenDays)
+            ? reportData.chartData.arcChart.writtenDays
+            : Array(totalDays).fill(null);
+          const skippedDays = Array.isArray(reportData.chartData?.arcChart?.skippedDays)
+            ? reportData.chartData.arcChart.skippedDays
+            : Array(totalDays).fill(null);
+
           new window.Chart(arcCtx, {
             type: 'line',
             data: {
-              labels: Array.from({ length: reportData.stats.totalDays || 30 }, (_, i) => i + 1),
+              labels: Array.from({ length: totalDays }, (_, i) => i + 1),
               datasets: [
                 {
-                  data: reportData.chartData.arcChart.writtenDays,
+                  data: writtenDays,
                   borderColor: '#E0A898',
                   backgroundColor: 'rgba(224,168,152,0.06)',
                   borderWidth: 2,
@@ -98,7 +106,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                   spanGaps: false
                 },
                 {
-                  data: reportData.chartData.arcChart.skippedDays,
+                  data: skippedDays,
                   borderColor: 'transparent',
                   backgroundColor: 'transparent',
                   pointBackgroundColor: '#F5F6F6',
@@ -129,6 +137,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
           const existingChart = window.Chart.getChart(radarCtx);
           if (existingChart) existingChart.destroy();
 
+          const radar = reportData.chartData?.radarChart || {};
           new window.Chart(radarCtx, {
             type: 'radar',
             data: {
@@ -136,10 +145,10 @@ export default function ReportsPage({ user, profile, onSignOut }) {
               datasets: [
                 {
                   data: [
-                    reportData.chartData.radarChart.patternPersistence,
-                    reportData.chartData.radarChart.emotionalIntensity,
-                    reportData.chartData.radarChart.agency,
-                    reportData.chartData.radarChart.overallDirection
+                    radar.patternPersistence ?? 50,
+                    radar.emotionalIntensity ?? 50,
+                    radar.agency ?? 50,
+                    radar.overallDirection ?? 50
                   ],
                   backgroundColor: 'rgba(224,168,152,0.04)',
                   borderColor: 'rgba(30,42,46,0.3)',
@@ -434,10 +443,44 @@ export default function ReportsPage({ user, profile, onSignOut }) {
       }
 
       if (isJsonReport && parsedReport) {
+        const whatShowed = parsedReport.whatThisCycleShowed || {
+          openingObs: `Cycle ${parsedReport.cycleNumber || 1} completed with ${parsedReport.stats?.entriesCount || 0} entries written.`,
+          pulledQuote: 'Taking time each day to reflect provides clarity.',
+          narrative: 'Reflections recorded for this cycle.'
+        };
+        const patterns = Array.isArray(parsedReport.patterns) ? parsedReport.patterns : [];
+        const recurringThemes = Array.isArray(parsedReport.recurringThemes) ? parsedReport.recurringThemes : [];
+        const wordsReachedFor = parsedReport.wordsReachedFor || { analysisNote: '', unusedWords: [] };
+        const fourThingsWeTracked = Array.isArray(parsedReport.fourThingsWeTracked) && parsedReport.fourThingsWeTracked.length === 4
+          ? parsedReport.fourThingsWeTracked
+          : [
+              { label: "How stuck the patterns were", color: "#E0A898", title: "Pattern persistence", desc: "Analysis of pattern rigidity based on entries." },
+              { label: "How intense things felt", color: "#B8A8D4", title: "Emotional intensity", desc: "Analysis of emotional variance and intensity based on entries." },
+              { label: "How much you felt in control", color: "#8DBFB4", title: "Self-agency", desc: "Analysis of agency vs reactivity/situational framing in entries." },
+              { label: "Which direction things moved", color: "#8DBFB4", title: "Overall stability", desc: "Analysis of overall emotional stability/direction and shift across the cycle." }
+            ];
+        const peopleWhoShowedUp = Array.isArray(parsedReport.peopleWhoShowedUp) ? parsedReport.peopleWhoShowedUp : [];
+        const saidVsShowed = parsedReport.saidVsShowed || { said: [], showed: [], analysisNote: '' };
+        const exercises = parsedReport.exercises || { collectiveInsight: 'Completed cycle reframing tasks.', items: [] };
+        const whereLeavesYou = parsedReport.whereLeavesYou || { title: `Cycle ${parsedReport.cycleNumber || 1} Complete`, body: 'Cycle reflections complete.' };
+        const closingQuote = parsedReport.closingQuote || { quote: 'Consistent daily practice supports emotional grounding.', observation: '' };
+        const chartData = parsedReport.chartData || { arcChart: { writtenDays: [], skippedDays: [] }, radarChart: {} };
+        const stats = parsedReport.stats || {
+          entriesCount: 0,
+          totalDays: 30,
+          daysSkipped: 0,
+          mostUsedWord: 'reflection',
+          mostUsedWordFreq: 0,
+          mostUsedWordContext: '',
+          exercisesCompletedCount: 0,
+          totalExercisesCount: 4,
+          missedExercisesText: ''
+        };
+
         printWindow.document.write(`
           <html>
             <head>
-              <title>Ingress Within — Cycle ${parsedReport.cycleNumber} Monthly Report</title>
+              <title>Ingress Within — Cycle ${parsedReport.cycleNumber || 1} Monthly Report</title>
               <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
               <style>
                 :root {
@@ -570,27 +613,27 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                   <div class="hdr-l">
                     <div class="logo">ingress <span>within</span></div>
                     <div class="hdiv"></div>
-                    <div class="htag">Cycle ${parsedReport.cycleNumber} — Monthly Report</div>
+                    <div class="htag">Cycle ${parsedReport.cycleNumber || 1} — Monthly Report</div>
                   </div>
-                  <div class="hdate">${parsedReport.startDate} – ${parsedReport.endDate}</div>
+                  <div class="hdate">${parsedReport.startDate || 'Day 1'} – ${parsedReport.endDate || 'Day 30'}</div>
                 </div>
                 <div class="body">
                   <!-- 2. Overview Statistics -->
                   <div class="stats">
                     <div class="stat">
                       <div class="stat-lbl">Entries written</div>
-                      <div class="stat-val">${parsedReport.stats.entriesCount}<sup>/${parsedReport.stats.totalDays}</sup></div>
-                      <div class="stat-sub">${parsedReport.stats.daysSkipped} day${parsedReport.stats.daysSkipped > 1 ? 's' : ''} skipped</div>
+                      <div class="stat-val">${stats.entriesCount}<sup>/${stats.totalDays}</sup></div>
+                      <div class="stat-sub">${stats.daysSkipped} day${stats.daysSkipped > 1 ? 's' : ''} skipped</div>
                     </div>
                     <div class="stat">
                       <div class="stat-lbl">Most used word</div>
-                      <div class="stat-word">"${parsedReport.stats.mostUsedWord}"</div>
-                      <div class="stat-sub">${parsedReport.stats.mostUsedWordContext}</div>
+                      <div class="stat-word">"${stats.mostUsedWord}"</div>
+                      <div class="stat-sub">${stats.mostUsedWordContext}</div>
                     </div>
                     <div class="stat">
                       <div class="stat-lbl">Exercises completed</div>
-                      <div class="stat-val">${parsedReport.stats.exercisesCompletedCount}<sup>/${parsedReport.stats.totalExercisesCount}</sup></div>
-                      <div class="stat-sub">${parsedReport.stats.missedExercisesText}</div>
+                      <div class="stat-val">${stats.exercisesCompletedCount}<sup>/${stats.totalExercisesCount}</sup></div>
+                      <div class="stat-sub">${stats.missedExercisesText}</div>
                     </div>
                   </div>
 
@@ -617,12 +660,12 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                   <!-- 4. What This Cycle Showed -->
                   <div class="sec">
                     <div class="sec-label">What this cycle showed</div>
-                    <div class="opening">${parsedReport.whatThisCycleShowed.openingObs.replace(/\n/g, '<br>')}</div>
+                    <div class="opening">${(whatShowed.openingObs || '').replace(/\n/g, '<br>')}</div>
                     <div class="pulled-quote">
                       <div class="pq-lbl">From your writing</div>
-                      <div class="pq-text">"${parsedReport.whatThisCycleShowed.pulledQuote}"</div>
+                      <div class="pq-text">"${whatShowed.pulledQuote || 'Taking time each day to reflect provides clarity.'}"</div>
                     </div>
-                    <div class="narr">${parsedReport.whatThisCycleShowed.narrative}</div>
+                    <div class="narr">${whatShowed.narrative || ''}</div>
                   </div>
 
                   <div class="divider"></div>
@@ -630,7 +673,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                   <!-- 5. Patterns This Cycle Found In You -->
                   <div class="sec">
                     <div class="sec-label">Patterns this cycle found in you</div>
-                    ${parsedReport.patterns.map((pat, pIdx) => `
+                    ${patterns.length > 0 ? patterns.map((pat, pIdx) => `
                       <div class="pattern-hero">
                         <div class="ph-top">
                           <div class="ph-label">${pat.name}</div>
@@ -652,20 +695,20 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                                 </marker>
                               </defs>
                               <rect x="4" y="4" width="68" height="34" rx="8" fill="${pat.tagClass === 'tag-red' ? 'rgba(224,168,152,0.15)' : pat.tagClass === 'tag-purple' ? 'rgba(184,168,212,0.15)' : 'rgba(141,191,180,0.15)'}" stroke="${pat.tagClass === 'tag-red' ? '#E0A898' : pat.tagClass === 'tag-purple' ? '#B8A8D4' : '#8DBFB4'}" stroke-width="1.5" />
-                              <text x="38" y="19" text-anchor="middle" font-size="${getFontSize(pat.loopNodes[0]?.title)}" font-weight="700" fill="${pat.tagClass === 'tag-red' ? '#C27A68' : pat.tagClass === 'tag-purple' ? '#7B6B9A' : '#4A7F78'}">${pat.loopNodes[0]?.title || ''}</text>
-                              <text x="38" y="32" text-anchor="middle" font-size="${getSubFontSize(pat.loopNodes[0]?.sub)}" fill="${pat.tagClass === 'tag-red' ? '#C27A68' : pat.tagClass === 'tag-purple' ? '#7B6B9A' : '#4A7F78'}" opacity="0.8">${pat.loopNodes[0]?.sub || ''}</text>
+                              <text x="38" y="19" text-anchor="middle" font-size="${getFontSize(pat.loopNodes?.[0]?.title)}" font-weight="700" fill="${pat.tagClass === 'tag-red' ? '#C27A68' : pat.tagClass === 'tag-purple' ? '#7B6B9A' : '#4A7F78'}">${pat.loopNodes?.[0]?.title || ''}</text>
+                              <text x="38" y="32" text-anchor="middle" font-size="${getSubFontSize(pat.loopNodes?.[0]?.sub)}" fill="${pat.tagClass === 'tag-red' ? '#C27A68' : pat.tagClass === 'tag-purple' ? '#7B6B9A' : '#4A7F78'}" opacity="0.8">${pat.loopNodes?.[0]?.sub || ''}</text>
 
                               <rect x="88" y="4" width="68" height="34" rx="8" fill="var(--bg-secondary)" stroke="var(--border-tertiary)" stroke-width="1" />
-                              <text x="122" y="19" text-anchor="middle" font-size="${getFontSize(pat.loopNodes[1]?.title)}" font-weight="600" fill="var(--teal-black)">${pat.loopNodes[1]?.title || ''}</text>
-                              <text x="122" y="32" text-anchor="middle" font-size="${getSubFontSize(pat.loopNodes[1]?.sub)}" fill="var(--text-secondary)">${pat.loopNodes[1]?.sub || ''}</text>
+                              <text x="122" y="19" text-anchor="middle" font-size="${getFontSize(pat.loopNodes?.[1]?.title)}" font-weight="600" fill="var(--teal-black)">${pat.loopNodes?.[1]?.title || ''}</text>
+                              <text x="122" y="32" text-anchor="middle" font-size="${getSubFontSize(pat.loopNodes?.[1]?.sub)}" fill="var(--text-secondary)">${pat.loopNodes?.[1]?.sub || ''}</text>
 
                               <rect x="88" y="142" width="68" height="34" rx="8" fill="var(--bg-secondary)" stroke="var(--border-tertiary)" stroke-width="1" />
-                              <text x="122" y="157" text-anchor="middle" font-size="${getFontSize(pat.loopNodes[2]?.title)}" font-weight="600" fill="var(--teal-black)">${pat.loopNodes[2]?.title || ''}</text>
-                              <text x="122" y="170" text-anchor="middle" font-size="${getSubFontSize(pat.loopNodes[2]?.sub)}" fill="var(--text-secondary)">${pat.loopNodes[2]?.sub || ''}</text>
+                              <text x="122" y="157" text-anchor="middle" font-size="${getFontSize(pat.loopNodes?.[2]?.title)}" font-weight="600" fill="var(--teal-black)">${pat.loopNodes?.[2]?.title || ''}</text>
+                              <text x="122" y="170" text-anchor="middle" font-size="${getSubFontSize(pat.loopNodes?.[2]?.sub)}" fill="var(--text-secondary)">${pat.loopNodes?.[2]?.sub || ''}</text>
 
                               <rect x="4" y="142" width="68" height="34" rx="8" fill="var(--bg-secondary)" stroke="var(--border-tertiary)" stroke-width="1" />
-                              <text x="38" y="157" text-anchor="middle" font-size="${getFontSize(pat.loopNodes[3]?.title)}" font-weight="600" fill="var(--teal-black)">${pat.loopNodes[3]?.title || ''}</text>
-                              <text x="38" y="170" text-anchor="middle" font-size="${getSubFontSize(pat.loopNodes[3]?.sub)}" fill="var(--text-secondary)">${pat.loopNodes[3]?.sub || ''}</text>
+                              <text x="38" y="157" text-anchor="middle" font-size="${getFontSize(pat.loopNodes?.[3]?.title)}" font-weight="600" fill="var(--teal-black)">${pat.loopNodes?.[3]?.title || ''}</text>
+                              <text x="38" y="170" text-anchor="middle" font-size="${getSubFontSize(pat.loopNodes?.[3]?.sub)}" fill="var(--text-secondary)">${pat.loopNodes?.[3]?.sub || ''}</text>
 
                               <path d="M72,21 L88,21" fill="none" stroke="${pat.tagClass === 'tag-red' ? '#E0A898' : pat.tagClass === 'tag-purple' ? '#B8A8D4' : '#8DBFB4'}" stroke-width="1.5" stroke-opacity="0.7" marker-end="url(#a-marker-${pIdx})" />
                               <path d="M122,38 L122,142" fill="none" stroke="${pat.tagClass === 'tag-red' ? '#E0A898' : pat.tagClass === 'tag-purple' ? '#B8A8D4' : '#8DBFB4'}" stroke-width="1.5" stroke-opacity="0.5" marker-end="url(#a-marker-${pIdx})" />
@@ -675,113 +718,112 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                           </div>
                         </div>
                       </div>
-                    </div>
-                  `).join('')}
-                </div>
-
-                <div class="divider"></div>
-
-                <!-- 6. What Kept Coming Up -->
-                <div class="sec">
-                  <div class="sec-label">What kept coming up</div>
-                  ${parsedReport.recurringThemes.map(theme => `
-                    <div class="theme-card">
-                      <div class="theme-top">
-                        <div class="theme-name">${theme.name}</div>
-                        <div class="theme-freq">${theme.frequencyText}</div>
-                      </div>
-                      <div class="theme-bar-wrap">
-                        <div class="theme-bar" style="width: ${theme.percentage}%; background: ${theme.color || '#E0A898'};"></div>
-                      </div>
-                      <div class="theme-text">${theme.description}</div>
-                      ${theme.contraInsight ? `
-                        <div class="theme-contra">
-                          <div class="contra-lbl">What entries and exercises showed together</div>
-                          ${theme.contraInsight}
-                        </div>
-                      ` : ''}
-                    </div>
-                  `).join('')}
-                </div>
-
-                <div class="divider"></div>
-
-                <!-- 7. Words You Reached For -->
-                <div class="sec">
-                  <div class="sec-label">Words you reached for</div>
-                  <div class="cluster-exp">Words from your writing this month, with related words you didn't use.</div>
-                  ${parsedReport.wordsReachedFor.unusedWords.map(item => `
-                    <div class="cluster-row">
-                      <span class="word-used">${item.word}</span>
-                      <span style="font-size: 12px; color: var(--text-secondary);">→</span>
-                      ${item.synonyms.map(syn => `<span class="word-unused">${syn}</span>`).join('')}
-                    </div>
-                  `).join('')}
-                  <div class="cluster-note">${parsedReport.wordsReachedFor.analysisNote}</div>
-                </div>
-
-                <div class="divider"></div>
-
-                <!-- 8. Four Things We Tracked -->
-                <div class="sec">
-                  <div class="sec-label">Four things we tracked</div>
-                  <div class="dim-grid">
-                    <div style="position: relative; height: 220px;">
-                      <canvas id="radarChart"></canvas>
-                    </div>
-                    <div class="dim-desc">
-                      ${parsedReport.fourThingsWeTracked.map((dim, idx) => `
-                        <div class="dim-item" style="border-color: ${dim.color || '#E0A898'};${idx === 3 ? ' opacity: 0.6;' : ''}">
-                          <div class="dim-item-name">${dim.label}</div>
-                          <div class="dim-item-text">${dim.desc}</div>
-                        </div>
-                      `).join('')}
-                    </div>
+                    `).join('') : '<div style="font-size:12px;color:var(--text-secondary);padding:10px;text-align:center;">No repetitive patterns recorded for this cycle.</div>'}
                   </div>
-                </div>
 
-                <div class="divider"></div>
+                  <div class="divider"></div>
 
-                <!-- 9. People Who Showed Up -->
-                <div class="sec">
-                  <div class="sec-label">People who showed up in your writing</div>
-                  <div class="rel-grid">
-                    ${parsedReport.peopleWhoShowedUp.map(person => `
-                      <div class="rel-cell">
-                        <div class="rel-name">${person.name}</div>
-                        <div class="rel-freq">${person.frequency}</div>
-                        <div class="rel-text">${person.description}</div>
+                  <!-- 6. What Kept Coming Up -->
+                  <div class="sec">
+                    <div class="sec-label">What kept coming up</div>
+                    ${recurringThemes.length > 0 ? recurringThemes.map(theme => `
+                      <div class="theme-card">
+                        <div class="theme-top">
+                          <div class="theme-name">${theme.name}</div>
+                          <div class="theme-freq">${theme.frequencyText}</div>
+                        </div>
+                        <div class="theme-bar-wrap">
+                          <div class="theme-bar" style="width: ${theme.percentage}%; background: ${theme.color || '#E0A898'};"></div>
+                        </div>
+                        <div class="theme-text">${theme.description}</div>
+                        ${theme.contraInsight ? `
+                          <div class="theme-contra">
+                            <div class="contra-lbl">What entries and exercises showed together</div>
+                            ${theme.contraInsight}
+                          </div>
+                        ` : ''}
+                      </div>
+                    `).join('') : '<div style="font-size:12px;color:var(--text-secondary);padding:10px;text-align:center;">No recurring themes reached significance this cycle.</div>'}
+                  </div>
+
+                  <div class="divider"></div>
+
+                  <!-- 7. Words You Reached For -->
+                  <div class="sec">
+                    <div class="sec-label">Words you reached for</div>
+                    <div class="cluster-exp">Words from your writing this month, with related words you didn't use.</div>
+                    ${(wordsReachedFor.unusedWords || []).map(item => `
+                      <div class="cluster-row">
+                        <span class="word-used">${item.word}</span>
+                        <span style="font-size: 12px; color: var(--text-secondary);">→</span>
+                        ${(item.synonyms || []).map(syn => `<span class="word-unused">${syn}</span>`).join('')}
                       </div>
                     `).join('')}
+                    <div class="cluster-note">${wordsReachedFor.analysisNote || ''}</div>
                   </div>
-                </div>
 
-                <div class="divider"></div>
+                  <div class="divider"></div>
 
-                <!-- 10. What You Said vs What Your Writing Showed -->
-                <div class="sec">
-                  <div class="sec-label">What you said vs what your writing showed</div>
-                  <div class="gap-visual">
-                    <div class="gap-col">
-                      <div class="gap-header gap-said-h">What you said about yourself</div>
-                      ${parsedReport.saidVsShowed.said.map(item => `
-                        <div class="gap-item">"${item}"</div>
-                      `).join('')}
-                    </div>
-                    <div class="gap-middle">
-                      ${parsedReport.saidVsShowed.said.map(() => `
-                        <div style="font-size: 14px; color: var(--text-secondary); opacity: 0.3;">→</div>
-                      `).join('')}
-                    </div>
-                    <div class="gap-col">
-                      <div class="gap-header gap-show-h">What your writing showed</div>
-                      ${parsedReport.saidVsShowed.showed.map(item => `
-                        <div class="gap-item">${item}</div>
-                      `).join('')}
+                  <!-- 8. Four Things We Tracked -->
+                  <div class="sec">
+                    <div class="sec-label">Four things we tracked</div>
+                    <div class="dim-grid">
+                      <div style="position: relative; height: 220px;">
+                        <canvas id="radarChart"></canvas>
+                      </div>
+                      <div class="dim-desc">
+                        ${fourThingsWeTracked.map((dim, idx) => `
+                          <div class="dim-item" style="border-color: ${dim.color || '#E0A898'};${idx === 3 ? ' opacity: 0.6;' : ''}">
+                            <div class="dim-item-name">${dim.label}</div>
+                            <div class="dim-item-text">${dim.desc}</div>
+                          </div>
+                        `).join('')}
+                      </div>
                     </div>
                   </div>
-                  <div class="gap-note">${parsedReport.saidVsShowed.analysisNote}</div>
-                </div>
+
+                  <div class="divider"></div>
+
+                  <!-- 9. People Who Showed Up -->
+                  <div class="sec">
+                    <div class="sec-label">People who showed up in your writing</div>
+                    <div class="rel-grid">
+                      ${peopleWhoShowedUp.length > 0 ? peopleWhoShowedUp.map(person => `
+                        <div class="rel-cell">
+                          <div class="rel-name">${person.name}</div>
+                          <div class="rel-freq">${person.frequency}</div>
+                          <div class="rel-text">${person.description}</div>
+                        </div>
+                      `).join('') : '<div class="rel-cell" style="grid-column: span 2; text-align: center; color: var(--text-secondary); font-size: 11px;">No specific individual mentions recorded.</div>'}
+                    </div>
+                  </div>
+
+                  <div class="divider"></div>
+
+                  <!-- 10. What You Said vs What Your Writing Showed -->
+                  <div class="sec">
+                    <div class="sec-label">What you said vs what your writing showed</div>
+                    <div class="gap-visual">
+                      <div class="gap-col">
+                        <div class="gap-header gap-said-h">What you said about yourself</div>
+                        ${(saidVsShowed.said || []).map(item => `
+                          <div class="gap-item">"${item}"</div>
+                        `).join('')}
+                      </div>
+                      <div class="gap-middle">
+                        ${(saidVsShowed.said || []).map(() => `
+                          <div style="font-size: 14px; color: var(--text-secondary); opacity: 0.3;">→</div>
+                        `).join('')}
+                      </div>
+                      <div class="gap-col">
+                        <div class="gap-header gap-show-h">What your writing showed</div>
+                        ${(saidVsShowed.showed || []).map(item => `
+                          <div class="gap-item">${item}</div>
+                        `).join('')}
+                      </div>
+                    </div>
+                    <div class="gap-note">${saidVsShowed.analysisNote || ''}</div>
+                  </div>
 
                 <div class="divider"></div>
 
@@ -790,12 +832,12 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                   <div class="sec-label">What the exercises showed</div>
                   <div class="ex-top">
                     <div class="dots">
-                      ${Array.from({ length: Math.max(3, parsedReport.stats.totalExercisesCount || 4) }).map((_, i) => `
-                        <div class="dot ${i < (parsedReport.stats.exercisesCompletedCount || 0) ? 'dot-done' : 'dot-skip'}"></div>
+                      ${Array.from({ length: Math.max(3, stats.totalExercisesCount || 4) }).map((_, i) => `
+                        <div class="dot ${i < (stats.exercisesCompletedCount || 0) ? 'dot-done' : 'dot-skip'}"></div>
                       `).join('')}
                     </div>
                     <div class="completion-text">
-                      <strong>${parsedReport.stats.exercisesCompletedCount} of ${parsedReport.stats.totalExercisesCount}</strong> completed this cycle
+                      <strong>${stats.exercisesCompletedCount} of ${stats.totalExercisesCount}</strong> completed this cycle
                     </div>
                   </div>
 
@@ -969,7 +1011,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
 
                   <div class="collective">
                     <div class="collective-lbl">What the exercises showed together</div>
-                    <div class="collective-text">${parsedReport.exercises.collectiveInsight}</div>
+                    <div class="collective-text">${exercises.collectiveInsight || 'Completed cycle reframing tasks.'}</div>
                   </div>
                 </div>
 
@@ -979,16 +1021,16 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                 <div class="sec">
                   <div class="sec-label">Where this cycle leaves you</div>
                   <div class="triage">
-                    <div class="triage-lbl">${parsedReport.whereLeavesYou.title || 'Cycle complete'}</div>
-                    <div class="triage-body">${parsedReport.whereLeavesYou.body.replace(/\n\n/g, '<br><br>')}</div>
+                    <div class="triage-lbl">${whereLeavesYou.title || 'Cycle complete'}</div>
+                    <div class="triage-body">${(whereLeavesYou.body || '').replace(/\n\n/g, '<br><br>')}</div>
                   </div>
                 </div>
               </div>
 
               <!-- 13. Closing Quote -->
               <div class="closing">
-                <div class="closing-quote">"${parsedReport.closingQuote.quote}"</div>
-                <div class="closing-obs">${parsedReport.closingQuote.observation}</div>
+                <div class="closing-quote">"${closingQuote.quote || ''}"</div>
+                <div class="closing-obs">${closingQuote.observation || ''}</div>
               </div>
             </div>
 
@@ -998,10 +1040,10 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                 new Chart(document.getElementById('arcChart'), {
                   type: 'line',
                   data: {
-                    labels: Array.from({ length: 30 }, (_, i) => i + 1),
+                    labels: Array.from({ length: ${stats.totalDays || 30} }, (_, i) => i + 1),
                     datasets: [
                       {
-                        data: ${JSON.stringify(parsedReport.chartData.arcChart.writtenDays)},
+                        data: ${JSON.stringify(chartData.arcChart?.writtenDays || Array(stats.totalDays || 30).fill(null))},
                         borderColor: '#E0A898',
                         backgroundColor: 'rgba(224,168,152,0.06)',
                         borderWidth: 2,
@@ -1011,7 +1053,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                         spanGaps: false
                       },
                       {
-                        data: ${JSON.stringify(parsedReport.chartData.arcChart.skippedDays)},
+                        data: ${JSON.stringify(chartData.arcChart?.skippedDays || Array(stats.totalDays || 30).fill(null))},
                         borderColor: 'transparent',
                         backgroundColor: 'transparent',
                         pointBackgroundColor: '#F5F6F6',
@@ -1041,10 +1083,10 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                     datasets: [
                       {
                         data: [
-                          ${parsedReport.chartData.radarChart.patternPersistence},
-                          ${parsedReport.chartData.radarChart.emotionalIntensity},
-                          ${parsedReport.chartData.radarChart.agency},
-                          ${parsedReport.chartData.radarChart.overallDirection}
+                          ${chartData.radarChart?.patternPersistence ?? 50},
+                          ${chartData.radarChart?.emotionalIntensity ?? 50},
+                          ${chartData.radarChart?.agency ?? 50},
+                          ${chartData.radarChart?.overallDirection ?? 50}
                         ],
                         backgroundColor: 'rgba(224,168,152,0.04)',
                         borderColor: 'rgba(30,42,46,0.3)',
@@ -2224,7 +2266,21 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                 const isOpen = !!openCycles[cycle.id];
                 const isCurrent = cycle.status === 'active' || cycle.status === 'ACTIVE';
 
-                      const isDay28Unlocked = cycle.assessment_completed || cycle.assessment_available || cycle.status === 'COMPLETED' || cycle.status === 'completed' || (cycle.current_day && cycle.current_day >= 28);
+                      const isDay28Unlocked = Boolean(
+                        cycle.assessment_completed ||
+                        cycle.assessment_available ||
+                        cycle.has_assessment ||
+                        cycle.status === 'COMPLETED' ||
+                        cycle.status === 'completed' ||
+                        (cycle.current_day && cycle.current_day >= 28) ||
+                        (cycle.entries_count && cycle.entries_count > 0)
+                      );
+                      const isCompletedCycle = Boolean(
+                        cycle.status === 'COMPLETED' ||
+                        cycle.status === 'completed' ||
+                        (cycle.current_day && cycle.current_day >= 28) ||
+                        cycle.assessment_completed
+                      );
 
                       return (
                         <div key={cycle.id} className="bg-white border border-[#1E2A2E]/10 rounded-xl overflow-hidden shadow-xs">
@@ -2259,9 +2315,9 @@ export default function ReportsPage({ user, profile, onSignOut }) {
 
                           {isOpen && (
                             <div className="border-t border-[#1E2A2E]/5 bg-[#FAFBFB] divide-y divide-[#1E2A2E]/5">
-                              {/* Day 28 Report Section */}
+                              {/* Cycle Report Section */}
                               <div className="px-3.5 py-1.5 bg-[#F5F8F8] text-[9.5px] font-bold tracking-widest text-[#8DBFB4] uppercase">
-                                Day 28 report
+                                {isCompletedCycle ? 'Day 28 report' : 'Cycle report'}
                               </div>
                               {isDay28Unlocked ? (
                                 <div
@@ -2270,11 +2326,15 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                                 >
                                   <div className="flex items-center gap-3">
                                     <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#e0a898]/15 text-[#8a3020]">
-                                      New
+                                      {isCompletedCycle ? 'Complete' : 'Ready'}
                                     </span>
                                     <div>
-                                      <div className="text-[13px] font-semibold text-primary group-hover:text-secondary-dark transition-colors">Day 28 report</div>
-                                      <div className="text-[11px] text-[#4A6A64]">Completed cycle analysis</div>
+                                      <div className="text-[13px] font-semibold text-primary group-hover:text-secondary-dark transition-colors">
+                                        {isCompletedCycle ? 'Day 28 report' : `Cycle ${cycle.cycle_number} report`}
+                                      </div>
+                                      <div className="text-[11px] text-[#4A6A64]">
+                                        {isCompletedCycle ? 'Completed cycle analysis' : `Cycle synthesis · ${cycle.entries_count || 0} entries recorded`}
+                                      </div>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-4">
@@ -2295,7 +2355,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                               <div>
                                 <div className="text-[13px] font-semibold text-primary">Day 28 report</div>
                                 <div className="text-[11px] text-[#4A6A64]">
-                                  {isCurrent ? `Generates at end of cycle` : `Awaiting cycle assessment completion`}
+                                  {isCurrent ? `Generates at end of cycle (or after writing entries)` : `Awaiting cycle assessment completion`}
                                 </div>
                               </div>
                             </div>
@@ -2771,6 +2831,39 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                       );
                     }
 
+                    const whatShowed = reportData.whatThisCycleShowed || {
+                      openingObs: `Cycle ${reportData.cycleNumber || 1} completed with ${reportData.stats?.entriesCount || 0} entries written.`,
+                      pulledQuote: 'Taking time each day to reflect provides clarity.',
+                      narrative: 'Reflections recorded for this cycle.'
+                    };
+                    const patterns = Array.isArray(reportData.patterns) ? reportData.patterns : [];
+                    const recurringThemes = Array.isArray(reportData.recurringThemes) ? reportData.recurringThemes : [];
+                    const wordsReachedFor = reportData.wordsReachedFor || { analysisNote: '', unusedWords: [] };
+                    const fourThingsWeTracked = Array.isArray(reportData.fourThingsWeTracked) && reportData.fourThingsWeTracked.length === 4
+                      ? reportData.fourThingsWeTracked
+                      : [
+                          { label: "How stuck the patterns were", color: "#E0A898", title: "Pattern persistence", desc: "Analysis of pattern rigidity based on entries." },
+                          { label: "How intense things felt", color: "#B8A8D4", title: "Emotional intensity", desc: "Analysis of emotional variance and intensity based on entries." },
+                          { label: "How much you felt in control", color: "#8DBFB4", title: "Self-agency", desc: "Analysis of agency vs reactivity/situational framing in entries." },
+                          { label: "Which direction things moved", color: "#8DBFB4", title: "Overall stability", desc: "Analysis of overall emotional stability/direction and shift across the cycle." }
+                        ];
+                    const peopleWhoShowedUp = Array.isArray(reportData.peopleWhoShowedUp) ? reportData.peopleWhoShowedUp : [];
+                    const saidVsShowed = reportData.saidVsShowed || { said: [], showed: [], analysisNote: '' };
+                    const exercises = reportData.exercises || { collectiveInsight: 'Completed cycle reframing tasks.', items: [] };
+                    const whereLeavesYou = reportData.whereLeavesYou || { title: `Cycle ${reportData.cycleNumber || 1} Summary`, body: 'Cycle reflections complete.' };
+                    const closingQuote = reportData.closingQuote || { quote: 'Consistent daily practice supports emotional grounding.', observation: 'Observed during cycle reflections.' };
+                    const stats = reportData.stats || {
+                      entriesCount: 0,
+                      totalDays: 30,
+                      daysSkipped: 0,
+                      mostUsedWord: 'reflection',
+                      mostUsedWordFreq: 0,
+                      mostUsedWordContext: '',
+                      exercisesCompletedCount: 0,
+                      totalExercisesCount: 4,
+                      missedExercisesText: ''
+                    };
+
                     // Structured Report view matching HTML design spec
                     return (
                       <div className="report font-sans">
@@ -2782,27 +2875,27 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                               <span>ingress <span className="text-ocean-sage">within</span></span>
                             </div>
                             <div className="hdiv"></div>
-                            <div className="htag">Cycle {reportData.cycleNumber} — Monthly Report</div>
+                            <div className="htag">Cycle ${reportData.cycleNumber || 1} — Monthly Report</div>
                           </div>
-                          <div className="hdate">{reportData.startDate} – {reportData.endDate}</div>
+                          <div className="hdate">${reportData.startDate || 'Day 1'} – ${reportData.endDate || 'Day 30'}</div>
                         </div>
                         <div className="body text-left">
                           {/* 2. Overview Statistics */}
                           <div className="stats">
                             <div className="stat">
                               <div className="stat-lbl">Entries written</div>
-                              <div className="stat-val">{reportData.stats.entriesCount}<sup>/{reportData.stats.totalDays}</sup></div>
-                              <div className="stat-sub">{reportData.stats.daysSkipped} day{reportData.stats.daysSkipped > 1 ? 's' : ''} skipped</div>
+                              <div className="stat-val">{stats.entriesCount}<sup>/{stats.totalDays}</sup></div>
+                              <div className="stat-sub">{stats.daysSkipped} day{stats.daysSkipped > 1 ? 's' : ''} skipped</div>
                             </div>
                             <div className="stat">
                               <div className="stat-lbl">Most used word</div>
-                              <div className="stat-word">"{reportData.stats.mostUsedWord}"</div>
-                              <div className="stat-sub">{reportData.stats.mostUsedWordContext}</div>
+                              <div className="stat-word">"{stats.mostUsedWord}"</div>
+                              <div className="stat-sub">{stats.mostUsedWordContext}</div>
                             </div>
                             <div className="stat">
                               <div className="stat-lbl">Exercises completed</div>
-                              <div className="stat-val">{reportData.stats.exercisesCompletedCount}<sup>/{reportData.stats.totalExercisesCount}</sup></div>
-                              <div className="stat-sub">{reportData.stats.missedExercisesText}</div>
+                              <div className="stat-val">{stats.exercisesCompletedCount}<sup>/{stats.totalExercisesCount}</sup></div>
+                              <div className="stat-sub">{stats.missedExercisesText}</div>
                             </div>
                           </div>
 
@@ -2829,12 +2922,12 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                           {/* 4. What This Cycle Showed */}
                           <div className="sec">
                             <div className="sec-label">What this cycle showed</div>
-                            <div className="opening" dangerouslySetInnerHTML={{ __html: reportData.whatThisCycleShowed.openingObs.replace(/\n/g, '<br>') }} />
+                            <div className="opening" dangerouslySetInnerHTML={{ __html: (whatShowed.openingObs || '').replace(/\n/g, '<br>') }} />
                             <div className="pulled-quote">
                               <div className="pq-lbl">From your writing</div>
-                              <div className="pq-text">"{reportData.whatThisCycleShowed.pulledQuote}"</div>
+                              <div className="pq-text">"{whatShowed.pulledQuote || 'Taking time each day to reflect provides clarity.'}"</div>
                             </div>
-                            <div className="narr">{reportData.whatThisCycleShowed.narrative}</div>
+                            <div className="narr">{whatShowed.narrative || ''}</div>
                           </div>
 
                           <div className="divider"></div>
@@ -2842,8 +2935,8 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                           {/* 5. Patterns This Cycle Found In You */}
                           <div className="sec">
                             <div className="sec-label">Patterns this cycle found in you</div>
-                            {reportData.patterns && reportData.patterns.length > 0 ? (
-                              reportData.patterns.map((pat, pIdx) => (
+                            {patterns && patterns.length > 0 ? (
+                              patterns.map((pat, pIdx) => (
                                 <div key={pIdx} className="pattern-hero">
                                   <div className="ph-top">
                                     <div className="ph-label">{pat.name}</div>
@@ -2866,23 +2959,23 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                                         </defs>
                                         {/* Step 1 Rect */}
                                         <rect x="4" y="4" width="68" height="34" rx="8" fill={pat.tagClass === 'tag-red' ? 'rgba(224,168,152,0.15)' : pat.tagClass === 'tag-purple' ? 'rgba(184,168,212,0.15)' : 'rgba(141,191,180,0.15)'} stroke={pat.tagClass === 'tag-red' ? '#E0A898' : pat.tagClass === 'tag-purple' ? '#B8A8D4' : '#8DBFB4'} strokeWidth="1.5" />
-                                        <text x="38" y="19" textAnchor="middle" fontSize={getFontSize(pat.loopNodes[0]?.title)} fontWeight="700" fill={pat.tagClass === 'tag-red' ? '#C27A68' : pat.tagClass === 'tag-purple' ? '#7B6B9A' : '#4A7F78'} fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes[0]?.title || 'Happens'}</text>
-                                        <text x="38" y="32" textAnchor="middle" fontSize={getSubFontSize(pat.loopNodes[0]?.sub)} fill={pat.tagClass === 'tag-red' ? '#C27A68' : pat.tagClass === 'tag-purple' ? '#7B6B9A' : '#4A7F78'} fontFamily="var(--font-ui), 'Instrument Sans', sans-serif" opacity="0.8">{pat.loopNodes[0]?.sub || ''}</text>
+                                        <text x="38" y="19" textAnchor="middle" fontSize={getFontSize(pat.loopNodes?.[0]?.title)} fontWeight="700" fill={pat.tagClass === 'tag-red' ? '#C27A68' : pat.tagClass === 'tag-purple' ? '#7B6B9A' : '#4A7F78'} fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes?.[0]?.title || 'Happens'}</text>
+                                        <text x="38" y="32" textAnchor="middle" fontSize={getSubFontSize(pat.loopNodes?.[0]?.sub)} fill={pat.tagClass === 'tag-red' ? '#C27A68' : pat.tagClass === 'tag-purple' ? '#7B6B9A' : '#4A7F78'} fontFamily="var(--font-ui), 'Instrument Sans', sans-serif" opacity="0.8">{pat.loopNodes?.[0]?.sub || ''}</text>
 
                                         {/* Step 2 Rect */}
                                         <rect x="88" y="4" width="68" height="34" rx="8" fill="var(--bg-secondary)" stroke="var(--border-tertiary)" strokeWidth="1" />
-                                        <text x="122" y="19" textAnchor="middle" fontSize={getFontSize(pat.loopNodes[1]?.title)} fontWeight="600" fill="var(--teal-black)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes[1]?.title || 'Notice'}</text>
-                                        <text x="122" y="32" textAnchor="middle" fontSize={getSubFontSize(pat.loopNodes[1]?.sub)} fill="var(--text-secondary)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes[1]?.sub || ''}</text>
+                                        <text x="122" y="19" textAnchor="middle" fontSize={getFontSize(pat.loopNodes?.[1]?.title)} fontWeight="600" fill="var(--teal-black)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes?.[1]?.title || 'Notice'}</text>
+                                        <text x="122" y="32" textAnchor="middle" fontSize={getSubFontSize(pat.loopNodes?.[1]?.sub)} fill="var(--text-secondary)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes?.[1]?.sub || ''}</text>
 
                                         {/* Step 3 Rect */}
                                         <rect x="88" y="142" width="68" height="34" rx="8" fill="var(--bg-secondary)" stroke="var(--border-tertiary)" strokeWidth="1" />
-                                        <text x="122" y="157" textAnchor="middle" fontSize={getFontSize(pat.loopNodes[2]?.title)} fontWeight="600" fill="var(--teal-black)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes[2]?.title || 'Dismiss'}</text>
-                                        <text x="122" y="170" textAnchor="middle" fontSize={getSubFontSize(pat.loopNodes[2]?.sub)} fill="var(--text-secondary)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes[2]?.sub || ''}</text>
+                                        <text x="122" y="157" textAnchor="middle" fontSize={getFontSize(pat.loopNodes?.[2]?.title)} fontWeight="600" fill="var(--teal-black)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes?.[2]?.title || 'Dismiss'}</text>
+                                        <text x="122" y="170" textAnchor="middle" fontSize={getSubFontSize(pat.loopNodes?.[2]?.sub)} fill="var(--text-secondary)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes?.[2]?.sub || ''}</text>
 
                                         {/* Step 4 Rect */}
                                         <rect x="4" y="142" width="68" height="34" rx="8" fill="var(--bg-secondary)" stroke="var(--border-tertiary)" strokeWidth="1" />
-                                        <text x="38" y="157" textAnchor="middle" fontSize={getFontSize(pat.loopNodes[3]?.title)} fontWeight="600" fill="var(--teal-black)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes[3]?.title || 'Say okay'}</text>
-                                        <text x="38" y="170" textAnchor="middle" fontSize={getSubFontSize(pat.loopNodes[3]?.sub)} fill="var(--text-secondary)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes[3]?.sub || ''}</text>
+                                        <text x="38" y="157" textAnchor="middle" fontSize={getFontSize(pat.loopNodes?.[3]?.title)} fontWeight="600" fill="var(--teal-black)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes?.[3]?.title || 'Say okay'}</text>
+                                        <text x="38" y="170" textAnchor="middle" fontSize={getSubFontSize(pat.loopNodes?.[3]?.sub)} fill="var(--text-secondary)" fontFamily="var(--font-ui), 'Instrument Sans', sans-serif">{pat.loopNodes?.[3]?.sub || ''}</text>
 
                                         {/* Edges */}
                                         <path d="M72,21 L88,21" fill="none" stroke={pat.tagClass === 'tag-red' ? '#E0A898' : pat.tagClass === 'tag-purple' ? '#B8A8D4' : '#8DBFB4'} strokeWidth="1.5" strokeOpacity="0.7" markerEnd={`url(#a-marker-${pIdx})`} />
@@ -2906,8 +2999,8 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                           {/* 6. What Kept Coming Up */}
                           <div className="sec">
                             <div className="sec-label">What kept coming up</div>
-                            {reportData.recurringThemes && reportData.recurringThemes.length > 0 ? (
-                              reportData.recurringThemes.map((theme, tIdx) => (
+                            {recurringThemes && recurringThemes.length > 0 ? (
+                              recurringThemes.map((theme, tIdx) => (
                                 <div key={tIdx} className="theme-card">
                                   <div className="theme-top">
                                     <div className="theme-name">{theme.name}</div>
@@ -2938,16 +3031,16 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                           <div className="sec">
                             <div className="sec-label">Words you reached for</div>
                             <div className="cluster-exp">Words from your writing this month, with related words you didn't use. The ones you didn't reach for sometimes say as much as the ones you did.</div>
-                            {reportData.wordsReachedFor?.unusedWords?.map((item, wIdx) => (
+                            {wordsReachedFor?.unusedWords?.map((item, wIdx) => (
                               <div key={wIdx} className="cluster-row">
                                 <span className="word-used">{item.word}</span>
                                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>→</span>
-                                {item.synonyms.map((syn, sIdx) => (
+                                {(item.synonyms || []).map((syn, sIdx) => (
                                   <span key={sIdx} className="word-unused">{syn}</span>
                                 ))}
                               </div>
                             ))}
-                            <div className="cluster-note">{reportData.wordsReachedFor.analysisNote}</div>
+                            <div className="cluster-note">{wordsReachedFor.analysisNote || ''}</div>
                           </div>
 
                           <div className="divider"></div>
@@ -2960,7 +3053,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                                 <canvas id="radarChart"></canvas>
                               </div>
                               <div className="dim-desc">
-                                {reportData.fourThingsWeTracked?.map((dim, dIdx) => (
+                                {fourThingsWeTracked.map((dim, dIdx) => (
                                   <div key={dIdx} className="dim-item" style={{ borderColor: dim.color || '#E0A898', opacity: dIdx === 3 ? 0.6 : 1 }}>
                                     <div className="dim-item-name">{dim.label}</div>
                                     <div className="dim-item-text">{dim.desc}</div>
@@ -2976,8 +3069,8 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                           <div className="sec">
                             <div className="sec-label">People who showed up in your writing</div>
                             <div className="rel-grid">
-                              {reportData.peopleWhoShowedUp && reportData.peopleWhoShowedUp.length > 0 ? (
-                                reportData.peopleWhoShowedUp.map((person, pIdx) => (
+                              {peopleWhoShowedUp && peopleWhoShowedUp.length > 0 ? (
+                                peopleWhoShowedUp.map((person, pIdx) => (
                                   <div key={pIdx} className="rel-cell">
                                     <div className="rel-name">{person.name}</div>
                                     <div className="rel-freq">{person.frequency}</div>
@@ -3000,27 +3093,27 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                             <div className="gap-visual">
                               <div className="gap-col">
                                 <div className="gap-header gap-said-h">What you said about yourself</div>
-                                {reportData.saidVsShowed?.said?.map((item, idx) => (
+                                {(saidVsShowed.said || []).map((item, idx) => (
                                   <div key={idx} className="gap-item" style={{ marginTop: idx > 0 ? '1px' : '0', borderTop: idx > 0 ? '1px solid var(--border-tertiary)' : 'none' }}>
                                     "{item}"
                                   </div>
                                 ))}
                               </div>
                               <div className="gap-middle">
-                                {reportData.saidVsShowed?.said?.map((_, idx) => (
+                                {(saidVsShowed.said || []).map((_, idx) => (
                                   <div key={idx} style={{ fontSize: '14px', color: 'var(--text-secondary)', opacity: '0.3' }}>→</div>
                                 ))}
                               </div>
                               <div className="gap-col">
                                 <div className="gap-header gap-show-h">What your writing showed</div>
-                                {reportData.saidVsShowed?.showed?.map((item, idx) => (
+                                {(saidVsShowed.showed || []).map((item, idx) => (
                                   <div key={idx} className="gap-item" style={{ marginTop: idx > 0 ? '1px' : '0', borderTop: idx > 0 ? '1px solid var(--border-tertiary)' : 'none' }}>
                                     {item}
                                   </div>
                                 ))}
                               </div>
                             </div>
-                            <div className="gap-note">{reportData.saidVsShowed.analysisNote}</div>
+                            <div className="gap-note">{saidVsShowed.analysisNote || ''}</div>
                           </div>
 
                           <div className="divider"></div>
@@ -3030,22 +3123,22 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                             <div className="sec-label">What the exercises showed</div>
                             <div className="ex-top">
                               <div className="dots">
-                                {Array.from({ length: Math.max(3, reportData.stats.totalExercisesCount || 4) }).map((_, i) => (
+                                {Array.from({ length: Math.max(3, stats.totalExercisesCount || 4) }).map((_, i) => (
                                   <div
                                     key={i}
-                                    className={`dot ${i < (reportData.stats.exercisesCompletedCount || 0) ? 'dot-done' : 'dot-skip'}`}
+                                    className={`dot ${i < (stats.exercisesCompletedCount || 0) ? 'dot-done' : 'dot-skip'}`}
                                   />
                                 ))}
                               </div>
                               <div className="completion-text">
-                                <strong>{reportData.stats.exercisesCompletedCount} of {reportData.stats.totalExercisesCount}</strong> completed this cycle
+                                <strong>{stats.exercisesCompletedCount} of {stats.totalExercisesCount}</strong> completed this cycle
                               </div>
                             </div>
 
                             <div className="ex-list">
                               {/* Core Values / Baseline Assessment */}
                               {(() => {
-                                const cbtEx = reportData.exercises?.items?.find(item =>
+                                const cbtEx = exercises?.items?.find(item =>
                                   item.name?.toLowerCase().includes('core values') ||
                                   item.name?.toLowerCase().includes('baseline') ||
                                   item.id === 'exercise_0' ||
@@ -3084,7 +3177,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
 
                               {/* Emotional Vocabulary Wheel */}
                               {(() => {
-                                const cbtEx = reportData.exercises?.items?.find(item =>
+                                const cbtEx = exercises?.items?.find(item =>
                                   item.name?.toLowerCase().includes('vocabulary') ||
                                   item.name?.toLowerCase().includes('word association') ||
                                   item.id === 'exercise_1' ||
@@ -3123,7 +3216,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
 
                               {/* Self-Perception Check */}
                               {(() => {
-                                const cbtEx = reportData.exercises?.items?.find(item =>
+                                const cbtEx = exercises?.items?.find(item =>
                                   item.name?.toLowerCase().includes('self-perception') ||
                                   item.name?.toLowerCase().includes('self perception') ||
                                   item.id === 'exercise_3' ||
@@ -3163,21 +3256,21 @@ export default function ReportsPage({ user, profile, onSignOut }) {
 
                               {/* Additional completed exercises */}
                               {(() => {
-                                const ex1 = reportData.exercises?.items?.find(item =>
+                                const ex1 = exercises?.items?.find(item =>
                                   item.name?.toLowerCase().includes('core values') ||
                                   item.name?.toLowerCase().includes('baseline') ||
                                   item.id === 'exercise_0' ||
                                   item.dayText?.includes('1') ||
                                   item.dayText?.includes('4')
                                 );
-                                const ex2 = reportData.exercises?.items?.find(item =>
+                                const ex2 = exercises?.items?.find(item =>
                                   item.name?.toLowerCase().includes('vocabulary') ||
                                   item.name?.toLowerCase().includes('word association') ||
                                   item.id === 'exercise_1' ||
                                   item.dayText?.includes('9') ||
                                   item.dayText?.includes('10')
                                 );
-                                const ex3 = reportData.exercises?.items?.find(item =>
+                                const ex3 = exercises?.items?.find(item =>
                                   item.name?.toLowerCase().includes('self-perception') ||
                                   item.name?.toLowerCase().includes('self perception') ||
                                   item.id === 'exercise_3' ||
@@ -3186,7 +3279,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                                   item.dayText?.includes('28')
                                 );
                                 const matched = new Set([ex1, ex2, ex3].filter(Boolean));
-                                const others = (reportData.exercises?.items || []).filter(item => !matched.has(item));
+                                const others = (exercises?.items || []).filter(item => !matched.has(item));
                                 return others.map((item, idx) => (
                                   <div className="ex-row-card" key={`other-ex-${item.id || idx}`}>
                                     <div className="ex-row-top">
@@ -3211,7 +3304,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
 
                             <div className="collective">
                               <div className="collective-lbl">What the exercises showed together</div>
-                              <div className="collective-text">{reportData.exercises.collectiveInsight}</div>
+                              <div className="collective-text">{exercises.collectiveInsight || 'Completed cycle reframing tasks.'}</div>
                             </div>
                           </div>
 
@@ -3221,16 +3314,16 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                           <div className="sec">
                             <div className="sec-label">Where this cycle leaves you</div>
                             <div className="triage">
-                              <div className="triage-lbl">{reportData.whereLeavesYou.title || 'Cycle complete'}</div>
-                              <div className="triage-body" dangerouslySetInnerHTML={{ __html: reportData.whereLeavesYou.body.replace(/\n\n/g, '<br><br>') }} />
+                              <div className="triage-lbl">{whereLeavesYou.title || 'Cycle complete'}</div>
+                              <div className="triage-body" dangerouslySetInnerHTML={{ __html: (whereLeavesYou.body || '').replace(/\n\n/g, '<br><br>') }} />
                             </div>
                           </div>
                         </div>
 
                         {/* 13. Closing Quote */}
                         <div className="closing">
-                          <div className="closing-quote">"{reportData.closingQuote.quote}"</div>
-                          <div className="closing-obs">{reportData.closingQuote.observation}</div>
+                          <div className="closing-quote">"{closingQuote.quote || ''}"</div>
+                          <div className="closing-obs">{closingQuote.observation || ''}</div>
                         </div>
 
                         {/* 14. Footer */}
@@ -3238,7 +3331,7 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                           <button onClick={() => setViewState('list')} className="foot-link border-none bg-transparent hover:text-primary transition-colors cursor-pointer text-ocean-sage">
                             ← Back to progress
                           </button>
-                          <div className="foot-center">Ingress Within · Cycle {reportData.cycleNumber} · Complete</div>
+                          <div className="foot-center">Ingress Within · Cycle ${reportData.cycleNumber || 1} · Complete</div>
                           <div style={{ display: 'flex', gap: '14px' }}>
                             <button onClick={() => window.navigateTo('/write')} className="foot-link border-none bg-transparent hover:text-primary transition-colors cursor-pointer text-ocean-sage">
                               Write today's entry
