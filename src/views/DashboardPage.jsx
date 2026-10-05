@@ -577,7 +577,7 @@ export default function DashboardPage({ user, profile, onSignOut }) {
           }}
         />
 
-        {/* Therapy Module */}
+        {/* Therapy Module — Coming Soon for Launch */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -593,29 +593,25 @@ export default function DashboardPage({ user, profile, onSignOut }) {
                   </div>
 
                   <div>
-                    <span className="text-[9px] font-semibold text-secondary uppercase tracking-widest">
-                      Therapy
+                    <span className="text-[9px] font-bold text-accent uppercase tracking-widest px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20">
+                      Therapists — Coming Soon
                     </span>
 
-                    <h2 className="font-serif text-xl text-primary font-normal mt-1">
-                      A space for deeper support
+                    <h2 className="font-serif text-xl text-primary font-normal mt-2">
+                      Professional 1-on-1 Clinical Support
                     </h2>
 
                     <p className="text-sm text-mid font-light leading-relaxed mt-1 max-w-2xl">
-                      Explore your concerns, talk things through, or connect with
-                      professional support at your own pace.
+                      Direct matching with licensed, culturally attuned therapists is launching soon. In the meantime, all self-help modules, techniques, and writing tools are fully active.
                     </p>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => window.navigateTo('/therapy')}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary text-white rounded-xl text-xs font-semibold uppercase tracking-wider hover:bg-[#2A3A3E] transition-all cursor-pointer shrink-0"
-                >
-                  Explore Therapy
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                <div className="shrink-0 flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/10 text-mid text-xs font-semibold uppercase tracking-wider">
+                    Coming Soon
+                  </span>
+                </div>
 
               </div>
             </div>

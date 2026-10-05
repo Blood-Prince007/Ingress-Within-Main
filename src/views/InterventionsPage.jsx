@@ -4,6 +4,7 @@ import { Search, Clock, Heart, ArrowLeft, CheckCircle, Play, ShieldAlert, Sparkl
 import DashboardNavbar from '../components/DashboardNavbar';
 import Footer from '../components/Footer';
 import { InterventionPlayer } from '../components/interventions/player/InterventionPlayer';
+import SearchInput from '../components/search/SearchInput';
 
 export default function InterventionsPage() {
   const [categories, setCategories] = useState([]);
@@ -204,14 +205,16 @@ export default function InterventionsPage() {
           {viewMode === 'grid' && (
             <div className="bg-white-paper/90 backdrop-blur-md rounded-xl p-4 sm:p-5 border border-primary/10 shadow-xs mb-6 sm:mb-8 space-y-4">
               <div className="flex flex-col md:flex-row gap-4 items-center">
-                <div className="relative flex-1 w-full">
-                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-mid/60" />
-                  <input
-                    type="search"
+                <div className="flex-1 w-full">
+                  <SearchInput
+                    id="interventions-search"
                     placeholder="Search techniques — sleep, anxiety, panic, exams, anger..."
+                    ariaLabel="Search techniques and practices"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-mint-grey/50 rounded-lg border border-primary/10 text-sm text-primary placeholder-mid/50 focus:outline-none focus:border-secondary transition-all"
+                    onChange={(val) => setSearchQuery(val)}
+                    onClear={() => setSearchQuery('')}
+                    isLoading={loading}
+                    resultCount={searchQuery ? interventions.length : null}
                   />
                 </div>
 

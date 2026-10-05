@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import { DashboardService } from '../services/dashboardService';
+import SearchInput from '../components/search/SearchInput';
 
 export default function VocabPage({ user, profile, onSignOut }) {
   const [loading, setLoading] = useState(true);
@@ -219,14 +220,15 @@ export default function VocabPage({ user, profile, onSignOut }) {
               </div>
 
               {/* Search Bar */}
-              <div className="relative mb-4">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-mid/60" />
-                <input 
-                  type="text" 
-                  value={awpSearchQuery}
-                  onChange={(e) => setAwpSearchQuery(e.target.value)}
+              <div className="mb-4">
+                <SearchInput
+                  id="vocab-words-search"
                   placeholder="Search words..."
-                  className="w-full text-[12.5px] text-primary bg-warm-paper/50 border border-primary/10 rounded-xl py-2.5 pl-8 pr-3 outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 focus:bg-white-paper transition-all"
+                  ariaLabel="Search tracked vocabulary words"
+                  value={awpSearchQuery}
+                  onChange={(val) => setAwpSearchQuery(val)}
+                  onClear={() => setAwpSearchQuery('')}
+                  size="sm"
                 />
               </div>
 

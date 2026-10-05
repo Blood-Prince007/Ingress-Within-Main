@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { DashboardService } from '../services/dashboardService';
 import DashboardNavbar from '../components/DashboardNavbar';
+import SearchInput from '../components/search/SearchInput';
 
 export default function ThreadsPage({ user, profile, onSignOut }) {
   const [threads, setThreads] = useState([]);
@@ -36,6 +37,7 @@ export default function ThreadsPage({ user, profile, onSignOut }) {
 
   // Filter state
   const [filter, setFilter] = useState('all'); // 'all' | 'open' | 'answered'
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadThreads = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -142,10 +144,22 @@ export default function ThreadsPage({ user, profile, onSignOut }) {
     return (text || '').trim().split(/\s+/).filter(Boolean).length;
   };
 
+  const query = searchQuery.trim().toLowerCase();
   const filteredThreads = threads.filter(t => {
-    if (filter === 'open') return t.status === 'Open';
-    if (filter === 'answered') return t.status === 'Answered' || t.status === 'Archived';
-    return true;
+    let matchesStatus = true;
+    if (filter === 'open') matchesStatus = t.status === 'Open';
+    else if (filter === 'answered') matchesStatus = t.status === 'Answered' || t.status === 'Archived';
+
+    if (!matchesStatus) return false;
+    if (!query) return true;
+
+    const matchQuestion = (t.prompt_question || '').toLowerCase().includes(query);
+    const matchResponse = (t.response_text || '').toLowerCase().includes(query);
+    const matchDraft = (t.draft_response || '').toLowerCase().includes(query);
+    const matchDate = (t.origin_entry_date || '').toLowerCase().includes(query);
+    const matchSource = (t.source_entry_snippet || '').toLowerCase().includes(query);
+
+    return matchQuestion || matchResponse || matchDraft || matchDate || matchSource;
   });
 
   return (
@@ -154,7 +168,7 @@ export default function ThreadsPage({ user, profile, onSignOut }) {
       <DashboardNavbar activeTab="dashboard" />
 
       {/* Main Container */}
-      <main className="max-w-[1040px] w-full mx-auto px-6 pt-6 pb-20 space-y-6 flex-1 flex flex-col">
+      <main className="max-w-[1040px] w-full mx-auto px-4 sm:px-6 pt-6 pb-20 space-y-6 flex-1 flex flex-col">
         
         {/* Back navigation link */}
         <button 
@@ -165,7 +179,7 @@ export default function ThreadsPage({ user, profile, onSignOut }) {
         </button>
 
         {/* Page Header */}
-        <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 select-none">
+        <section className="space-y-4 select-none">
           <div className="space-y-1">
             <h1 className="text-2xl md:text-3xl font-serif text-primary font-normal">Reflection Threads</h1>
             <p className="text-xs text-mid leading-relaxed">
@@ -173,38 +187,53 @@ export default function ThreadsPage({ user, profile, onSignOut }) {
             </p>
           </div>
 
-          {/* Filtering Control Tabs */}
-          <div className="flex bg-warm-paper p-1 rounded-xl border border-primary/10 w-fit">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
-                filter === 'all' 
-                  ? 'bg-accent text-white shadow-xs' 
-                  : 'text-mid/70 hover:text-primary'
-              }`}
-            >
-              All ({threads.length})
-            </button>
-            <button
-              onClick={() => setFilter('open')}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
-                filter === 'open' 
-                  ? 'bg-accent text-white shadow-xs' 
-                  : 'text-mid/70 hover:text-primary'
-              }`}
-            >
-              Open ({threads.filter(t => t.status === 'Open').length})
-            </button>
-            <button
-              onClick={() => setFilter('answered')}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
-                filter === 'answered' 
-                  ? 'bg-accent text-white shadow-xs' 
-                  : 'text-mid/70 hover:text-primary'
-              }`}
-            >
-              Completed ({threads.filter(t => t.status !== 'Open').length})
-            </button>
+          {/* Search and Filtering Controls */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+            <div className="flex-1 max-w-md">
+              <SearchInput
+                id="threads-search"
+                placeholder="Search reflection questions and responses..."
+                ariaLabel="Search reflection threads"
+                value={searchQuery}
+                onChange={(val) => setSearchQuery(val)}
+                onClear={() => setSearchQuery('')}
+                resultCount={query ? filteredThreads.length : null}
+              />
+            </div>
+
+            {/* Filtering Control Tabs */}
+            <div className="flex bg-warm-paper p-1 rounded-xl border border-primary/10 w-fit shrink-0">
+              <button
+                onClick={() => setFilter('all')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                  filter === 'all' 
+                    ? 'bg-accent text-white shadow-xs' 
+                    : 'text-mid/70 hover:text-primary'
+                }`}
+              >
+                All ({threads.length})
+              </button>
+              <button
+                onClick={() => setFilter('open')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                  filter === 'open' 
+                    ? 'bg-accent text-white shadow-xs' 
+                    : 'text-mid/70 hover:text-primary'
+                }`}
+              >
+                Open ({threads.filter(t => t.status === 'Open').length})
+              </button>
+              <button
+                onClick={() => setFilter('answered')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                  filter === 'answered' 
+                    ? 'bg-accent text-white shadow-xs' 
+                    : 'text-mid/70 hover:text-primary'
+                }`}
+              >
+                Completed ({threads.filter(t => t.status !== 'Open').length})
+              </button>
+            </div>
           </div>
         </section>
 
@@ -227,14 +256,29 @@ export default function ThreadsPage({ user, profile, onSignOut }) {
         ) : filteredThreads.length === 0 ? (
           <div className="bg-white-paper rounded-2xl border border-primary/10 p-12 text-center space-y-3 select-none shadow-xs">
             <MessageSquare size={36} className="mx-auto text-secondary/30" />
-            <h3 className="font-serif text-lg font-normal text-primary">No threads found</h3>
+            <h3 className="font-serif text-lg font-normal text-primary">
+              {query ? `No threads match "${searchQuery}"` : 'No threads found'}
+            </h3>
             <p className="text-xs text-mid/80 max-w-sm mx-auto leading-relaxed">
-              {filter === 'open' 
+              {query
+                ? 'Try searching with a different term or clear the search to view all threads.'
+                : filter === 'open' 
                 ? "You've answered all reflection threads! Write a new journal entry to generate more."
                 : filter === 'answered'
                 ? "You haven't completed any reflection threads yet."
                 : "No reflection threads exist yet. Your daily journal entries will generate new inquiries here."}
             </p>
+            {query && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="px-4 py-2 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-[#654652] transition-colors cursor-pointer border-none"
+                >
+                  Clear Search
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">

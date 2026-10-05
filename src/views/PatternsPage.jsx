@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowLeft, ChevronDown, Link2, Activity, Sparkles, Loader2 } from 'lucide-react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import { DashboardService } from '../services/dashboardService';
+import SearchInput from '../components/search/SearchInput';
 
 const dotLabels = {
   active: 'bg-[#E0A898]',
@@ -213,6 +214,7 @@ export default function PatternsPage({ user, profile, onSignOut }) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [expandedCycles, setExpandedCycles] = useState({});
   const [listExpandedCycles, setListExpandedCycles] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
 
   const toggleListCycleCard = (cycleNumber) => {
     setListExpandedCycles(prev => ({
@@ -388,29 +390,39 @@ export default function PatternsPage({ user, profile, onSignOut }) {
   }
 
   // Group patterns into 4 categories: New, Shifting, Quiet, Present
-  const newPatternsAll = allPatterns.filter(p => 
+  const query = searchQuery.trim().toLowerCase();
+  const filteredPatterns = query
+    ? allPatterns.filter(p =>
+        (p.name && p.name.toLowerCase().includes(query)) ||
+        (p.body && p.body.toLowerCase().includes(query)) ||
+        (p.status && p.status.toLowerCase().includes(query)) ||
+        (p.lifecycleStatus && p.lifecycleStatus.toLowerCase().includes(query))
+      )
+    : allPatterns;
+
+  const newPatternsAll = filteredPatterns.filter(p => 
     p.status === 'new' || (!['shifting', 'quiet', 'present'].includes(p.status) && p.lifecycleStatus === 'emerging')
   );
 
-  const shiftingPatternsAll = allPatterns.filter(p => 
+  const shiftingPatternsAll = filteredPatterns.filter(p => 
     p.status === 'shifting'
   );
 
-  const quietPatternsAll = allPatterns.filter(p => 
+  const quietPatternsAll = filteredPatterns.filter(p => 
     p.status === 'quiet' || p.lifecycleStatus === 'quiet'
   );
 
-  const presentPatternsAll = allPatterns.filter(p => 
+  const presentPatternsAll = filteredPatterns.filter(p => 
     !newPatternsAll.includes(p) && 
     !shiftingPatternsAll.includes(p) && 
     !quietPatternsAll.includes(p)
   );
 
-  // Keep 3 patterns each for each category
-  const newPatterns = newPatternsAll.slice(0, 3);
-  const shiftingPatterns = shiftingPatternsAll.slice(0, 3);
-  const quietPatterns = quietPatternsAll.slice(0, 3);
-  const presentPatterns = presentPatternsAll.slice(0, 3);
+  // When searching, show all matches; when not searching, show 3 each
+  const newPatterns = query ? newPatternsAll : newPatternsAll.slice(0, 3);
+  const shiftingPatterns = query ? shiftingPatternsAll : shiftingPatternsAll.slice(0, 3);
+  const quietPatterns = query ? quietPatternsAll : quietPatternsAll.slice(0, 3);
+  const presentPatterns = query ? presentPatternsAll : presentPatternsAll.slice(0, 3);
 
   return (
     <div className="min-h-screen bg-mint-grey text-primary font-sans relative pb-20 sm:pb-24">
@@ -464,8 +476,40 @@ export default function PatternsPage({ user, profile, onSignOut }) {
               </div>
             </div>
 
-            {/* If zero active, shifting, or new patterns exist, show informative state */}
-            {newPatternsAll.length === 0 && 
+            {/* Local Search Bar for Observed Patterns */}
+            <div className="pt-0.5">
+              <SearchInput
+                id="patterns-search"
+                placeholder="Search your observed patterns..."
+                ariaLabel="Search observed patterns"
+                value={searchQuery}
+                onChange={(val) => setSearchQuery(val)}
+                onClear={() => setSearchQuery('')}
+                resultCount={query ? filteredPatterns.length : null}
+              />
+            </div>
+
+            {/* Empty Search Result State */}
+            {query && filteredPatterns.length === 0 && (
+              <div className="bg-white-paper border border-primary/10 rounded-xl p-8 text-center space-y-2 shadow-xs">
+                <h3 className="text-sm font-semibold text-primary">No patterns match "{searchQuery}"</h3>
+                <p className="text-xs text-mid max-w-[380px] mx-auto leading-relaxed">
+                  No themes in your journal history match this term. Try searching for broader behavioral terms or clear the search.
+                </p>
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="px-4 py-2 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-[#654652] transition-colors cursor-pointer border-none"
+                  >
+                    Clear Search
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* If zero active, shifting, or new patterns exist (unfiltered), show informative state */}
+            {!query && newPatternsAll.length === 0 && 
              shiftingPatternsAll.length === 0 && 
              presentPatternsAll.length === 0 && 
              quietPatternsAll.length > 0 && (

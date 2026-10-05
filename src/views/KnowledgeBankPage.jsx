@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import DashboardNavbar from '../components/DashboardNavbar';
+import SearchInput from '../components/search/SearchInput';
 import './KnowledgeBankPage.css';
 import { FAMILIES, DICTIONARY_EMOTIONS, SURFACE, PATTERNS, SITUATIONS, WORD_INDEX } from '../lib/knowledge/dictionaryData';
 
@@ -935,18 +936,38 @@ export default function KnowledgeBankPage({ user, profile: initialProfile, onSig
                   <div className="eyebrow" style={{ marginBottom: '10px' }}>
                     <TiIcon name="mood-search" /> Or find a starting word
                   </div>
-                  <form onSubmit={handleSearch} className="mood-search-row">
-                    <input 
-                      type="text" 
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className="mood-search-input" 
-                      placeholder='Type your own word — e.g. "burnt out", "on edge", "numb"…' 
-                    />
-                    <button type="submit" className="mood-search-btn" aria-label="Search">
+                  <div className="mood-search-row" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <SearchInput
+                        id="kb-mood-search"
+                        placeholder='Type your own word — e.g. "burnt out", "on edge", "numb"…'
+                        ariaLabel="Search emotions and moods"
+                        value={searchQuery}
+                        onChange={(val) => {
+                          setSearchQuery(val);
+                          if (val && val.trim().length >= 2) {
+                            handleSearch(null, val);
+                          }
+                        }}
+                        onSearch={(val) => handleSearch(null, val)}
+                        onClear={() => {
+                          setSearchQuery('');
+                          setSearchResults(null);
+                          setExploreScreen('home');
+                        }}
+                        isLoading={searchLoading}
+                      />
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => handleSearch(null, searchQuery)} 
+                      className="mood-search-btn" 
+                      aria-label="Submit search"
+                      style={{ cursor: 'pointer' }}
+                    >
                       {searchLoading ? <TiIcon name="refresh" className="animate-spin" /> : <TiIcon name="arrow-right" />}
                     </button>
-                  </form>
+                  </div>
 
                   {/* Mood Split Grid */}
                   <div className="mood-split">
