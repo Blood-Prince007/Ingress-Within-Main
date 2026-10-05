@@ -122,8 +122,43 @@ function DatabaseErrorScreen({ error, onRetry }) {
   );
 }
 
+const isUserAuthRoute = (path, currentRoute) => {
+  const p = (path || '').toLowerCase().replace(/\/+$/, '');
+  const r = (currentRoute || '').toLowerCase().replace(/\/+$/, '');
+
+  if (p.startsWith('/therapist') || p.startsWith('/admin') || r.startsWith('therapist') || r.startsWith('admin')) {
+    return false;
+  }
+
+  const authPaths = [
+    '/auth',
+    '/login',
+    '/signup',
+    '/user/login',
+    '/user/auth',
+    '/user/signup',
+    '/auth/login',
+    '/auth/signup',
+  ];
+
+  const matchesPath = authPaths.some((ap) => p === ap || p.startsWith(ap + '/'));
+  const matchesRoute = r === 'auth' || r === 'login' || r === 'signup' || r === 'user/login' || r === 'user/auth' || r === 'user/signup';
+
+  return matchesPath || matchesRoute;
+};
+
 export default function App({ initialRoute = 'home' }) {
-  const [currentRoute, setCurrentRoute] = useState(initialRoute);
+  const normalizedInitialRoute = (
+    initialRoute === 'login' || 
+    initialRoute === 'signup' || 
+    initialRoute === 'user/login' || 
+    initialRoute === 'user/auth' || 
+    initialRoute === 'user/signup' ||
+    initialRoute === 'auth/login' ||
+    initialRoute === 'auth/signup'
+  ) ? 'auth' : initialRoute;
+
+  const [currentRoute, setCurrentRoute] = useState(normalizedInitialRoute);
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
   const [activePolicyKey, setActivePolicyKey] = useState('privacy');
 
@@ -284,8 +319,8 @@ export default function App({ initialRoute = 'home' }) {
           window.navigateTo('/onboarding/consent');
         }
       }
-    } else if (path.startsWith('/auth') && user) {
-      console.log('[App.jsx] Redirect Engine: Authenticated user attempting to access /auth. Redirecting forward.');
+    } else if (isUserAuthRoute(path, currentRoute) && user) {
+      console.log('[App.jsx] Redirect Engine: Authenticated user attempting to access auth/login/signup. Redirecting forward.');
       if (profile && !profile.onboarding_completed) {
         if (!profile.consent_completed) {
           console.log('[App.jsx] Redirect Engine: Redirecting to /onboarding/consent. Reason: ONBOARDING_INCOMPLETE');
@@ -299,13 +334,16 @@ export default function App({ initialRoute = 'home' }) {
         } else if (!profile.assessment_completed) {
           console.log('[App.jsx] Redirect Engine: Redirecting to /onboarding/assessment. Reason: ONBOARDING_INCOMPLETE');
           window.navigateTo('/onboarding/assessment');
+        } else {
+          console.log('[App.jsx] Redirect Engine: Redirecting to /onboarding. Reason: ONBOARDING_INCOMPLETE');
+          window.navigateTo('/onboarding');
         }
       } else {
         console.log('[App.jsx] Redirect Engine: Redirecting to /dashboard. Reason: ONBOARDING_ALREADY_COMPLETE');
         window.navigateTo('/dashboard');
       }
     } else {
-      console.log('[App.jsx] Redirect Engine: Public route or unauthenticated user on /auth. No redirect needed.');
+      console.log('[App.jsx] Redirect Engine: Public route or unauthenticated user on auth path. No redirect needed.');
     }
   }, [authChecked, isLoading, user, profile, currentRoute, authError]);
 
@@ -408,7 +446,17 @@ export default function App({ initialRoute = 'home' }) {
       } else if (path === '/how-to-practice-self-reflection' || path === '/how-to-practice-self-reflection/') {
         setCurrentRoute('how-to-practice-self-reflection');
         window.scrollTo(0, 0);
-      } else if (path.startsWith('/auth') || path.startsWith('/login') || path === '/user/login' || path === '/user/login/' || path === '/user/auth' || path === '/user/auth/') {
+      } else if (
+        path.startsWith('/auth') || 
+        path.startsWith('/login') || 
+        path.startsWith('/signup') || 
+        path === '/user/login' || 
+        path === '/user/login/' || 
+        path === '/user/auth' || 
+        path === '/user/auth/' ||
+        path === '/user/signup' ||
+        path === '/user/signup/'
+      ) {
         setCurrentRoute('auth');
         window.scrollTo(0, 0);
       } else if (path === '/therapist' || path === '/therapist/' || path === '/therapist/auth' || path === '/therapist/auth/' || path === '/therapist/login' || path === '/therapist/login/' || path.startsWith('/therapist/')) {
@@ -566,10 +614,11 @@ export default function App({ initialRoute = 'home' }) {
     const handleGlobalClick = (e) => {
       const anchor = e.target.closest('a');
       if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href) return;
 
       // If it's a local path or hash link (excluding backend API endpoints)
       if (
-        href &&
         (href.startsWith('/') || href.startsWith('#')) &&
         !href.startsWith('//') &&
         !href.startsWith('/api/') &&
@@ -610,8 +659,13 @@ export default function App({ initialRoute = 'home' }) {
       ? window.location.pathname 
       : (currentRoute.startsWith('/') ? currentRoute : `/${currentRoute}`);
     const isProtectedRoute = path.startsWith('/onboarding') || path.startsWith('/dashboard') || path.startsWith('/settings') || path.startsWith('/write') || path.startsWith('/reports') || path.startsWith('/patterns') || path.startsWith('/vocab') || path.startsWith('/support') || path.startsWith('/session') || path.startsWith('/thread') || path.startsWith('/entry') || path.startsWith('/knowledge') || path.startsWith('/kb') || path.startsWith('/modules') || path.startsWith('/therapy');
+    const isAuthRoute = isUserAuthRoute(path, currentRoute);
 
     if (isProtectedRoute && (!authChecked || isLoading)) {
+      return <LoadingScreen />;
+    }
+
+    if (isAuthRoute && (!authChecked || isLoading || user)) {
       return <LoadingScreen />;
     }
 
@@ -622,24 +676,24 @@ export default function App({ initialRoute = 'home' }) {
     switch (currentRoute) {
 
       case 'home':
-        return <PublicWebsiteV2 initialTab="home" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="home" onOpenPolicy={handleOpenPolicy} />;
       case 'solution':
       case 'what-it-is':
-        return <PublicWebsiteV2 initialTab="solution" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="solution" onOpenPolicy={handleOpenPolicy} />;
       case 'how':
       case 'how-it-works':
-        return <PublicWebsiteV2 initialTab="how" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="how" onOpenPolicy={handleOpenPolicy} />;
       case 'about':
-        return <PublicWebsiteV2 initialTab="about" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="about" onOpenPolicy={handleOpenPolicy} />;
       case 'pricing':
-        return <PublicWebsiteV2 initialTab="pricing" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="pricing" onOpenPolicy={handleOpenPolicy} />;
       case 'ai':
       case 'ai-data':
-        return <PublicWebsiteV2 initialTab="ai" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="ai" onOpenPolicy={handleOpenPolicy} />;
       case 'evidence':
-        return <PublicWebsiteV2 initialTab="evidence" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="evidence" onOpenPolicy={handleOpenPolicy} />;
       case 'policies':
-        return <PublicWebsiteV2 initialTab="policies" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="policies" onOpenPolicy={handleOpenPolicy} />;
       case 'privacy-policy':
       case 'privacy':
         return <PrivacyPolicyView />;
@@ -648,9 +702,9 @@ export default function App({ initialRoute = 'home' }) {
         return <TermsOfServiceView />;
       case 'start':
       case 'contact':
-        return <PublicWebsiteV2 initialTab="start" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="start" onOpenPolicy={handleOpenPolicy} />;
       case 'crisis':
-        return <PublicWebsiteV2 initialTab="crisis" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="crisis" onOpenPolicy={handleOpenPolicy} />;
       case 'faq':
         return <FaqPage onOpenPolicy={handleOpenPolicy} />;
       case 'guided-journaling':
@@ -668,7 +722,17 @@ export default function App({ initialRoute = 'home' }) {
       case 'how-to-practice-self-reflection':
         return <HowToPracticeSelfReflectionPage onOpenPolicy={handleOpenPolicy} />;
       case 'auth':
-        return <AuthPage onOpenPolicy={handleOpenPolicy} onAuthSuccess={handleAuthSuccess} />;
+      case 'login':
+      case 'signup':
+      case 'user/login':
+      case 'user/auth':
+      case 'user/signup':
+      case 'auth/login':
+      case 'auth/signup':
+        if (user) {
+          return <LoadingScreen />;
+        }
+        return <AuthPage user={user} profile={profile} onOpenPolicy={handleOpenPolicy} onAuthSuccess={handleAuthSuccess} />;
       case 'therapist/auth':
       case 'therapist/login':
       case 'therapist':
