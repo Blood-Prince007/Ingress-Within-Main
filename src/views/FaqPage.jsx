@@ -180,9 +180,9 @@ export default function FaqPage({ onOpenPolicy }) {
       {/* Navigation */}
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="bg-white pt-[148px] pb-20 md:pt-[180px] md:pb-28 px-6 md:px-16 text-center border-b border-primary/5">
-        <div className="max-w-[700px] mx-auto space-y-5">
+      {/* Hero Section (Treatment A: Watercolor Paper) */}
+      <section className="treatment-watercolor-hero pt-[148px] pb-20 md:pt-[180px] md:pb-28 px-6 md:px-16 text-center border-b border-primary/5">
+        <div className="max-w-[700px] mx-auto space-y-5 relative z-10">
           <span className="font-sans text-[11px] font-medium tracking-[0.14em] uppercase text-secondary-dark block">FAQ</span>
           <h1 className="font-serif text-[40px] md:text-[54px] lg:text-[60px] leading-[1.15] font-normal text-primary">
             Guided Journaling &amp; Self-Reflection Questions

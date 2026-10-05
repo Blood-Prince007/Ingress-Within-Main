@@ -126,7 +126,7 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
       <ThreeWaysSection onSelectTab={handleSelectTab} />
 
       {/* 7. SOUND FAMILIAR? (With Staggered Floating Chips Scroll Reveal) */}
-      <section className="py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
+      <section className="py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-rose">
         <motion.div
           initial={{ opacity: 0, y: 25 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -135,13 +135,13 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
           className="max-w-5xl mx-auto text-center space-y-6"
         >
           <div className="flex flex-col items-center">
-            <div className="badge-thistle inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
+            <div className="badge-rose inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
               SOUND FAMILIAR?
             </div>
           </div>
           <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal leading-snug">
             Most of this starts as{' '}
-            <span className="italic accent-thistle">ordinary life</span>,{' '}
+            <span className="italic accent-rose">ordinary life</span>,{' '}
             not a clinical complaint.
           </h2>
           <div className="pt-4 flex flex-wrap justify-center gap-3">
@@ -204,10 +204,7 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
       </section>
 
       {/* 8. WHY PEOPLE START HERE (3 Cards Splitting Animation) */}
-      <section className="relative py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-rose">
-        {/* Ambient rose blob */}
-        <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-[#C49A8F]/10 blur-3xl pointer-events-none" aria-hidden="true" />
-        <div className="absolute -bottom-16 -right-16 w-56 h-56 rounded-full bg-[#D9BCAF]/10 blur-3xl pointer-events-none" aria-hidden="true" />
+      <section className="relative py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-fog">
         <div className="max-w-6xl mx-auto space-y-12 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 25 }}
@@ -217,12 +214,12 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
             className="text-center space-y-3"
           >
             <div className="flex flex-col items-center">
-              <div className="badge-rose inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
+              <div className="badge-fog inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
                 WHY PEOPLE START HERE
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal">
-              Three common <span className="italic accent-rose">starting points</span>.
+              Three common <span className="italic accent-fog">starting points</span>.
             </h2>
           </motion.div>
 
@@ -254,7 +251,7 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
               <motion.div
                 key={card.num}
                 {...getCardEmergence(idx, 3)}
-                className="card-hover-rose group relative rounded-xl p-6 sm:p-7 min-h-[190px] sm:min-h-[210px] bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] flex flex-col justify-between transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs cursor-pointer"
+                className="card-hover-fog group relative rounded-xl p-6 sm:p-7 min-h-[190px] sm:min-h-[210px] bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] flex flex-col justify-between transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs cursor-pointer"
               >
                 <div>
                   {/* Top Bar: Minimal Tag Pill & Number */}
@@ -305,9 +302,7 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
       </section>
 
       {/* 9. A QUICK LOOK (3 Steps Flow: Odd total (3) -> Center Step 02 anchors, Steps 01 and 03 emerge out from center) */}
-      <section className="relative py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-gold">
-        {/* Ambient gold blob */}
-        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-[#B8964A]/10 blur-3xl pointer-events-none" aria-hidden="true" />
+      <section className="relative py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-royal">
         <div className="max-w-5xl mx-auto text-center space-y-10 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 25 }}
@@ -317,12 +312,12 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
             className="space-y-3"
           >
             <div className="flex flex-col items-center">
-              <div className="badge-gold inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
+              <div className="badge-royal inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
                 A QUICK LOOK
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal">
-              From a journal entry to a <span className="italic accent-gold">clearer pattern</span>, in three steps.
+              From a journal entry to a <span className="italic accent-royal">clearer pattern</span>, in three steps.
             </h2>
           </motion.div>
 
@@ -358,7 +353,7 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
                 <motion.div
                   key={step.num}
                   {...getCardEmergence(idx, 3)}
-                  className="card-hover-gold group relative rounded-xl p-6 sm:p-7 min-h-[180px] bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] flex flex-col justify-between transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs text-left"
+                  className="card-hover-royal group relative rounded-xl p-6 sm:p-7 min-h-[180px] bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] flex flex-col justify-between transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs text-left"
                 >
                   <div>
                     {/* Top Bar: Minimal Tag Pill & Step Number */}
@@ -408,10 +403,7 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
       </section>
 
       {/* 10. PRICING IN SHORT: Even total (2 cards) -> Both split smoothly from the center outward */}
-      <section className="relative py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-sand">
-        {/* Ambient sand blobs */}
-        <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-[#A77C38]/9 blur-3xl pointer-events-none" aria-hidden="true" />
-        <div className="absolute top-1/4 -right-16 w-52 h-52 rounded-full bg-[#C49A8F]/8 blur-3xl pointer-events-none" aria-hidden="true" />
+      <section className="relative py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
         <div className="max-w-5xl mx-auto space-y-12 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 25 }}
@@ -421,12 +413,12 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
             className="text-center space-y-3"
           >
             <div className="flex flex-col items-center">
-              <div className="badge-gold inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
+              <div className="badge-thistle inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border">
                 PRICING, IN SHORT
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl text-[#162723] font-normal">
-              Simple, <span className="italic accent-gold">transparent</span>, in rupees.
+              Simple, <span className="italic accent-thistle">transparent</span>, in rupees.
             </h2>
           </motion.div>
 
@@ -508,14 +500,11 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
       </section>
 
       {/* 11. PHILOSOPHY / CLOSING STATEMENT BAND */}
-      <section data-dark-section="true" className="py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white text-center relative overflow-hidden">
-        {/* Rich ambient color washes inside dark band */}
+      <section data-dark-section="true" className="py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white text-center relative overflow-hidden border-t border-[#F6F1EA]/10 border-b border-[#F6F1EA]/10">
+        {/* Understated hairline brand boundary dividers */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-[#B8964A]/30 to-transparent" />
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-[#66876A]/25 to-transparent" />
-          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-[#795663]/12 blur-[90px]" />
-          <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-[#B8964A]/10 blur-[90px]" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[300px] rounded-full bg-[#66876A]/8 blur-[80px]" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-[#B8964A]/25 to-transparent" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-[#66876A]/20 to-transparent" />
         </div>
         <motion.div
           initial={{ opacity: 0, y: 35, scale: 0.97 }}
@@ -658,8 +647,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 2. SECTION 01: INDEPENDENT INQUIRY (Subtle Warm Paper with Sage Wash) */}
-      <section id="sol-independent" className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 2. SECTION 01: INDEPENDENT INQUIRY (Treatment B: Subtle Dynamic Thistle) */}
+      <section id="sol-independent" className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -747,8 +736,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 3. SECTION 02: THE GUIDED JOURNAL & PROGRESS TIMELINE (Subtle Warm Sand with Rose Wash) */}
-      <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 3. SECTION 02: THE GUIDED JOURNAL & PROGRESS TIMELINE (Treatment B: Subtle Dynamic Dusky Rose) */}
+      <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-rose">
         <div className="max-w-5xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           {/* The 5 Prompts */}
           <div className="space-y-5">
@@ -1000,8 +989,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 4. SECTION 03: COLLABORATIVE CARE (Subtle Warm Paper with Brushstroke) */}
-      <section id="sol-collaborative" className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 4. SECTION 03: COLLABORATIVE CARE (Treatment B: Subtle Dynamic Fog Blue) */}
+      <section id="sol-collaborative" className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-fog">
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -1089,8 +1078,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 5. SECTION 04: A LOOK AT THE DASHBOARD (Subtle Warm Sand with Dual-Tint Watercolor Cards) */}
-      <section className="relative w-full py-14 sm:py-16 lg:py-20 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 5. SECTION 04: A LOOK AT THE DASHBOARD (Treatment B: Subtle Dynamic Royal Scepter) */}
+      <section className="relative w-full py-14 sm:py-16 lg:py-20 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-royal">
         {/* Watercolor wash background drop */}
         <div className="absolute top-1/3 -right-24 w-88 h-88 rounded-full bg-[#7E9E82]/10 blur-3xl pointer-events-none" />
 
@@ -1203,8 +1192,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 6. SECTION 05: PSYCHOEDUCATION LIBRARY (Curated Watercolor Category Badges) */}
-      <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 6. SECTION 05: PSYCHOEDUCATION LIBRARY (Treatment B: Subtle Dynamic Thistle) */}
+      <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           <div className="text-center max-w-3xl sm:max-w-4xl mx-auto space-y-2 sm:space-y-2.5">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
@@ -1308,8 +1297,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 7. SECTION 06: WHAT PEOPLE ACTUALLY BRING IN (Artisanal Handmade Stationery Quotes) */}
-      <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 7. SECTION 06: WHAT PEOPLE ACTUALLY BRING IN (Treatment B: Subtle Dusty Rose) */}
+      <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-rose">
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           <div className="text-center max-w-3xl sm:max-w-4xl mx-auto space-y-2 sm:space-y-2.5">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
@@ -1386,8 +1375,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 8. SECTION 07: THE PLATFORM, NOT TWO PRODUCTS (Full Width Dark Ink Band with Gold Accents) */}
-      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden">
+      {/* 8. SECTION 07: THE PLATFORM, NOT TWO PRODUCTS (Treatment C: Deep Brand Surface) */}
+      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden border-t border-[#F6F1EA]/10 border-b border-[#F6F1EA]/10">
         {/* Subtle celestial gold watercolor glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-[#B8964A]/12 blur-3xl pointer-events-none rounded-full" />
 
@@ -1516,8 +1505,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 2. CORE PHILOSOPHY / OUR APPROACH */}
-      <section id="approach-principles" className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 2. CORE PHILOSOPHY / OUR APPROACH (Treatment B: Subtle Dynamic Thistle) */}
+      <section id="approach-principles" className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10">
           <div className="text-center max-w-3xl mx-auto space-y-2.5 sm:space-y-3">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
@@ -1617,8 +1606,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 3. DAY ONE: WHAT ACTUALLY HAPPENS */}
-      <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 3. DAY ONE: WHAT ACTUALLY HAPPENS (Treatment B: Subtle Dynamic Dusky Rose) */}
+      <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-rose">
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10">
           <div className="text-center max-w-3xl mx-auto space-y-2.5 sm:space-y-3">
             <div className="flex flex-col items-center">
@@ -1627,7 +1616,7 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-[42px] text-[#162723] font-normal leading-[1.18] mx-auto">
-              What actually happens when you <span className="italic accent-thistle">sign up</span>.
+              What actually happens when you <span className="italic accent-rose">sign up</span>.
             </h2>
             <p className="font-zen text-sm sm:text-base text-[#5C6873] leading-relaxed max-w-2xl mx-auto">
               Zero confusion. Here is what your first hour looks like on either path.
@@ -1818,8 +1807,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 5. WORKING ON YOURSELF */}
-      <section id="walkthrough-self" className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 5. WORKING ON YOURSELF (Treatment B: Subtle Dynamic Royal Scepter) */}
+      <section id="walkthrough-self" className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-royal">
         <div className="max-w-6xl mx-auto space-y-12 sm:space-y-16">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <div className="flex flex-col items-center">
@@ -1969,8 +1958,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 6. WITH A THERAPIST */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 6. WITH A THERAPIST (Treatment B: Subtle Dynamic Thistle) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
         <div className="max-w-6xl mx-auto space-y-12 sm:space-y-16">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <div className="flex flex-col items-center">
@@ -2089,8 +2078,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 7. USE BOTH: BIDIRECTIONAL INTEGRATION */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 7. USE BOTH: BIDIRECTIONAL INTEGRATION (Treatment B: Subtle Dynamic Dusky Rose) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-rose">
         <div className="max-w-5xl mx-auto space-y-12 sm:space-y-16">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <div className="flex flex-col items-center">
@@ -2099,7 +2088,7 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
               </div>
             </div>
             <h2 className="font-editorial text-3xl sm:text-4xl lg:text-5xl text-[#162723] font-normal leading-tight mx-auto">
-              The two sides can <span className="italic accent-gold">feed each other</span>.
+              The two sides can <span className="italic accent-rose">feed each other</span>.
             </h2>
             <p className="font-zen text-base sm:text-lg text-[#5C6873] leading-relaxed max-w-2xl mx-auto">
               The platform connects self-directed reflection with clinical guidance without locking you into either.
@@ -2174,8 +2163,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 8. COMMON QUESTIONS (FAQ) */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 8. COMMON QUESTIONS (FAQ) (Treatment B: Subtle Dynamic Fog Blue) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-fog">
         <div className="max-w-4xl mx-auto space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <div className="flex flex-col items-center">
@@ -2228,8 +2217,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 9. DARK INK CLOSING BAND */}
-      <section data-dark-section="true" className="w-full bg-[#011627] py-28 sm:py-36 px-6 sm:px-8 lg:px-12 text-white">
+      {/* 9. DARK INK CLOSING BAND (Treatment C: Deep Brand Surface) */}
+      <section data-dark-section="true" className="w-full bg-[#011627] py-28 sm:py-36 px-6 sm:px-8 lg:px-12 text-white border-t border-[#F6F1EA]/10 border-b border-[#F6F1EA]/10">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <div className="font-mono-code text-xs tracking-widest uppercase text-[#C5A880] font-semibold">
             UNDERSTAND · GROW · CONTINUE
@@ -2353,8 +2342,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 2. THE TWO CORE OPTIONS (Subtle Warm Paper with Distinct Cards) */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 2. THE TWO CORE OPTIONS (Treatment B: Subtle Dynamic Thistle) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
         <div className="max-w-6xl mx-auto space-y-12 sm:space-y-16 relative z-10">
           {/* Two Core Pricing Cards: Even total (2) -> Both split smoothly from center line */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
@@ -2473,8 +2462,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 3. PSYCHOEDUCATION MODULES (MATCHING EXACT SCREENSHOT FROM USER) */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 3. PSYCHOEDUCATION MODULES (Treatment B: Subtle Dynamic Dusky Rose) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-rose">
         <div className="max-w-6xl mx-auto space-y-12 sm:space-y-16 relative z-10">
           <div className="text-center max-w-3xl sm:max-w-4xl mx-auto space-y-3">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
@@ -2553,8 +2542,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 4. COMMON QUESTIONS ABOUT PRICING */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 4. COMMON QUESTIONS ABOUT PRICING (Treatment B: Subtle Dynamic Fog Blue) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-fog">
         <div className="max-w-4xl mx-auto space-y-12 relative z-10">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
@@ -2598,8 +2587,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 5. DARK INK CLOSING BAND */}
-      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center">
+      {/* 5. DARK INK CLOSING BAND (Treatment C: Deep Brand Surface) */}
+      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center border-t border-[#F6F1EA]/10 border-b border-[#F6F1EA]/10">
         {/* Subtle celestial gold watercolor glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-[#B8964A]/12 blur-3xl pointer-events-none rounded-full" />
 
@@ -2711,8 +2700,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 2. THE THREE CAPABILITY CARDS */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 2. THE THREE CAPABILITY CARDS (Treatment B: Subtle Dynamic Thistle) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
         <div className="max-w-6xl mx-auto relative z-10">
           {/* 3 Capability Cards: Odd total (3) -> Center card anchors, left/right emerge outward */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
@@ -2839,8 +2828,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 3. WHERE THE LINE SITS (AI ZONE VS HUMAN ZONE) */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 3. WHERE THE LINE SITS (Treatment B: Subtle Cool Fog) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-fog">
         <div className="max-w-6xl mx-auto space-y-12 sm:space-y-16 relative z-10">
           <div className="text-center max-w-4xl mx-auto space-y-4">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
@@ -2876,8 +2865,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 4. DATA & PRIVACY */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 4. DATA & PRIVACY (Treatment B: Subtle Dynamic Royal Scepter) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-royal">
         <div className="max-w-4xl mx-auto space-y-12 sm:space-y-16 relative z-10">
           <div className="text-center max-w-3xl mx-auto space-y-4">
             <span className="inline-block px-3.5 py-1 rounded-full bg-[#F7EFE9] font-mono-code text-[11px] uppercase tracking-wider text-[#795663] font-semibold border border-[#C49A8F]/30 mx-auto">
@@ -2923,8 +2912,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 5. DARK INK CLOSING BAND */}
-      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center">
+      {/* 5. DARK INK CLOSING BAND (Treatment C: Deep Brand Surface) */}
+      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center border-t border-[#F6F1EA]/10 border-b border-[#F6F1EA]/10">
         {/* Subtle celestial gold watercolor glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-[#B8964A]/12 blur-3xl pointer-events-none rounded-full" />
 
@@ -3034,8 +3023,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 2. EVIDENCE CARDS */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 2. EVIDENCE CARDS (Treatment B: Subtle Dynamic Thistle) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
         <div className="max-w-5xl mx-auto space-y-10 sm:space-y-12 relative z-10">
         {/* Card 1: Digital Psychological Interventions */}
         <div className="group relative rounded-xl p-7 sm:p-9 bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] hover:border-[#162723]/35 transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs hover:shadow-xs space-y-5 cursor-pointer">
@@ -3260,8 +3249,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 2. BUILT FOR INDIA */}
-      <section className="relative w-full py-14 sm:py-18 lg:py-20 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 2. BUILT FOR INDIA (Treatment B: Subtle Dynamic Thistle) */}
+      <section className="relative w-full py-14 sm:py-18 lg:py-20 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
         <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto space-y-2 sm:space-y-2.5">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
@@ -3330,8 +3319,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 3. WHO'S BEHIND THIS */}
-      <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 3. WHO'S BEHIND THIS (Treatment B: Subtle Dynamic Dusky Rose) */}
+      <section className="relative w-full py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-rose">
         <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10 relative z-10">
           <div className="text-center max-w-3xl mx-auto space-y-2.5 sm:space-y-3">
             <div className="inline-flex items-center gap-2 font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-4 py-1.5 rounded-full border border-[#162723]/60 text-[#162723] mx-auto">
@@ -3466,8 +3455,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 4. PRIVATE, EVEN FROM FAMILY */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 4. PRIVATE, EVEN FROM FAMILY (Treatment B: Subtle Dynamic Fog Blue) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-fog">
         <div className="max-w-5xl mx-auto space-y-10 relative z-10 text-center">
           <div className="max-w-3xl mx-auto space-y-4">
             <span className="inline-flex items-center font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-3.5 py-1 rounded-full border border-[#162723]/30 text-[#162723]/90 mx-auto">
@@ -3564,8 +3553,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 5. WHY NOW */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 5. WHY NOW (Treatment B: Subtle Dynamic Royal Scepter) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-royal">
         <div className="max-w-4xl mx-auto space-y-6 relative z-10 text-center">
           <span className="inline-flex items-center font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-3.5 py-1 rounded-full border border-[#162723]/30 text-[#162723]/90 mx-auto">
             WHY NOW
@@ -3579,8 +3568,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 6. COMMON QUESTIONS */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 6. COMMON QUESTIONS (Treatment B: Subtle Dynamic Thistle) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
         <div className="max-w-4xl mx-auto space-y-10 sm:space-y-12 relative z-10">
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <span className="inline-flex items-center font-mono-code text-[10.5px] sm:text-[11px] tracking-[0.18em] uppercase font-semibold px-3.5 py-1 rounded-full border border-[#162723]/30 text-[#162723]/90 mx-auto">
@@ -3631,8 +3620,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 7. DARK INK CLOSING BAND */}
-      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center">
+      {/* 7. DARK INK CLOSING BAND (Treatment C: Deep Brand Surface) */}
+      <section data-dark-section="true" className="relative w-full py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#011627] text-white overflow-hidden text-center border-t border-[#F6F1EA]/10 border-b border-[#F6F1EA]/10">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-[#B8964A]/12 blur-3xl pointer-events-none rounded-full" />
 
         <div className="max-w-4xl mx-auto space-y-6 relative z-10">
@@ -3739,8 +3728,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 2. POLICY CARDS */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 2. POLICY CARDS (Treatment B: Clean Warm Paper) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden bg-warm-paper paper-grain">
         <div className="space-y-10 max-w-4xl mx-auto">
           <div className="group relative rounded-xl p-7 sm:p-8 bg-[#FDFBF8] hover:bg-white border border-[#E7DECF] hover:border-[#162723]/35 flex flex-col justify-between transition-[background-color,border-color,box-shadow] duration-200 shadow-2xs hover:shadow-xs">
             <div>
@@ -3871,8 +3860,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 2. THREE STARTING PATHS */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 2. THREE STARTING PATHS (Treatment B: Clean Warm Paper) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden bg-warm-paper paper-grain">
         <div className="max-w-6xl mx-auto space-y-16 sm:space-y-20">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             <motion.div
@@ -3969,7 +3958,7 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
           </div>
 
           {/* Orientation Call / Inquiry Booking */}
-          <div className="rounded-xl p-8 sm:p-12 bg-[#FDFBF8] border border-[#E7DECF] shadow-xs space-y-8 max-w-4xl mx-auto">
+          <div className="w-full rounded-xl p-8 sm:p-12 bg-[#FDFBF8] border border-[#E7DECF] shadow-xs space-y-8">
             <div>
               <div className="inline-flex items-center gap-2 font-mono-code text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#795663] px-3 py-0.5 rounded-full border border-[#795663]/30 font-semibold mb-2">
                 <span>●</span> NOT SURE WHICH ONE YET?
@@ -4050,8 +4039,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
   const renderCrisis = () => (
     <div className="w-full space-y-0">
       
-      {/* 1. HERO SECTION (Subtle Parchment Gradient with Watercolor Bleeds & Brushstroke) */}
-      <section className="relative w-full min-h-[calc(100vh-5rem)] sm:min-h-[calc(100vh-5.5rem)] flex flex-col justify-center items-center py-16 sm:py-20 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 1. HERO SECTION (Treatment B: Clean Warm Paper) */}
+      <section className="relative w-full min-h-[calc(100vh-5rem)] sm:min-h-[calc(100vh-5.5rem)] flex flex-col justify-center items-center py-16 sm:py-20 px-6 sm:px-8 lg:px-12 overflow-hidden bg-warm-paper paper-grain">
         {/* Ambient Top-Right Watercolor Wash (Dusty Rose) */}
         <svg
           className="absolute -top-16 -right-20 w-[420px] sm:w-[540px] h-auto opacity-60 pointer-events-none mix-blend-multiply"
@@ -4092,8 +4081,8 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
         </div>
       </section>
 
-      {/* 2. EMERGENCY HELPLINES CONTAINER */}
-      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+      {/* 2. EMERGENCY HELPLINES CONTAINER (Treatment B: Clean Warm Paper) */}
+      <section className="relative w-full py-28 md:py-36 px-6 sm:px-8 lg:px-12 overflow-hidden bg-warm-paper paper-grain">
         <div className="max-w-4xl mx-auto space-y-10">
           <div className="rounded-xl p-8 sm:p-12 bg-[#FDFBF8] border border-[#E7DECF] shadow-xs space-y-8">
             <div className="p-6 rounded-xl bg-white border border-[#E8C5BE]/80 shadow-2xs space-y-2">
@@ -4199,7 +4188,7 @@ export default function PublicWebsiteV2({ user, profile, initialTab = 'home', on
   );
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] text-[#162723] font-zen selection:bg-[#EFE3E4] selection:text-[#795663] relative" style={{ zoom: 1 }}>
+    <div className="min-h-screen bg-[#FAF7F2] text-[#162723] font-zen selection:bg-[#EFE3E4] selection:text-[#795663] relative">
       {/* 1. Ambient SVG Watercolor Bleeds */}
       <WatercolorBackground activeTab={activeTab} />
 

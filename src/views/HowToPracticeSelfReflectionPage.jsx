@@ -76,9 +76,9 @@ export default function HowToPracticeSelfReflectionPage({ onOpenPolicy }) {
 
       <Navbar isSubpage={true} />
 
-      {/* HERO SECTION */}
-      <section className="bg-white pt-[148px] pb-20 md:pt-[180px] md:pb-28 px-6 md:px-16 text-center border-b border-primary/5">
-        <div className="max-w-[840px] mx-auto">
+      {/* HERO SECTION (Treatment A: Watercolor Paper) */}
+      <section className="treatment-watercolor-hero pt-[148px] pb-20 md:pt-[180px] md:pb-28 px-6 md:px-16 text-center border-b border-primary/5">
+        <div className="max-w-[840px] mx-auto relative z-10">
           <ScrollReveal className="space-y-5">
             <span className="font-sans text-[11px] font-medium tracking-[0.14em] uppercase text-secondary-dark block">
               Practical Reflection Guide

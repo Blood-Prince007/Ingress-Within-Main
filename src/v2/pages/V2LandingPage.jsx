@@ -140,7 +140,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
             </div>
           </section>
 
-          <section>
+          <section className="treatment-watercolor">
             <div className="wrap">
               <div className="ey">SOUND FAMILIAR?</div>
               <h2>Most of this starts as ordinary life, not a clinical complaint.</h2>
@@ -154,7 +154,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
             </div>
           </section>
 
-          <section>
+          <section className="bg-warm-paper paper-grain">
             <div className="wrap">
               <div className="ey">WHY PEOPLE START HERE</div>
               <h2>Three common starting points.</h2>
@@ -185,7 +185,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
             </div>
           </section>
 
-          <section>
+          <section className="bg-warm-paper paper-grain">
             <div className="wrap">
               <div className="ey">A QUICK LOOK</div>
               <h2>From a journal entry to a clearer pattern, in three steps.</h2>
@@ -220,7 +220,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
             </div>
           </section>
 
-          <section>
+          <section className="bg-warm-paper paper-grain">
             <div className="wrap">
               <div className="ey">PRICING, IN SHORT</div>
               <h2>Simple, transparent, in rupees.</h2>
@@ -1108,7 +1108,7 @@ export default function V2LandingPage({ initialTab = 'home' }) {
             </div>
           </section>
 
-          <section>
+          <section className="treatment-watercolor">
             <div className="wrap">
               <div className="ey">PRIVATE, EVEN FROM FAMILY</div>
               <h2>What you share here stays yours to share.</h2>

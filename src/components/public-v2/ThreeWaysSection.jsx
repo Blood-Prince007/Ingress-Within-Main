@@ -70,7 +70,7 @@ export default function ThreeWaysSection({ onSelectTab }) {
   ];
 
   return (
-    <section className="relative py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden">
+    <section className="relative py-16 sm:py-20 lg:py-24 px-6 sm:px-8 lg:px-12 overflow-hidden section-tint-thistle">
       <div className="max-w-6xl mx-auto text-center space-y-3 sm:space-y-4">
         
         {/* Section Heading with smooth fade-up */}
@@ -148,7 +148,7 @@ export default function ThreeWaysSection({ onSelectTab }) {
                   className="hidden lg:flex flex-col items-center justify-center px-4 relative"
                 >
                   <div className="w-[1px] h-full bg-[#E7DECF]/80 absolute top-0" />
-                  <span className="relative z-10 bg-[#FAF7F2] py-2 px-2 text-xs font-editorial italic text-[#8D98A3]">
+                  <span className="relative z-10 bg-white/85 backdrop-blur-xs py-1 px-2.5 rounded-full border border-[#8AA688]/30 text-xs font-editorial italic text-[#3F5B44] shadow-2xs">
                     or
                   </span>
                 </motion.div>

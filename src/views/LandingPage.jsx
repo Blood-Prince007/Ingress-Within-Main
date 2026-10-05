@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
-const ScrollReveal = ({ children, delay = 0, className = "" }) => {
+const ScrollReveal = React.memo(({ children, delay = 0, className = "" }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -15,11 +15,10 @@ const ScrollReveal = ({ children, delay = 0, className = "" }) => {
       {children}
     </motion.div>
   );
-};
+});
 
-export default function LandingPage({ onOpenPolicy }) {
-
-  // Hero Mock Card typing animation
+// Self-contained Hero Typing Mockup Card to prevent re-rendering the full LandingPage every 30ms
+const HeroTypingCard = React.memo(() => {
   const [typedText, setTypedText] = useState('');
   const [showReflection, setShowReflection] = useState(false);
   const fullPromptText = "I keep saying everything is fine, but I've been avoiding calling my sister back for three days now. I tell myself I'm just busy, but she said something last week that I haven't let myself fully hear yet...";
@@ -31,11 +30,9 @@ export default function LandingPage({ onOpenPolicy }) {
     const runLoop = () => {
       if (!isMounted) return;
 
-      // Step 1: Reset state
       setTypedText('');
       setShowReflection(false);
 
-      // Step 2: Delay before starting to type
       currentTimeout = setTimeout(() => {
         if (!isMounted) return;
 
@@ -45,14 +42,11 @@ export default function LandingPage({ onOpenPolicy }) {
           if (charIdx < fullPromptText.length) {
             setTypedText(fullPromptText.substring(0, charIdx + 1));
             charIdx++;
-            currentTimeout = setTimeout(type, 30);
+            currentTimeout = setTimeout(type, 35);
           } else {
-            // Finished typing, show reflection after a brief delay
             currentTimeout = setTimeout(() => {
               if (!isMounted) return;
               setShowReflection(true);
-
-              // Restart loop after 6 seconds of showing the reflection
               currentTimeout = setTimeout(runLoop, 6000);
             }, 800);
           }
@@ -72,6 +66,42 @@ export default function LandingPage({ onOpenPolicy }) {
     };
   }, []);
 
+  return (
+    <div className="bg-white/6 border border-white/12 rounded-card p-6 lg:p-8 w-full max-w-[420px] lg:max-w-[460px] shadow-2xl flex flex-col gap-5 text-left">
+      <div className="font-sans text-[10px] lg:text-[11px] font-medium tracking-[0.12em] uppercase text-secondary">
+        Today &middot; Day 6
+      </div>
+      <div className="font-serif text-lg md:text-xl lg:text-2xl font-normal text-mint-grey leading-tight">
+        What's on your mind right now?
+      </div>
+      <div className="bg-white/5 border border-white/15 rounded-md p-4 lg:p-5 min-h-[140px] lg:min-h-[160px] relative font-serif text-sm lg:text-base text-[#D8ECEA] leading-relaxed">
+        <span>{typedText}</span>
+        <span className="inline-block w-[2px] h-[18px] bg-accent animate-[blink_1.1s_infinite] ml-[2px] align-middle" />
+      </div>
+      <button className="w-full bg-accent text-white border-none rounded-md py-3 font-sans text-[13px] lg:text-sm font-medium tracking-[0.04em] cursor-default transition-opacity shadow-xs">
+        Reflect &rarr;
+      </button>
+
+      <AnimatePresence>
+        {showReflection && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="bg-secondary/10 border-l-2 border-secondary rounded-r-md p-4"
+          >
+            <p className="font-serif text-[13.5px] lg:text-[14.5px] font-normal text-[#D8ECEA] leading-relaxed italic">
+              You've written about this situation three times now. Each time the ending is the same — but you describe yourself differently in each version.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
+
+export default function LandingPage({ onOpenPolicy }) {
   return (
     <div className="min-h-screen bg-mint-grey text-primary selection:bg-accent/30 font-sans">
 
@@ -125,40 +155,7 @@ export default function LandingPage({ onOpenPolicy }) {
         {/* Right column */}
         <div className="relative w-full flex items-center justify-center py-8 lg:py-16 mt-8 lg:mt-0">
           <div className="w-full max-w-[540px] lg:max-w-[600px] bg-primary rounded-3xl p-8 lg:p-12 shadow-2xl flex items-center justify-center relative">
-
-            {/* Visual Card Mockup */}
-            <div className="bg-white/6 border border-white/12 rounded-card p-6 lg:p-8 w-full max-w-[420px] lg:max-w-[460px] backdrop-blur-[4px] shadow-2xl flex flex-col gap-5 text-left">
-              <div className="font-sans text-[10px] lg:text-[11px] font-medium tracking-[0.12em] uppercase text-secondary">
-                Today &middot; Day 6
-              </div>
-              <div className="font-serif text-lg md:text-xl lg:text-2xl font-normal text-mint-grey leading-tight">
-                What's on your mind right now?
-              </div>
-              <div className="bg-white/5 border border-white/15 rounded-md p-4 lg:p-5 min-h-[140px] lg:min-h-[160px] relative font-serif text-sm lg:text-base text-[#D8ECEA] leading-relaxed">
-                <span>{typedText}</span>
-                <span className="inline-block w-[2px] h-[18px] bg-accent animate-[blink_1.1s_infinite] ml-[2px] align-middle" />
-              </div>
-              <button className="w-full bg-accent text-white border-none rounded-md py-3 font-sans text-[13px] lg:text-sm font-medium tracking-[0.04em] cursor-default transition-opacity shadow-xs">
-                Reflect &rarr;
-              </button>
-
-              <AnimatePresence>
-                {showReflection && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="bg-secondary/10 border-l-2 border-secondary rounded-r-md p-4"
-                  >
-                    <p className="font-serif text-[13.5px] lg:text-[14.5px] font-normal text-[#D8ECEA] leading-relaxed italic">
-                      You've written about this situation three times now. Each time the ending is the same — but you describe yourself differently in each version.
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
+            <HeroTypingCard />
           </div>
         </div>
       </section>
