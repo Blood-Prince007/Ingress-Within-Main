@@ -89,8 +89,16 @@ export async function GET(request: NextRequest) {
 
       const cycleNum = cy.cycle_number !== undefined ? cy.cycle_number : cy.number;
       const hasAssessment = assessmentCycleMap.has(String(cy.id)) || assessmentCycleMap.has(String(cycleNum));
-      const isCompleted = Boolean(cy.assessment_completed || hasAssessment || cy.status?.toLowerCase() === 'completed');
-      const isAvailable = Boolean(cy.assessment_available || hasAssessment || isCompleted || activeDay >= 28);
+      const isCycleStatusCompleted = cy.status?.toLowerCase() === 'completed';
+
+      // A cycle's assessment is completed only if the cycle status is completed AND an assessment was finished
+      const isCompleted = isCycleStatusCompleted && Boolean(cy.assessment_completed || hasAssessment);
+
+      // Assessment is available only if explicitly enabled at Day 28+ or already completed
+      const isAvailable = Boolean(
+        (cy.assessment_available && activeDay >= 28) ||
+        (isCycleStatusCompleted && (cy.assessment_completed || hasAssessment))
+      );
       
       return {
         id: cy.id,

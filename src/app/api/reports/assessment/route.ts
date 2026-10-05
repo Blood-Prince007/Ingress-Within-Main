@@ -75,6 +75,29 @@ export async function GET(request: NextRequest) {
 
     const needsGeneration = !assessment || assessment.generation_status !== 'ready' || isPlaceholder;
 
+    // Gating check: An assessment report should only be accessible/generated if:
+    // 1. The cycle is officially completed (status === 'completed' or assessment_completed === true), OR
+    // 2. The cycle has reached Day 28+ AND assessment_available === true, OR
+    // 3. An assessment record already exists for this cycle.
+    const isCycleCompleted = cycleObj.status?.toLowerCase() === 'completed' || Boolean(cycleObj.assessment_completed);
+    const isDay28Eligible = Boolean(cycleObj.assessment_available) && (cycleObj.current_day || 1) >= 28;
+    const isEligible = isCycleCompleted || isDay28Eligible || Boolean(assessment);
+
+    if (!isEligible) {
+      return NextResponse.json(
+        { error: { code: 'NOT_AVAILABLE', message: 'Cycle assessment report is only available once Day 28 is reached or cycle is complete.' } },
+        { status: 400 }
+      );
+    }
+
+    // In addition, if an incomplete cycle has 0 valid entries, refuse generation
+    if (needsGeneration && validEntries.length === 0 && !isCycleCompleted) {
+      return NextResponse.json(
+        { error: { code: 'INSUFFICIENT_ENTRIES', message: 'Cannot generate a cycle report with zero recorded entries.' } },
+        { status: 400 }
+      );
+    }
+
     if (needsGeneration) {
       console.log(`[API Assessment GET] Assessment for user ${userId} cycle ${effectiveCycleId} (Cycle ${cycleNum}) needs generation/repair. Processing...`);
       let assId = assessment?.id;

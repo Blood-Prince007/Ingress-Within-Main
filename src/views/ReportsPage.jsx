@@ -2266,20 +2266,18 @@ export default function ReportsPage({ user, profile, onSignOut }) {
                 const isOpen = !!openCycles[cycle.id];
                 const isCurrent = cycle.status === 'active' || cycle.status === 'ACTIVE';
 
-                      const isDay28Unlocked = Boolean(
-                        cycle.assessment_completed ||
-                        cycle.assessment_available ||
-                        cycle.has_assessment ||
-                        cycle.status === 'COMPLETED' ||
-                        cycle.status === 'completed' ||
-                        (cycle.current_day && cycle.current_day >= 28) ||
-                        (cycle.entries_count && cycle.entries_count > 0)
-                      );
                       const isCompletedCycle = Boolean(
                         cycle.status === 'COMPLETED' ||
-                        cycle.status === 'completed' ||
-                        (cycle.current_day && cycle.current_day >= 28) ||
-                        cycle.assessment_completed
+                        cycle.status === 'completed'
+                      );
+
+                      // A Day 28 report is ONLY unlocked if:
+                      // 1. The cycle is officially completed AND has an assessment completed/generated, OR
+                      // 2. The cycle has explicitly reached Day 28+ AND assessment_available is true
+                      // Active cycles with current_day < 28 must remain LOCKED.
+                      const isDay28Unlocked = Boolean(
+                        (isCompletedCycle && (cycle.assessment_completed || cycle.has_assessment)) ||
+                        (cycle.assessment_available && (cycle.current_day || 1) >= 28)
                       );
 
                       return (
