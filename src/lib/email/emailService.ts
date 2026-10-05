@@ -349,6 +349,47 @@ export class EmailService {
   /**
    * Dispatches match acceptance notice to client and ops team coordination notice.
    */
+  /**
+   * Sends an operational notification to a therapist when the server-side
+   * matching engine creates a new candidate match.
+   */
+  static async notifyTherapistMatchRequest(data: {
+    matchId: string;
+    therapistId: string;
+    therapistName: string;
+    therapistEmail: string;
+    rank: number;
+    score: number;
+  }) {
+    return this.queueEmail({
+      eventType: EmailEvents.THERAPIST_MATCH_REQUEST,
+      recipient: {
+        email: data.therapistEmail,
+        name: data.therapistName,
+        type: 'therapist',
+        id: data.therapistId,
+      },
+      templateKey: 'therapist_match_request',
+      templateData: {
+        therapistName: data.therapistName,
+        matchId: data.matchId,
+        rank: data.rank,
+        dashboardUrl: 'https://ingresswithin.com/therapist',
+      },
+      entityType: 'match',
+      entityId: data.matchId,
+      idempotencyKey: `therapy_match_request:${data.matchId}:${data.therapistId}`,
+      metadata: {
+        therapistAccountId: data.therapistId,
+        matchRank: data.rank,
+        matchScore: data.score,
+      },
+    });
+  }
+
+  /**
+   * Dispatches match acceptance notice to client and ops team coordination notice.
+   */
   static async notifyTherapistAccepted(data: {
     matchId: string;
     therapistId: string;
