@@ -1284,7 +1284,7 @@ function Guided({ exit, onBookSession }) {
     const payload = matches.map((therapist, index) => ({
       therapistAccountId: therapist.id,
       matchStatus: selectedTherapist?.id === therapist.id
-        ? 'selected'
+        ? 'shortlisted'
         : 'candidate',
       matchRank: index + 1,
       matchScore: therapist.score,
@@ -1319,6 +1319,21 @@ function Guided({ exit, onBookSession }) {
       },
     }));
 
+    if (selectedTherapist && !payload.some((p) => p.therapistAccountId === selectedTherapist.id)) {
+      payload.unshift({
+        therapistAccountId: selectedTherapist.id,
+        matchStatus: 'shortlisted',
+        matchRank: 1,
+        matchScore: 95,
+        matchReasons: ['Client selected therapist'],
+        matchingMetadata: {
+          source: 'clinical_therapist_directory',
+          therapistAccountId: selectedTherapist.id,
+          displayName: selectedTherapist.name,
+        },
+      });
+    }
+
     if (!payload.length) return;
 
     const response = await fetch('/api/therapy/matches', {
@@ -1327,6 +1342,7 @@ function Guided({ exit, onBookSession }) {
       body: JSON.stringify({
         sessionId,
         matches: payload,
+        selectedTherapistAccountId: selectedTherapist?.id || null,
       }),
     });
 
@@ -1469,23 +1485,32 @@ function Guided({ exit, onBookSession }) {
           <div className="iw-successicon"><Check /></div>
           {selectedTherapist ? (
             <>
-              <h2>You’re all set</h2>
-              <p>Your selected therapist preference has been recorded for the next booking/review step.</p>
+              <h2>Request Sent to {selectedTherapist.name}</h2>
+              <p>Your clinical intake and matching request have been sent directly to <strong>{selectedTherapist.name}</strong> for clinical review.</p>
               <div className="iw-summary">
                 <div className="iw-row"><span>Therapist</span><strong>{selectedTherapist.name}</strong></div>
+                <div className="iw-row"><span>Status</span><strong style={{ color: '#0f766e' }}>Request Sent · Awaiting Review</strong></div>
                 <div className="iw-row"><span>Availability</span><strong>{selectedTherapist.availability}</strong></div>
                 <div className="iw-row"><span>Fee</span><strong>₹{selectedTherapist.fee}/session</strong></div>
               </div>
-              {onBookSession && (
-                <button
-                  type="button"
-                  className="iw-primary"
-                  style={{ marginTop: 14, width: '100%', justifyContent: 'center' }}
-                  onClick={() => onBookSession(selectedTherapist)}
-                >
-                  Schedule &amp; Book Session with {selectedTherapist.name} &rarr;
-                </button>
-              )}
+
+              <div className="iw-note" style={{ textAlign: 'left', lineHeight: 1.6, marginTop: 14 }}>
+                <strong>What happens next:</strong>
+                <ol style={{ paddingLeft: 18, marginTop: 6, marginBottom: 0 }}>
+                  <li><strong>{selectedTherapist.name}</strong> will review your clinical intake and goals.</li>
+                  <li>Once your therapist accepts the match, you will receive an email confirmation.</li>
+                  <li>You can then schedule and book your first session whenever you are ready.</li>
+                </ol>
+              </div>
+
+              <button
+                type="button"
+                className="iw-primary"
+                style={{ marginTop: 16, width: '100%', justifyContent: 'center' }}
+                onClick={exit}
+              >
+                Return to Dashboard
+              </button>
             </>
           ) : (
             <>
@@ -1493,10 +1518,18 @@ function Guided({ exit, onBookSession }) {
               <p>
                 Based on the safety information provided, direct therapist matching is paused. Our care and clinical team will personally review your intake to support you safely.
               </p>
+              <button
+                type="button"
+                className="iw-primary"
+                style={{ marginTop: 16, width: '100%', justifyContent: 'center' }}
+                onClick={exit}
+              >
+                Return to Dashboard
+              </button>
             </>
           )}
-          <div className="iw-note">
-            Your consultation is held securely via Google Meet and synced automatically with Google Calendar upon booking.
+          <div className="iw-note" style={{ marginTop: 12 }}>
+            Your consultation is held securely via Google Meet and synced automatically with Google Calendar once scheduled.
           </div>
           <button type="button" className="iw-secondary" onClick={exit}>Back to Therapy</button>
         </div>

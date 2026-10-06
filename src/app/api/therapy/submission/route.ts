@@ -102,6 +102,80 @@ export async function POST(request: NextRequest) {
       metadata: resolvedMetadata,
     });
 
+    // Ensure selected therapist is tracked in therapy_matches with shortlisted status and notified
+    const selectedTherapistId = resolvedMetadata.selectedTherapistAccountId || resolvedMetadata.selectedTherapistPrototypeId;
+    if (typeof selectedTherapistId === 'string' && selectedTherapistId.trim()) {
+      try {
+        const cleanTherapistId = selectedTherapistId.trim();
+        const { supabase } = await import('../../../../lib/db');
+        const { EmailService } = await import('../../../../lib/email/emailService');
+
+        // Check if match already exists
+        const { data: existingMatch } = await supabase
+          .from('therapy_matches')
+          .select('*')
+          .eq('therapy_session_id', therapySessionId.trim())
+          .eq('therapist_account_id', cleanTherapistId)
+          .maybeSingle();
+
+        let targetMatchId = existingMatch?.id;
+
+        if (!existingMatch) {
+          const { data: newMatch } = await supabase
+            .from('therapy_matches')
+            .insert({
+              therapy_session_id: therapySessionId.trim(),
+              user_id: authUser.userId,
+              therapist_account_id: cleanTherapistId,
+              match_status: 'shortlisted',
+              match_rank: 1,
+              match_score: 95,
+              match_reasons: ['Selected by client during guided intake'],
+              matching_metadata: { source: 'client_intake_submission' },
+            })
+            .select('*')
+            .single();
+          targetMatchId = newMatch?.id;
+        } else if (existingMatch.match_status !== 'selected') {
+          await supabase
+            .from('therapy_matches')
+            .update({ match_status: 'shortlisted' })
+            .eq('id', existingMatch.id);
+        }
+
+        if (targetMatchId) {
+          const { data: profile } = await supabase
+            .from('therapist_profiles')
+            .select('full_name, contact_email')
+            .eq('therapist_account_id', cleanTherapistId)
+            .maybeSingle();
+
+          let therapistEmail = profile?.contact_email;
+          if (!therapistEmail) {
+            const { data: app } = await supabase
+              .from('therapist_applications')
+              .select('contact_email, answers')
+              .eq('therapist_account_id', cleanTherapistId)
+              .maybeSingle();
+            therapistEmail = app?.contact_email || (app?.answers as any)?.contact_email;
+          }
+
+          if (therapistEmail) {
+            await EmailService.notifyTherapistMatchRequest({
+              matchId: targetMatchId,
+              therapistId: cleanTherapistId,
+              therapistName: profile?.full_name || (resolvedMetadata.selectedTherapistName as string) || 'Therapist',
+              therapistEmail,
+              rank: 1,
+              score: 95,
+            });
+          }
+        }
+      } catch (matchLinkErr) {
+        console.warn('[Therapy Submission POST] Match linking/email notice:', matchLinkErr);
+      }
+    }
+
     return NextResponse.json(
       {
         success: true,

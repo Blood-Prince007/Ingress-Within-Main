@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '../../../../lib/auth-helper';
 import { getTherapySession, saveTherapyMatches, getTherapyMatches, validateEligibleTherapist, getClientConnectedTherapist } from '../../../../lib/therapy/therapyService';
 import { computeTherapistMatches } from '../../../../lib/therapy/therapistMatchingService';
+import { supabase } from '../../../../lib/db';
 import { EmailService } from '../../../../lib/email/emailService';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -25,25 +26,99 @@ export async function POST(request: NextRequest) {
     const session = await getTherapySession(normalizedSessionId, authUser.userId);
     if (!session) return NextResponse.json({ error: { code: 'SESSION_NOT_FOUND', message: 'Therapy session was not found.' } }, { status: 404 });
 
-    const candidates = await computeTherapistMatches(normalizedSessionId, authUser.userId, 3);
-    const savedMatches = await saveTherapyMatches(normalizedSessionId, authUser.userId, candidates.map((candidate, index) => ({
-      therapistAccountId: candidate.therapistAccountId,
-      matchStatus: 'candidate',
-      matchRank: index + 1,
-      matchScore: candidate.score,
-      matchReasons: candidate.reasons,
-      matchingMetadata: candidate.metadata,
-    })));
+    const selectedTherapistId = typeof body.selectedTherapistAccountId === 'string'
+      ? body.selectedTherapistAccountId.trim()
+      : null;
 
-    const emailResults = await Promise.allSettled(savedMatches.map((match, index) => {
-      const candidate = candidates[index];
-      if (!candidate?.email || !match?.id) return Promise.resolve();
+    let savedMatches;
+    let candidatesToNotify: Array<{
+      matchId: string;
+      therapistAccountId: string;
+      therapistName: string;
+      email?: string | null;
+      rank: number;
+      score: number;
+    }> = [];
+
+    if (Array.isArray(body.matches) && body.matches.length > 0) {
+      // Client provided matching candidates (e.g., from guided form)
+      savedMatches = await saveTherapyMatches(
+        normalizedSessionId,
+        authUser.userId,
+        body.matches.map((match: any, index: number) => {
+          const tId = match.therapistAccountId || match.id;
+          const isSelected = match.matchStatus === 'selected' || match.matchStatus === 'shortlisted' || (selectedTherapistId && tId === selectedTherapistId);
+          return {
+            therapistAccountId: tId,
+            matchStatus: isSelected ? 'shortlisted' : (match.matchStatus || 'candidate'),
+            matchRank: match.matchRank ?? (index + 1),
+            matchScore: match.matchScore ?? 85,
+            matchReasons: match.matchReasons || [],
+            matchingMetadata: match.matchingMetadata || {},
+          };
+        })
+      );
+
+      // Collect profile and contact email info for all saved matches to dispatch notification
+      for (let i = 0; i < savedMatches.length; i++) {
+        const sm = savedMatches[i];
+        if (!sm.therapist_account_id) continue;
+
+        const { data: profile } = await supabase
+          .from('therapist_profiles')
+          .select('full_name, contact_email')
+          .eq('therapist_account_id', sm.therapist_account_id)
+          .maybeSingle();
+
+        let therapistEmail = profile?.contact_email;
+        if (!therapistEmail) {
+          const { data: app } = await supabase
+            .from('therapist_applications')
+            .select('contact_email, answers')
+            .eq('therapist_account_id', sm.therapist_account_id)
+            .maybeSingle();
+          therapistEmail = app?.contact_email || (app?.answers as any)?.contact_email;
+        }
+
+        candidatesToNotify.push({
+          matchId: sm.id,
+          therapistAccountId: sm.therapist_account_id,
+          therapistName: profile?.full_name || 'Therapist',
+          email: therapistEmail,
+          rank: sm.match_rank || (i + 1),
+          score: sm.match_score || 85,
+        });
+      }
+    } else {
+      // Compute matches dynamically
+      const candidates = await computeTherapistMatches(normalizedSessionId, authUser.userId, 3);
+      savedMatches = await saveTherapyMatches(normalizedSessionId, authUser.userId, candidates.map((candidate, index) => ({
+        therapistAccountId: candidate.therapistAccountId,
+        matchStatus: (selectedTherapistId && candidate.therapistAccountId === selectedTherapistId) ? 'shortlisted' : 'candidate',
+        matchRank: index + 1,
+        matchScore: candidate.score,
+        matchReasons: candidate.reasons,
+        matchingMetadata: candidate.metadata,
+      })));
+
+      candidatesToNotify = savedMatches.map((m, idx) => ({
+        matchId: m.id,
+        therapistAccountId: candidates[idx]?.therapistAccountId,
+        therapistName: candidates[idx]?.therapistName || 'Therapist',
+        email: candidates[idx]?.email,
+        rank: idx + 1,
+        score: candidates[idx]?.score || 85,
+      }));
+    }
+
+    const emailResults = await Promise.allSettled(candidatesToNotify.map((candidate) => {
+      if (!candidate?.email || !candidate?.matchId) return Promise.resolve();
       return EmailService.notifyTherapistMatchRequest({
-        matchId: match.id,
+        matchId: candidate.matchId,
         therapistId: candidate.therapistAccountId,
         therapistName: candidate.therapistName,
         therapistEmail: candidate.email,
-        rank: index + 1,
+        rank: candidate.rank,
         score: candidate.score,
       });
     }));

@@ -1063,29 +1063,83 @@ export class TherapistPlatformService {
         p_match_id: matchId,
       });
 
+      let acceptSuccess = false;
+      let finalMatchId = matchId;
+      let finalStatus = 'selected';
+      let alreadyAccepted = false;
+      let careRel = null;
+
       if (!rpcError && rpcResult) {
-        // Dispath first-session operational coordination emails
+        acceptSuccess = true;
+        finalMatchId = rpcResult.match_id || matchId;
+        finalStatus = rpcResult.match_status || 'selected';
+        alreadyAccepted = Boolean(rpcResult.already_accepted);
+        careRel = rpcResult.relationship || null;
+      } else if (rpcError && (rpcError.message?.includes('does not exist') || rpcError.message?.includes('function') || rpcError.code === '42883')) {
+        // Resilient fallback if RPC procedure is not deployed in current environment
+        const now = new Date().toISOString();
+        await supabase
+          .from('therapy_matches')
+          .update({ match_status: 'selected', updated_at: now })
+          .eq('id', matchId);
+
+        const { data: existingRel } = await supabase
+          .from('therapy_care_relationships')
+          .select('*')
+          .eq('therapist_account_id', therapistAccountId)
+          .eq('user_id', match.user_id)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (existingRel) {
+          careRel = existingRel;
+          alreadyAccepted = true;
+        } else {
+          const { data: newRel } = await supabase
+            .from('therapy_care_relationships')
+            .insert({
+              therapist_account_id: therapistAccountId,
+              user_id: match.user_id,
+              therapy_session_id: match.therapy_session_id,
+              status: 'active',
+              care_stage: 'intake',
+              started_at: now,
+              metadata: { source_match_id: matchId, accepted_at: now },
+            })
+            .select('*')
+            .single();
+          careRel = newRel;
+        }
+        acceptSuccess = true;
+      }
+
+      if (acceptSuccess) {
+        // Dispatch first-session operational coordination & client notification emails
         try {
-          const { data: clientUser } = await supabase
-            .from('users')
-            .select('id, email, full_name')
-            .eq('id', match.user_id)
-            .maybeSingle();
+          const [clientUserRes, clientIntakeRes, therapistProfileRes] = await Promise.all([
+            supabase.from('users').select('*').eq('id', match.user_id).maybeSingle(),
+            match.therapy_session_id
+              ? supabase.from('therapy_intakes').select('*').eq('therapy_session_id', match.therapy_session_id).maybeSingle()
+              : { data: null },
+            supabase.from('therapist_profiles').select('full_name, contact_email').eq('therapist_account_id', therapistAccountId).maybeSingle(),
+          ]);
 
-          const { data: therapistAccount } = await supabase
-            .from('therapist_accounts')
-            .select('id, full_name')
-            .eq('id', therapistAccountId)
-            .maybeSingle();
+          const clientUser = clientUserRes.data;
+          const clientIntake = clientIntakeRes.data;
+          const therapistProfile = therapistProfileRes.data;
 
-          if (clientUser && therapistAccount) {
+          const clientEmail = clientIntake?.email || clientUser?.email;
+          const clientName = clientIntake?.full_name || clientUser?.full_name || clientUser?.name || 'Client';
+          const therapistName = therapistProfile?.full_name || 'Your Therapist';
+
+          if (clientEmail) {
             await EmailService.notifyTherapistAccepted({
               matchId,
               therapistId: therapistAccountId,
-              therapistName: therapistAccount.full_name || 'Therapist',
-              clientId: clientUser.id,
-              clientEmail: clientUser.email || 'client@ingresswithin.com',
-              clientName: clientUser.full_name,
+              therapistName,
+              clientId: match.user_id,
+              clientEmail,
+              clientName,
             });
           }
         } catch (emailErr) {
@@ -1095,11 +1149,11 @@ export class TherapistPlatformService {
         return {
           success: true,
           action: 'accept',
-          matchId: rpcResult.match_id || matchId,
-          matchStatus: rpcResult.match_status || 'selected',
-          alreadyAccepted: Boolean(rpcResult.already_accepted),
-          relationship: rpcResult.relationship || null,
-          message: rpcResult.message || 'Client request accepted successfully.',
+          matchId: finalMatchId,
+          matchStatus: finalStatus,
+          alreadyAccepted,
+          relationship: careRel,
+          message: alreadyAccepted ? 'Client request was already accepted.' : 'Client request accepted successfully.',
         };
       }
 
