@@ -14,8 +14,7 @@ const instrumentSans = Instrument_Sans({
 
 const lora = Lora({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  style: ['normal', 'italic'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-reflective',
   display: 'swap',
 });
