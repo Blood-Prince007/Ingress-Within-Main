@@ -73,6 +73,41 @@ export const EmailTemplates: Record<string, (data: Record<string, any>) => Email
     };
   },
 
+  therapist_accepted_therapist_confirmation: (data) => {
+    const therapistName = data.therapistName || 'Doctor/Counselor';
+    const clientName = data.clientName || 'your client';
+    const clientEmail = data.clientEmail || '';
+    const dashboardUrl = data.dashboardUrl || 'https://ingresswithin.com/therapist';
+    return {
+      subject: `Client Connection Confirmed: ${clientName} added to your caseload`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <div style="border-bottom: 2px solid #4E7A66; padding-bottom: 16px; margin-bottom: 24px;">
+            <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #4E7A66;">Client Connection Accepted</span>
+            <h2 style="color: #132A24; margin: 6px 0 0 0; font-size: 22px;">New Client Added to Your Caseload</h2>
+          </div>
+          <p style="font-size: 15px; color: #334155;">Hello ${therapistName},</p>
+          <p style="font-size: 14px; color: #475569;">You have successfully accepted the care matching request for <strong>${clientName}</strong>.</p>
+          <div style="background-color: #f8fafc; border-left: 4px solid #4E7A66; padding: 16px 20px; margin: 24px 0; border-radius: 6px;">
+            <p style="margin: 0; font-weight: 600; color: #132A24; font-size: 14px;">Next Operational Steps:</p>
+            <ul style="margin: 8px 0 0 0; padding-left: 20px; font-size: 13px; color: #475569; line-height: 1.6;">
+              <li>The client has been notified via email that you have accepted their request.</li>
+              <li>A care relationship is now active in your <strong>Active Clients</strong> caseload.</li>
+              <li>You can review their intake notes in your practitioner workspace before your first session.</li>
+            </ul>
+          </div>
+          <div style="margin: 28px 0; text-align: center;">
+            <a href="${dashboardUrl}" target="_blank" style="display: inline-block; background: #132A24; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+              Open Therapist Workspace
+            </a>
+          </div>
+          <p style="font-size: 14px; color: #64748b; margin-top: 24px;">Warm regards,<br /><strong>The Ingress Within Care & Clinical Team</strong></p>
+        </div>
+      `,
+      text: `Hello ${therapistName},\n\nYou have successfully accepted the care matching request for ${clientName}.\n\nThe client has been notified via email and a care relationship is now active in your Active Clients caseload.\n\nOpen Therapist Workspace:\n${dashboardUrl}\n\nWarm regards,\nThe Ingress Within Care & Clinical Team`,
+    };
+  },
+
   first_session_coordination_team: (data) => {
     const therapistName = data.therapistName || 'Therapist';
     const clientEmail = data.clientEmail || 'Client';

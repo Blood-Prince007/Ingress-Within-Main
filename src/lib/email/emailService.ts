@@ -388,35 +388,60 @@ export class EmailService {
   }
 
   /**
-   * Dispatches match acceptance notice to client and ops team coordination notice.
+   * Dispatches match acceptance notice to client, acceptance confirmation to therapist, and ops coordination notice.
    */
   static async notifyTherapistAccepted(data: {
     matchId: string;
     therapistId: string;
     therapistName: string;
+    therapistEmail?: string;
     clientId: string;
-    clientEmail: string;
+    clientEmail?: string;
     clientName?: string;
   }) {
-    // 1. Client Notice
-    await this.sendEmail({
-      eventType: EmailEvents.THERAPIST_ACCEPTED_CLIENT,
-      recipient: {
-        email: data.clientEmail,
-        name: data.clientName,
-        type: 'client',
-        id: data.clientId,
-      },
-      templateKey: 'therapist_accepted_client',
-      templateData: {
-        clientName: data.clientName,
-        therapistName: data.therapistName,
-      },
-      entityType: 'match',
-      entityId: data.matchId,
-    });
+    // 1. Client Notice (if client email is known)
+    if (data.clientEmail) {
+      await this.sendEmail({
+        eventType: EmailEvents.THERAPIST_ACCEPTED_CLIENT,
+        recipient: {
+          email: data.clientEmail,
+          name: data.clientName,
+          type: 'client',
+          id: data.clientId,
+        },
+        templateKey: 'therapist_accepted_client',
+        templateData: {
+          clientName: data.clientName,
+          therapistName: data.therapistName,
+        },
+        entityType: 'match',
+        entityId: data.matchId,
+      });
+    }
 
-    // 2. Operations Team Notice
+    // 2. Therapist Confirmation Notice (if therapist email is known)
+    if (data.therapistEmail) {
+      await this.sendEmail({
+        eventType: EmailEvents.THERAPIST_ACCEPTED_CONFIRMATION,
+        recipient: {
+          email: data.therapistEmail,
+          name: data.therapistName,
+          type: 'therapist',
+          id: data.therapistId,
+        },
+        templateKey: 'therapist_accepted_therapist_confirmation',
+        templateData: {
+          clientName: data.clientName,
+          therapistName: data.therapistName,
+          clientEmail: data.clientEmail || '',
+          dashboardUrl: 'https://ingresswithin.com/therapist',
+        },
+        entityType: 'match',
+        entityId: data.matchId,
+      });
+    }
+
+    // 3. Operations Team Notice
     await this.sendEmail({
       eventType: EmailEvents.FIRST_SESSION_COORDINATION_REQUIRED,
       recipient: {
@@ -428,7 +453,7 @@ export class EmailService {
       templateData: {
         matchId: data.matchId,
         therapistName: data.therapistName,
-        clientEmail: data.clientEmail,
+        clientEmail: data.clientEmail || 'Client email pending intake',
       },
       entityType: 'match',
       entityId: data.matchId,

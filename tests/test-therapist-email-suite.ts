@@ -688,8 +688,8 @@ async function runTestSuite() {
 
 
 
-  // --- SECTION 8: Frontend Onboarding Email Field Verification ---
-  console.log('\n--- SECTION 8: Frontend Onboarding Email Field Verification ---');
+  // --- SECTION 8: Frontend Onboarding & Profile Email Field Verification ---
+  console.log('\n--- SECTION 8: Frontend Onboarding & Profile Email Field Verification ---');
 
   await test('TherapistOnboardingView.jsx defines required Email address field in Step 2', () => {
     const viewPath = path.join(process.cwd(), 'src/views/therapist/TherapistOnboardingView.jsx');
@@ -699,6 +699,30 @@ async function runTestSuite() {
     assert(content.includes('Email address'), 'Contains Email address label');
     assert(content.includes('This email will be used for application and verification updates'), 'Contains required helper text');
     assert(content.includes('contact_email'), 'Binds contact_email state');
+  });
+
+  await test('TherapistProfileView.jsx defines editable Professional Contact Email field and binds contactEmail', () => {
+    const viewPath = path.join(process.cwd(), 'src/views/therapist/TherapistProfileView.jsx');
+    assert(fs.existsSync(viewPath), 'TherapistProfileView.jsx exists');
+    const content = fs.readFileSync(viewPath, 'utf8');
+
+    assert(content.includes('Professional Contact Email'), 'Contains Professional Contact Email label in profile settings');
+    assert(content.includes('contactEmail'), 'Binds contactEmail state in formData');
+    assert(content.includes('contact_email'), 'Submits contact_email to PATCH /api/therapist/profile');
+  });
+
+  await test('therapist_accepted_therapist_confirmation template renders with client name and dashboard CTA', () => {
+    assert(EmailEvents.THERAPIST_ACCEPTED_CONFIRMATION, 'Event constant exists');
+    const rendered = EmailTemplates.therapist_accepted_therapist_confirmation({
+      therapistName: 'Dr. Jane Smith',
+      clientName: 'Rahul Verma',
+      clientEmail: 'rahul.verma@example.com',
+      dashboardUrl: 'https://ingresswithin.com/therapist',
+    });
+
+    assert(rendered.subject.includes('Rahul Verma'), 'Subject includes client name');
+    assert(rendered.html.includes('Dr. Jane Smith'), 'HTML includes therapist name');
+    assert(rendered.html.includes('Open Therapist Workspace'), 'HTML includes dashboard button');
   });
 
   console.log('\n================================================================');

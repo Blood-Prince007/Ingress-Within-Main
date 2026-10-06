@@ -4,6 +4,7 @@
 export const EmailEvents = {
   // Existing therapy care & session lifecycle
   THERAPIST_ACCEPTED_CLIENT: 'therapy.therapist_accepted_client',
+  THERAPIST_ACCEPTED_CONFIRMATION: 'therapy.therapist_accepted_confirmation',
   THERAPIST_MATCH_REQUEST: 'therapy.therapist_match_request',
   FIRST_SESSION_COORDINATION_REQUIRED: 'therapy.first_session_coordination_required',
   PAYMENT_REQUESTED: 'therapy.payment_requested',

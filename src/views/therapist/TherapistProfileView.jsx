@@ -106,6 +106,7 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
   // Form State
   const [formData, setFormData] = useState({
     fullName: '',
+    contactEmail: '',
     title: '',
     bio: '',
     qualification: '',
@@ -149,6 +150,7 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
 
         const initial = {
           fullName: json.profile?.full_name || '',
+          contactEmail: json.profile?.contact_email || '',
           title: json.profile?.title || 'Consultant Psychologist',
           bio: json.profile?.bio || '',
           qualification: json.profile?.qualification || '',
@@ -225,6 +227,7 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
   const completeness = useMemo(() => {
     const fields = [
       { key: 'fullName', label: 'Full Name', valid: Boolean(formData.fullName?.trim()) },
+      { key: 'contactEmail', label: 'Contact Email', valid: Boolean(formData.contactEmail?.trim()) },
       { key: 'title', label: 'Clinical Title', valid: Boolean(formData.title?.trim()) },
       { key: 'bio', label: 'Professional Bio', valid: Boolean(formData.bio?.trim()) },
       { key: 'qualification', label: 'Qualification', valid: Boolean(formData.qualification?.trim()) },
@@ -257,6 +260,7 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           full_name: formData.fullName.trim(),
+          contact_email: formData.contactEmail ? formData.contactEmail.trim().toLowerCase() : null,
           title: formData.title.trim(),
           bio: formData.bio.trim(),
           qualification: formData.qualification.trim(),
@@ -584,6 +588,10 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
                     <Phone size={12} className="text-[#4E7A66]" />
                     {account?.phone_number}
                   </span>
+                  <span className="flex items-center gap-1">
+                    <Mail size={12} className="text-[#4E7A66]" />
+                    {formData.contactEmail || 'No contact email set'}
+                  </span>
                 </div>
 
                 {formData.specializations?.length > 0 && (
@@ -709,6 +717,38 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+            <div>
+              <label className="block font-semibold text-[#132A24] mb-1.5">
+                Professional Contact Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={formData.contactEmail}
+                onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                className="w-full border border-[#132A24]/15 rounded-xl px-3.5 py-2.5 outline-hidden focus:border-[#4E7A66]"
+                placeholder="doctor@example.com"
+                required
+              />
+              <p className="text-[11px] text-[#132A24]/50 mt-1">
+                Used for client match requests, client acceptance confirmations, and session alerts.
+              </p>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-[#132A24] mb-1.5">
+                Highest Professional Qualification
+              </label>
+              <input
+                type="text"
+                value={formData.qualification}
+                onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
+                className="w-full border border-[#132A24]/15 rounded-xl px-3.5 py-2.5 outline-hidden focus:border-[#4E7A66]"
+                placeholder="M.Phil / Ph.D. in Clinical Psychology"
+              />
+            </div>
+          </div>
+
           <div className="text-xs space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="block font-semibold text-[#132A24]">
@@ -728,19 +768,6 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-            <div>
-              <label className="block font-semibold text-[#132A24] mb-1.5">
-                Highest Professional Qualification
-              </label>
-              <input
-                type="text"
-                value={formData.qualification}
-                onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
-                className="w-full border border-[#132A24]/15 rounded-xl px-3.5 py-2.5 outline-hidden focus:border-[#4E7A66]"
-                placeholder="M.Phil / Ph.D. in Clinical Psychology"
-              />
-            </div>
-
             <div>
               <label className="block font-semibold text-[#132A24] mb-1.5">
                 Years of Post-Qualification Experience
@@ -1225,13 +1252,17 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
 
           {/* Auth Identity Card */}
           <div className="p-4 rounded-xl bg-[#FAFAF8] border border-[#132A24]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               <span className="text-[10px] text-[#132A24]/50 font-bold uppercase tracking-wider">
-                Primary Authentication
+                Primary Authentication & Contact
               </span>
               <div className="font-semibold text-[#132A24] flex items-center gap-2">
                 <Phone size={14} className="text-[#4E7A66]" />
                 <span>Verified Phone OTP: {account?.phone_number}</span>
+              </div>
+              <div className="text-xs text-[#132A24]/75 flex items-center gap-2">
+                <Mail size={13} className="text-[#4E7A66]" />
+                <span>Contact Email: {formData.contactEmail || 'Not configured'}</span>
               </div>
             </div>
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#4E7A66]/10 text-[#4E7A66] text-xs font-semibold self-start sm:self-auto">

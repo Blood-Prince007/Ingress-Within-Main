@@ -383,16 +383,16 @@ function Safety({ value, setValue, allowEmergencyExit = true }) {
   );
 }
 
-function Conversation({ exit }) {
+function Conversation({ exit, user, profile }) {
   const [step, setStep] = useState(0);
   const [therapySessionId, setTherapySessionId] = useState(null);
   const [input, setInput] = useState('');
-  const [contact, setContact] = useState({
-    name: '',
-    email: '',
-    phone: '',
+  const [contact, setContact] = useState(() => ({
+    name: profile?.name || user?.name || user?.full_name || '',
+    email: profile?.email || user?.email || '',
+    phone: user?.phone_number || user?.phoneNumber || user?.phone || '',
     consent: false,
-  });
+  }));
   const [messages, setMessages] = useState([
     {
       from: 'bot',
@@ -898,7 +898,7 @@ function Conversation({ exit }) {
   );
 }
 
-function Guided({ exit, onBookSession }) {
+function Guided({ exit, onBookSession, user, profile }) {
   const total = 17;
   const [step, setStep] = useState(1);
   const [selectedTherapist, setSelectedTherapist] = useState(null);
@@ -909,8 +909,10 @@ function Guided({ exit, onBookSession }) {
   const [loading, setLoading] = useState(false);
   const [sessionError, setSessionError] = useState('');
   const [consents, setConsents] = useState([false, false, false, false]);
-  const [d, setD] = useState({
-    name: '', email: '', phone: '',
+  const [d, setD] = useState(() => ({
+    name: profile?.name || user?.name || user?.full_name || '',
+    email: profile?.email || user?.email || '',
+    phone: user?.phone_number || user?.phoneNumber || user?.phone || '',
     age: '', gender: '', genderOther: '',
     occupation: '', occupationOther: '', city: '', living: '', livingOther: '',
     reason: '', concerns: [], concernSeverity: {}, concernsOther: '',
@@ -923,7 +925,7 @@ function Guided({ exit, onBookSession }) {
     therapistGender: '', budget: '', frequency: '',
     styleStructure: '', stylePace: '', styleLead: '', termApproach: '',
     finalNotes: '',
-  });
+  }));
 
   useEffect(() => {
     let isMounted = true;
@@ -2070,14 +2072,20 @@ function Guided({ exit, onBookSession }) {
   );
 }
 
-function Team({ exit }) {
+function Team({ exit, user, profile }) {
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sessionError, setSessionError] = useState('');
   const [therapySessionId, setTherapySessionId] = useState(null);
   const [safety, setSafety] = useState({});
-  const [form, setForm] = useState({ name: '', email: '', phone: '', reason: '', callback: '' });
+  const [form, setForm] = useState(() => ({
+    name: profile?.name || user?.name || user?.full_name || '',
+    email: profile?.email || user?.email || '',
+    phone: user?.phone_number || user?.phoneNumber || user?.phone || '',
+    reason: '',
+    callback: '',
+  }));
 
   const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -2418,9 +2426,9 @@ export default function TherapyPage({ user, profile, onSignOut }) {
         </div>
       )}
 
-      {journey === 'conversation' && <Conversation exit={() => setJourney(null)} />}
-      {journey === 'guided' && <Guided exit={() => setJourney(null)} onBookSession={handleStartBooking} />}
-      {journey === 'team' && <Team exit={() => setJourney(null)} />}
+      {journey === 'conversation' && <Conversation exit={() => setJourney(null)} user={user} profile={profile} />}
+      {journey === 'guided' && <Guided exit={() => setJourney(null)} onBookSession={handleStartBooking} user={user} profile={profile} />}
+      {journey === 'team' && <Team exit={() => setJourney(null)} user={user} profile={profile} />}
 
       <TherapyBookingFlow
         isOpen={bookingFlowOpen}

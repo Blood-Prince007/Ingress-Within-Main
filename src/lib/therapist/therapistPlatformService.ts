@@ -101,26 +101,53 @@ export class TherapistPlatformService {
       ...answers,
     };
 
+    const draftEmail = mergedAnswers.contact_email || mergedAnswers.email;
+    let normalizedDraftEmail: string | null = null;
+    if (draftEmail && typeof draftEmail === 'string' && draftEmail.trim()) {
+      const val = validateAndNormalizeEmail(draftEmail.trim());
+      if (val.valid && val.normalizedEmail) {
+        normalizedDraftEmail = val.normalizedEmail;
+        mergedAnswers.contact_email = normalizedDraftEmail;
+        mergedAnswers.email = normalizedDraftEmail;
+      }
+    }
+
     const mergedDocuments = documents.length > 0 ? documents : (existingApp?.documents || []);
+
+    const appUpsertPayload: Record<string, any> = {
+      therapist_account_id: therapistAccountId,
+      step: Math.max(1, Math.min(11, step)),
+      answers: mergedAnswers,
+      documents: mergedDocuments,
+      updated_at: new Date().toISOString(),
+    };
+    if (normalizedDraftEmail) {
+      appUpsertPayload.contact_email = normalizedDraftEmail;
+    }
 
     const { data, error } = await supabase
       .from('therapist_applications')
-      .upsert(
-        {
-          therapist_account_id: therapistAccountId,
-          step: Math.max(1, Math.min(11, step)),
-          answers: mergedAnswers,
-          documents: mergedDocuments,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'therapist_account_id' }
-      )
+      .upsert(appUpsertPayload, { onConflict: 'therapist_account_id' })
       .select('*')
       .single();
 
     if (error) {
       console.error('[TherapistPlatformService] saveOnboardingDraft failed:', error);
       throw new Error('Failed to save onboarding progress.');
+    }
+
+    if (normalizedDraftEmail) {
+      try {
+        await supabase
+          .from('therapist_profiles')
+          .update({
+            contact_email: normalizedDraftEmail,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('therapist_account_id', therapistAccountId);
+      } catch (profileEmailSyncErr) {
+        console.warn('[TherapistPlatformService] saveOnboardingDraft profile email sync notice:', profileEmailSyncErr);
+      }
     }
 
     return data;
@@ -192,6 +219,7 @@ export class TherapistPlatformService {
       .upsert(
         {
           therapist_account_id: therapistAccountId,
+          contact_email: normalizedEmail,
           step: 10,
           answers: mergedAnswers,
           documents: persistedDocuments,
@@ -868,9 +896,12 @@ export class TherapistPlatformService {
       const sessionIds = Array.from(new Set(matches.map((m: any) => m.therapy_session_id).filter(Boolean)));
       const userIds = Array.from(new Set(matches.map((m: any) => m.user_id).filter(Boolean)));
 
-      const [intakesRes, sessionsRes, usersRes] = await Promise.all([
+      const [intakesRes, userIntakesRes, sessionsRes, usersRes] = await Promise.all([
         sessionIds.length > 0
           ? supabase.from('therapy_intakes').select('*').in('therapy_session_id', sessionIds)
+          : { data: [] },
+        userIds.length > 0
+          ? supabase.from('therapy_intakes').select('*').in('user_id', userIds)
           : { data: [] },
         sessionIds.length > 0
           ? supabase.from('therapy_sessions').select('*').in('id', sessionIds)
@@ -883,6 +914,9 @@ export class TherapistPlatformService {
       const intakesBySessionId = new Map(
         (intakesRes.data || []).map((i: any) => [i.therapy_session_id, i])
       );
+      const intakesByUserId = new Map(
+        (userIntakesRes.data || []).map((i: any) => [i.user_id, i])
+      );
       const sessionsById = new Map(
         (sessionsRes.data || []).map((s: any) => [s.id, s])
       );
@@ -891,7 +925,7 @@ export class TherapistPlatformService {
       );
 
       return matches.map((m: any) => {
-        const intake = intakesBySessionId.get(m.therapy_session_id);
+        const intake = intakesBySessionId.get(m.therapy_session_id) || intakesByUserId.get(m.user_id);
         const session = sessionsById.get(m.therapy_session_id);
         const user = usersById.get(m.user_id);
 
@@ -1114,36 +1148,47 @@ export class TherapistPlatformService {
       }
 
       if (acceptSuccess) {
-        // Dispatch first-session operational coordination & client notification emails
+        // Dispatch first-session operational coordination, client notice & therapist confirmation emails
         try {
-          const [clientUserRes, clientIntakeRes, therapistProfileRes] = await Promise.all([
+          const [clientUserRes, clientIntakeRes, clientUserIntakeRes, therapistProfileRes, therapistAppRes] = await Promise.all([
             supabase.from('users').select('*').eq('id', match.user_id).maybeSingle(),
             match.therapy_session_id
               ? supabase.from('therapy_intakes').select('*').eq('therapy_session_id', match.therapy_session_id).maybeSingle()
               : { data: null },
+            supabase.from('therapy_intakes').select('*').eq('user_id', match.user_id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
             supabase.from('therapist_profiles').select('full_name, contact_email').eq('therapist_account_id', therapistAccountId).maybeSingle(),
+            supabase.from('therapist_applications').select('contact_email, answers').eq('therapist_account_id', therapistAccountId).maybeSingle(),
           ]);
 
           const clientUser = clientUserRes.data;
-          const clientIntake = clientIntakeRes.data;
-          const therapistProfile = therapistProfileRes.data;
+          const clientIntake = clientIntakeRes?.data || clientUserIntakeRes?.data;
+          const therapistProfile = therapistProfileRes?.data;
+          const therapistApp = therapistAppRes?.data;
 
-          const clientEmail = clientIntake?.email || clientUser?.email;
-          const clientName = clientIntake?.full_name || clientUser?.full_name || clientUser?.name || 'Client';
-          const therapistName = therapistProfile?.full_name || 'Your Therapist';
+          const clientEmail = clientIntake?.email || (clientIntake?.contact_preferences as any)?.email || clientUser?.email;
+          const clientName = clientIntake?.full_name || clientUser?.full_name || clientUser?.name || 'Valued Client';
+          const therapistName = therapistProfile?.full_name || (therapistApp?.answers as any)?.fullName || 'Your Therapist';
+          const therapistEmail = therapistProfile?.contact_email || therapistApp?.contact_email || (therapistApp?.answers as any)?.contact_email || (therapistApp?.answers as any)?.email;
 
-          if (clientEmail) {
-            await EmailService.notifyTherapistAccepted({
-              matchId,
-              therapistId: therapistAccountId,
-              therapistName,
-              clientId: match.user_id,
-              clientEmail,
-              clientName,
-            });
-          }
+          console.log('[TherapistPlatformService] Dispatched accept notifications:', {
+            matchId,
+            clientEmail: clientEmail || '(none found)',
+            therapistEmail: therapistEmail || '(none found)',
+            clientName,
+            therapistName,
+          });
+
+          await EmailService.notifyTherapistAccepted({
+            matchId,
+            therapistId: therapistAccountId,
+            therapistName,
+            therapistEmail,
+            clientId: match.user_id,
+            clientEmail,
+            clientName,
+          });
         } catch (emailErr) {
-          console.warn('[TherapistPlatformService] Email notification on accept failed gracefully:', emailErr);
+          console.warn('[TherapistPlatformService] Email notification on accept notice:', emailErr);
         }
 
         return {
@@ -3422,6 +3467,7 @@ export class TherapistPlatformService {
     const ALLOWED_PROFILE_KEYS = new Set([
       'full_name',
       'title',
+      'contact_email',
       'bio',
       'qualification',
       'experience_years',
@@ -3437,6 +3483,26 @@ export class TherapistPlatformService {
       'timezone',
       'notification_preferences',
     ]);
+
+    // Normalize email field if passed as 'email'
+    if (payload.contact_email === undefined && payload.email !== undefined) {
+      payload.contact_email = payload.email;
+    }
+
+    if (payload.contact_email !== undefined) {
+      if (payload.contact_email === null || String(payload.contact_email).trim() === '') {
+        payload.contact_email = null;
+      } else {
+        const valRes = validateAndNormalizeEmail(String(payload.contact_email).trim());
+        if (!valRes.valid) {
+          const err: any = new Error(valRes.error || 'Please provide a valid email address.');
+          err.code = 'INVALID_CONTACT_EMAIL';
+          err.status = 400;
+          throw err;
+        }
+        payload.contact_email = valRes.normalizedEmail;
+      }
+    }
 
     // 2. Strict Input Validation
     if (payload.full_name !== undefined) {
@@ -3559,6 +3625,33 @@ export class TherapistPlatformService {
         therapist_account_id: therapistAccountId,
         ...sanitizedUpdates,
       };
+    }
+
+    if (sanitizedUpdates.contact_email !== undefined) {
+      try {
+        const { data: existingApp } = await supabase
+          .from('therapist_applications')
+          .select('answers')
+          .eq('therapist_account_id', therapistAccountId)
+          .maybeSingle();
+
+        const updatedAnswers = {
+          ...(existingApp?.answers || {}),
+          contact_email: sanitizedUpdates.contact_email,
+          email: sanitizedUpdates.contact_email,
+        };
+
+        await supabase
+          .from('therapist_applications')
+          .update({
+            contact_email: sanitizedUpdates.contact_email,
+            answers: updatedAnswers,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('therapist_account_id', therapistAccountId);
+      } catch (appEmailSyncErr) {
+        console.warn('[TherapistPlatformService] updateProfile app email sync notice:', appEmailSyncErr);
+      }
     }
 
     return updated;
