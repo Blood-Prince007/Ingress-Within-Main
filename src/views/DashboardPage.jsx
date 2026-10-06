@@ -73,6 +73,7 @@ export default function DashboardPage({ user, profile, onSignOut }) {
   const [assessmentAnswers, setAssessmentAnswers] = useState({ q1: '', q2: '', q3: '' });
   const [isSubmittingAssessment, setIsSubmittingAssessment] = useState(false);
   const [assessmentError, setAssessmentError] = useState(null);
+  const [therapyModalOpen, setTherapyModalOpen] = useState(false);
 
   const loadCycleDetails = async (cycleId) => {
     try {
@@ -510,6 +511,47 @@ export default function DashboardPage({ user, profile, onSignOut }) {
           </p>
         </section>
 
+        {/* Sleek Upcoming Clinical Support Announcement Strip */}
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          onClick={() => setTherapyModalOpen(true)}
+          className="w-full bg-white/90 hover:bg-white border border-primary/10 hover:border-accent/40 rounded-xl px-3.5 sm:px-4 py-2.5 flex items-center justify-between gap-3 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setTherapyModalOpen(true);
+            }
+          }}
+          title="Click to view details about upcoming 1-on-1 Clinical Support"
+        >
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0 text-accent group-hover:scale-105 transition-transform">
+              <HeartHandshake className="w-3.5 h-3.5" />
+            </div>
+            
+            <div className="flex items-center gap-2 truncate">
+              <span className="font-semibold text-xs sm:text-[13px] text-primary shrink-0">
+                1-on-1 Clinical Support
+              </span>
+              <span className="text-primary/20 hidden md:inline">•</span>
+              <span className="text-xs text-mid font-light truncate hidden sm:inline">
+                Direct matching with licensed therapists is launching soon
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[9px] font-bold text-accent uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20">
+              Coming Soon
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-mid group-hover:text-accent group-hover:translate-x-0.5 transition-all" />
+          </div>
+        </motion.div>
+
         {/* Current Cycle Card */}
         {cycleInfo && (
           <div className="bg-white border border-primary/10 rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between text-left shadow-xs gap-5">
@@ -577,45 +619,7 @@ export default function DashboardPage({ user, profile, onSignOut }) {
           }}
         />
 
-        {/* Therapy Module — Coming Soon for Launch */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="w-full"
-          >
-            <div className="bg-white border border-primary/10 rounded-2xl p-6 shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-                
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-primary/5 flex items-center justify-center shrink-0">
-                    <HeartHandshake className="w-5 h-5 text-primary" />
-                  </div>
 
-                  <div>
-                    <span className="text-[9px] font-bold text-accent uppercase tracking-widest px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20">
-                      Therapists — Coming Soon
-                    </span>
-
-                    <h2 className="font-serif text-xl text-primary font-normal mt-2">
-                      Professional 1-on-1 Clinical Support
-                    </h2>
-
-                    <p className="text-sm text-mid font-light leading-relaxed mt-1 max-w-2xl">
-                      Direct matching with licensed, culturally attuned therapists is launching soon. In the meantime, all self-help modules, techniques, and writing tools are fully active.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="shrink-0 flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/10 text-mid text-xs font-semibold uppercase tracking-wider">
-                    Coming Soon
-                  </span>
-                </div>
-
-              </div>
-            </div>
-          </motion.div>
 
         {/* Responsive Desktop 3-Column Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
@@ -1554,6 +1558,79 @@ export default function DashboardPage({ user, profile, onSignOut }) {
         isSubmitting={isSubmittingAssessment}
         error={assessmentError}
       />
+
+      {/* 1-ON-1 CLINICAL SUPPORT PREVIEW MODAL */}
+      <AnimatePresence>
+        {therapyModalOpen && (
+          <div className="fixed inset-0 bg-[#1E2A2E]/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 space-y-5 relative shadow-xl border border-primary/10 text-left"
+            >
+              <button
+                onClick={() => setTherapyModalOpen(false)}
+                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-primary/5 hover:bg-primary/10 flex items-center justify-center text-mid hover:text-primary transition-all cursor-pointer border-none"
+                aria-label="Close modal"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+                    <HeartHandshake className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-accent uppercase tracking-widest px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20">
+                      Therapists — Coming Soon
+                    </span>
+                  </div>
+                </div>
+
+                <h3 className="font-serif text-xl sm:text-2xl text-primary font-normal">
+                  Professional 1-on-1 Clinical Support
+                </h3>
+
+                <p className="text-sm text-mid font-light leading-relaxed">
+                  Direct matching with licensed, culturally attuned therapists is launching soon. In the meantime, all self-help modules, techniques, and writing tools are fully active.
+                </p>
+              </div>
+
+              <div className="bg-primary/[0.03] border border-primary/10 rounded-xl p-4 space-y-2.5">
+                <div className="text-[10px] font-bold text-secondary uppercase tracking-wider">
+                  What to expect at launch
+                </div>
+                <ul className="text-xs text-mid space-y-2 list-none p-0 m-0">
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent font-bold mt-0.5">•</span>
+                    <span>Direct matching with certified, culturally attuned therapists.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent font-bold mt-0.5">•</span>
+                    <span>Integrated homework & reflection continuity between sessions.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-accent font-bold mt-0.5">•</span>
+                    <span>Your private self-work journals remain strictly confidential.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setTherapyModalOpen(false)}
+                  className="px-5 py-2.5 bg-primary text-white hover:bg-primary/90 text-xs font-semibold uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-xs border-none"
+                >
+                  Got It
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Save Error Warning Popup Modal */}
       <AnimatePresence>
