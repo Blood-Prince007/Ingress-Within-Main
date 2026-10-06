@@ -20,9 +20,6 @@ export default function ClientTherapySessionsView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Calendar sync state
-  const [calConnected, setCalConnected] = useState(false);
-  const [calEmail, setCalEmail] = useState(null);
 
   // Reschedule state
   const [rescheduleModalAppt, setRescheduleModalAppt] = useState(null);
@@ -62,19 +59,11 @@ export default function ClientTherapySessionsView() {
     setLoading(true);
     setError(null);
     try {
-      const [sessRes, calRes] = await Promise.all([
-        fetch('/api/therapy/client/sessions'),
-        fetch('/api/calendar/google/status'),
-      ]);
+      const sessRes = await fetch('/api/therapy/client/sessions');
 
       if (sessRes.ok) {
         const json = await sessRes.json();
         setSessions(json.sessions || []);
-      }
-      if (calRes.ok) {
-        const calJson = await calRes.json();
-        setCalConnected(Boolean(calJson.connected));
-        setCalEmail(calJson.googleEmail);
       }
     } catch (err) {
       setError(err.message || 'Failed to load sessions');
@@ -108,28 +97,6 @@ export default function ClientTherapySessionsView() {
       .finally(() => setLoadingSlots(false));
   }, [rescheduleModalAppt]);
 
-  const handleConnectGoogleCal = async () => {
-    try {
-      const res = await fetch('/api/calendar/google/connect?format=json', {
-        headers: { Accept: 'application/json' },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (data.simulated) {
-        await fetchSessions();
-        alert('Google Calendar connected successfully!');
-        return;
-      }
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      if (!res.ok) {
-        alert(data.error?.message || 'Failed to initiate Google Calendar connection.');
-      }
-    } catch {
-      alert('Failed to initiate Google Calendar connection. Please check your network or server configuration.');
-    }
-  };
 
   const handleRetryCalendarSync = async (appointmentId) => {
     setSyncingAppointmentId(appointmentId);
@@ -216,38 +183,15 @@ export default function ClientTherapySessionsView() {
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-6">
+      <div className="border-b border-gray-200 pb-6">
         <div>
           <span className="text-xs uppercase tracking-wider font-semibold text-emerald-700">
-            Care & Consultations
+            Care &amp; Consultations
           </span>
           <h1 className="text-2xl font-serif text-gray-900 mt-1">Your Therapy Sessions</h1>
           <p className="text-xs text-gray-500 mt-1">
-            Manage your scheduled consultations, join Google Meet, and view calendar synchronization.
+            Manage your scheduled consultations and join your telehealth sessions.
           </p>
-        </div>
-
-        {/* Google Calendar Connection Card */}
-        <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs">
-          {calConnected ? (
-            <div className="flex items-center gap-2 text-emerald-800">
-              <CheckCircle2 size={16} className="text-emerald-600" />
-              <div>
-                <p className="font-medium">Google Calendar Connected</p>
-                <p className="text-[10px] text-gray-500">{calEmail}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <span className="text-gray-600">Sync sessions to your Google Calendar</span>
-              <button
-                onClick={handleConnectGoogleCal}
-                className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg font-medium text-gray-800 hover:bg-gray-100 transition-colors shadow-2xs"
-              >
-                Connect Calendar
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
