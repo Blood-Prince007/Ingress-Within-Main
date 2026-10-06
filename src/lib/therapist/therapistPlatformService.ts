@@ -292,7 +292,20 @@ export class TherapistPlatformService {
       broad_specialty_tags: broadSpecialtyTags,
       modalities,
       languages: Array.isArray(mergedAnswers.languages) ? mergedAnswers.languages : [],
-      session_formats: Array.isArray(mergedAnswers.sessionFormats) ? mergedAnswers.sessionFormats : [],
+      session_formats: (() => {
+        const raw = Array.isArray(mergedAnswers.sessionFormats) ? mergedAnswers.sessionFormats : [];
+        const norm = Array.from(
+          new Set(
+            raw.flatMap((f: any) => {
+              const s = String(f || '').trim().toLowerCase().replace(/-/g, '_');
+              if (s === 'either' || s === 'both') return ['telehealth', 'in_person'];
+              if (s === 'telehealth' || s === 'in_person') return [s];
+              return [];
+            })
+          )
+        );
+        return norm.length > 0 ? norm : ['telehealth'];
+      })(),
       profile_image_url: mergedAnswers.photo?.path || existing.profile?.profile_image_url || null,
       city: mergedAnswers.city || null,
       state: mergedAnswers.state || null,
@@ -3566,12 +3579,42 @@ export class TherapistPlatformService {
     }
 
     if (payload.session_formats !== undefined) {
-      if (!Array.isArray(payload.session_formats) || payload.session_formats.some((f: any) => !['telehealth', 'in_person'].includes(f))) {
+      if (!Array.isArray(payload.session_formats)) {
         const err: any = new Error("Session formats must only contain 'telehealth' or 'in_person'.");
         err.code = 'INVALID_SESSION_FORMATS';
         err.status = 400;
         throw err;
       }
+
+      const normalizedFormats: string[] = [];
+      for (const f of payload.session_formats) {
+        if (typeof f !== 'string') {
+          const err: any = new Error("Session formats must only contain 'telehealth' or 'in_person'.");
+          err.code = 'INVALID_SESSION_FORMATS';
+          err.status = 400;
+          throw err;
+        }
+        const clean = f.trim().toLowerCase().replace(/-/g, '_');
+        if (clean === 'either' || clean === 'both') {
+          normalizedFormats.push('telehealth', 'in_person');
+        } else if (clean === 'telehealth' || clean === 'in_person') {
+          normalizedFormats.push(clean);
+        } else {
+          const err: any = new Error("Session formats must only contain 'telehealth' or 'in_person'.");
+          err.code = 'INVALID_SESSION_FORMATS';
+          err.status = 400;
+          throw err;
+        }
+      }
+
+      const unique = Array.from(new Set(normalizedFormats));
+      if (unique.length === 0) {
+        const err: any = new Error("Session formats must only contain 'telehealth' or 'in_person'.");
+        err.code = 'INVALID_SESSION_FORMATS';
+        err.status = 400;
+        throw err;
+      }
+      payload.session_formats = unique;
     }
 
     if (payload.specializations !== undefined) {

@@ -157,7 +157,20 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
           experienceYears: json.profile?.experience_years ?? 0,
           specializations: Array.isArray(json.profile?.specializations) ? json.profile.specializations : [],
           languages: Array.isArray(json.profile?.languages) ? json.profile.languages : ['English', 'Hindi'],
-          sessionFormats: Array.isArray(json.profile?.session_formats) ? json.profile.session_formats : ['telehealth'],
+          sessionFormats: (() => {
+            const raw = Array.isArray(json.profile?.session_formats) ? json.profile.session_formats : ['telehealth'];
+            const norm = Array.from(
+              new Set(
+                raw.flatMap((f) => {
+                  const s = String(f || '').trim().toLowerCase().replace(/-/g, '_');
+                  if (s === 'either' || s === 'both') return ['telehealth', 'in_person'];
+                  if (s === 'telehealth' || s === 'in_person') return [s];
+                  return [];
+                })
+              )
+            );
+            return norm.length > 0 ? norm : ['telehealth'];
+          })(),
           practiceName: json.profile?.practice_name || '',
           practiceAddress: json.profile?.practice_address || '',
           city: json.profile?.city || '',
@@ -255,6 +268,18 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
     setErrorMessage('');
 
     try {
+      const cleanFormats = Array.from(
+        new Set(
+          (Array.isArray(formData.sessionFormats) ? formData.sessionFormats : ['telehealth']).flatMap((f) => {
+            const s = String(f || '').trim().toLowerCase().replace(/-/g, '_');
+            if (s === 'either' || s === 'both') return ['telehealth', 'in_person'];
+            if (s === 'telehealth' || s === 'in_person') return [s];
+            return [];
+          })
+        )
+      );
+      const finalFormats = cleanFormats.length > 0 ? cleanFormats : ['telehealth'];
+
       const res = await fetch('/api/therapist/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -267,7 +292,7 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
           experience_years: Number(formData.experienceYears),
           specializations: formData.specializations,
           languages: formData.languages,
-          session_formats: formData.sessionFormats,
+          session_formats: finalFormats,
           practice_name: formData.practiceName.trim(),
           practice_address: formData.practiceAddress.trim(),
           city: formData.city.trim(),
@@ -283,7 +308,9 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
       }
 
       setProfile(data.profile);
-      setInitialFormData({ ...formData });
+      const syncedForm = { ...formData, sessionFormats: finalFormats };
+      setFormData(syncedForm);
+      setInitialFormData(syncedForm);
       setSaveNotice('Profile updated successfully.');
       setTimeout(() => setSaveNotice(''), 3500);
     } catch (err) {
@@ -449,6 +476,9 @@ export default function TherapistProfileView({ onNavigateTab, onLogout }) {
   const toggleArrayItem = (key, item) => {
     setFormData((prev) => {
       const current = prev[key] || [];
+      if (key === 'sessionFormats' && current.includes(item) && current.length <= 1) {
+        return prev;
+      }
       const updated = current.includes(item) ? current.filter((x) => x !== item) : [...current, item];
       return { ...prev, [key]: updated };
     });

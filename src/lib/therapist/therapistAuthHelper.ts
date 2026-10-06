@@ -31,6 +31,7 @@ export interface AuthenticatedTherapistProfileData {
   id: string;
   phone_number: string;
   full_name: string;
+  contact_email?: string | null;
   title?: string;
   bio?: string;
   qualification?: string;
@@ -174,13 +175,27 @@ export async function requireTherapistProfile(request: NextRequest): Promise<Aut
     id: profile.id,
     phone_number: profile.phone || account.phone_number,
     full_name: profile.full_name || '',
+    contact_email: profile.contact_email || null,
     title: profile.title || 'Consultant Psychologist',
     bio: profile.bio || '',
     qualification: profile.qualification || '',
     experience_years: profile.experience_years ?? 0,
     specializations: Array.isArray(profile.specializations) ? profile.specializations : [],
     languages: Array.isArray(profile.languages) ? profile.languages : ['English', 'Hindi'],
-    session_formats: Array.isArray(profile.session_formats) ? profile.session_formats : ['telehealth'],
+    session_formats: (() => {
+      const raw = Array.isArray(profile.session_formats) ? profile.session_formats : ['telehealth'];
+      const norm = Array.from(
+        new Set<string>(
+          raw.flatMap((f: any): string[] => {
+            const s = String(f || '').trim().toLowerCase().replace(/-/g, '_');
+            if (s === 'either' || s === 'both') return ['telehealth', 'in_person'];
+            if (s === 'telehealth' || s === 'in_person') return [s];
+            return [];
+          })
+        )
+      );
+      return (norm.length > 0 ? norm : ['telehealth']) as string[];
+    })(),
     availability_hours: profile.availability_hours || {},
     profile_image_url: profile.profile_image_url || null,
     city: profile.city || null,
@@ -202,6 +217,7 @@ export async function requireTherapistProfile(request: NextRequest): Promise<Aut
     id: account.id,
     phone_number: account.phone_number,
     full_name: '',
+    contact_email: null,
     title: 'Consultant Psychologist',
     bio: '',
     qualification: '',
