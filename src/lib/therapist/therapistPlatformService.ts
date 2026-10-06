@@ -1064,7 +1064,7 @@ export class TherapistPlatformService {
   static async handleRequestAction(
     therapistAccountId: string,
     matchId: string,
-    action: 'accept' | 'decline',
+    action: 'accept' | 'decline' | 'resend_email',
     reason?: string
   ) {
     if (!therapistAccountId || !matchId) {
@@ -1074,8 +1074,8 @@ export class TherapistPlatformService {
       throw err;
     }
 
-    if (action !== 'accept' && action !== 'decline') {
-      const err: any = new Error(`Invalid action: ${action}. Action must be 'accept' or 'decline'.`);
+    if (action !== 'accept' && action !== 'decline' && action !== 'resend_email') {
+      const err: any = new Error(`Invalid action: ${action}. Action must be 'accept', 'decline', or 'resend_email'.`);
       err.code = 'INVALID_ACTION';
       err.status = 400;
       throw err;
@@ -1100,6 +1100,56 @@ export class TherapistPlatformService {
       err.code = 'REQUEST_FORBIDDEN';
       err.status = 403;
       throw err;
+    }
+
+    // 1.5 Handle RESEND_EMAIL Action
+    if (action === 'resend_email') {
+      const [clientUserRes, clientIntakeRes, clientUserIntakeRes, therapistProfileRes, therapistAppRes] = await Promise.all([
+        supabase.from('users').select('*').eq('id', match.user_id).maybeSingle(),
+        match.therapy_session_id
+          ? supabase.from('therapy_intakes').select('*').eq('therapy_session_id', match.therapy_session_id).maybeSingle()
+          : { data: null },
+        supabase.from('therapy_intakes').select('*').eq('user_id', match.user_id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('therapist_profiles').select('full_name, contact_email').eq('therapist_account_id', therapistAccountId).maybeSingle(),
+        supabase.from('therapist_applications').select('contact_email, answers').eq('therapist_account_id', therapistAccountId).maybeSingle(),
+      ]);
+
+      const clientUser = clientUserRes.data;
+      const clientIntake = clientIntakeRes?.data || clientUserIntakeRes?.data;
+      const therapistProfile = therapistProfileRes?.data;
+      const therapistApp = therapistAppRes?.data;
+
+      const clientEmail = clientIntake?.email || (clientIntake?.contact_preferences as any)?.email || (clientIntake?.answers as any)?.email || clientUser?.email;
+      const clientName = clientIntake?.full_name || clientUser?.full_name || clientUser?.name || 'Valued Client';
+      const therapistName = therapistProfile?.full_name || (therapistApp?.answers as any)?.fullName || 'Your Therapist';
+      let therapistEmail = therapistProfile?.contact_email || therapistApp?.contact_email || (therapistApp?.answers as any)?.contact_email || (therapistApp?.answers as any)?.email;
+
+      if (!therapistEmail) {
+        const { data: tAcc } = await supabase.from('therapist_accounts').select('auth_user_id').eq('id', therapistAccountId).maybeSingle();
+        if (tAcc?.auth_user_id) {
+          const { data: u } = await supabase.from('users').select('email').eq('id', tAcc.auth_user_id).maybeSingle();
+          if (u?.email) therapistEmail = u.email;
+        }
+      }
+
+      await EmailService.notifyTherapistAccepted({
+        matchId,
+        therapistId: therapistAccountId,
+        therapistName,
+        therapistEmail,
+        clientId: match.user_id,
+        clientEmail,
+        clientName,
+      });
+
+      return {
+        success: true,
+        action: 'resend_email',
+        matchId,
+        clientEmail,
+        therapistEmail,
+        message: 'Connection confirmation emails resent successfully to client and therapist.',
+      };
     }
 
     // 2. Handle ACCEPT Action via True PostgreSQL Database Transaction

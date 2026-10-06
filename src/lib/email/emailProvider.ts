@@ -1,4 +1,4 @@
-import { getEmailConfig } from './emailConfig';
+import { getEmailConfig, readFreshEnvKey } from './emailConfig';
 
 export interface EmailSendOptions {
   to: string;
@@ -108,6 +108,32 @@ export class RestEmailProvider implements IEmailProvider {
       }
 
       if (!res.ok) {
+        if (res.status === 401) {
+          const freshKey = readFreshEnvKey('RESEND_API_KEY');
+          if (freshKey && freshKey !== this.apiKey) {
+            console.log('[RestEmailProvider] Reloaded updated RESEND_API_KEY from disk, retrying delivery...');
+            this.apiKey = freshKey;
+            const retryRes = await fetch(this.endpoint, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${this.apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(payload),
+            });
+            if (retryRes.ok) {
+              const retryJson = await retryRes.json().catch(() => ({}));
+              console.log(`[RestEmailProvider:Success] Email accepted by Resend API on retry. id=${retryJson?.id || '(unknown)'} to=${options.to}`);
+              return {
+                success: true,
+                messageId: retryJson?.id || null,
+                provider: 'resend',
+                statusCode: retryRes.status,
+              };
+            }
+          }
+        }
+
         const errorMsg =
           responseJson?.message ||
           responseJson?.error?.message ||

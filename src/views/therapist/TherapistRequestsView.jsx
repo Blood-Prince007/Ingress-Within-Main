@@ -15,7 +15,8 @@ import {
   HeartHandshake,
   Check,
   RefreshCw,
-  MessageSquare
+  MessageSquare,
+  Mail,
 } from 'lucide-react';
 
 export default function TherapistRequestsView({ onNavigate }) {
@@ -68,7 +69,11 @@ export default function TherapistRequestsView({ onNavigate }) {
       const json = await res.json().catch(() => ({}));
 
       if (res.ok && json.success) {
-        const text = action === 'accept' ? 'Client request accepted' : 'Client request declined';
+        const text = action === 'accept'
+          ? 'Client request accepted and notification emails sent!'
+          : action === 'resend_email'
+          ? 'Confirmation emails successfully sent to client and therapist!'
+          : 'Client request declined';
         setFeedbackMessage({ type: 'success', text });
         setTimeout(() => setFeedbackMessage(null), 5000);
         setSelectedRequest(null);
@@ -355,9 +360,20 @@ export default function TherapistRequestsView({ onNavigate }) {
                   )}
 
                   {isSelected && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#4E7A66]/10 text-[#4E7A66] text-xs font-medium">
-                      <CheckCircle2 size={13} /> Active Care
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#4E7A66]/10 text-[#4E7A66] text-xs font-medium">
+                        <CheckCircle2 size={13} /> Active Care
+                      </span>
+                      <button
+                        onClick={() => handleAction(req.id, 'resend_email')}
+                        disabled={actioningId === req.id}
+                        title="Resend email notifications to client and therapist"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#132A24]/15 text-xs text-[#132A24]/75 hover:bg-[#132A24]/5 hover:text-[#132A24] transition-colors cursor-pointer disabled:opacity-50 font-medium"
+                      >
+                        <Mail size={12} />
+                        {actioningId === req.id ? 'Sending...' : 'Resend Email'}
+                      </button>
+                    </div>
                   )}
 
                   {isDeclined && (
@@ -566,6 +582,17 @@ export default function TherapistRequestsView({ onNavigate }) {
                     Accept Request
                   </button>
                 </div>
+              )}
+
+              {isReqAccepted(selectedRequest.matchStatus) && (
+                <button
+                  onClick={() => handleAction(selectedRequest.id, 'resend_email')}
+                  disabled={actioningId === selectedRequest.id}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#132A24] text-white text-xs font-semibold hover:bg-[#132A24]/90 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  <Mail size={13} />
+                  {actioningId === selectedRequest.id ? 'Sending...' : 'Resend Confirmation Email'}
+                </button>
               )}
             </div>
           </div>

@@ -13,9 +13,9 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const { action, reason } = body;
 
-    if (action !== 'accept' && action !== 'decline') {
+    if (action !== 'accept' && action !== 'decline' && action !== 'resend_email') {
       return NextResponse.json(
-        { error: { code: 'INVALID_ACTION', message: "Action must be 'accept' or 'decline'." } },
+        { error: { code: 'INVALID_ACTION', message: "Action must be 'accept', 'decline', or 'resend_email'." } },
         { status: 400 }
       );
     }

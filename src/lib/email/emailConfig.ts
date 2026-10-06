@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 /**
  * Ingress Within — Transactional Email Configuration
  * Centralized, fail-safe environment variable resolution, sender parsing, and mode control.
@@ -16,12 +19,28 @@ export interface EmailConfig {
   allowMockEmail: boolean;
 }
 
+export function readFreshEnvKey(key: string): string | null {
+  try {
+    const envPath = path.resolve(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      const match = content.match(new RegExp(`^${key}=(.*)$`, 'm'));
+      if (match && match[1]) {
+        return match[1].trim().replace(/^["']|["']$/g, '');
+      }
+    }
+  } catch {}
+  return null;
+}
+
 export function getEmailConfig(): EmailConfig {
   const isProduction = process.env.NODE_ENV === 'production';
   const isTest = process.env.NODE_ENV === 'test' || process.env.TEST_MODE === 'true';
 
-  const resendApiKey = process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.trim() : null;
-  const fromAddress = process.env.EMAIL_FROM ? process.env.EMAIL_FROM.trim() : 'care@ingresswithin.com';
+  const fileApiKey = readFreshEnvKey('RESEND_API_KEY');
+  const resendApiKey = (fileApiKey || process.env.RESEND_API_KEY)?.trim() || null;
+  const fileFrom = readFreshEnvKey('EMAIL_FROM');
+  const fromAddress = (fileFrom || process.env.EMAIL_FROM)?.trim() || 'contactus@ingresswithin.com';
   const fromName = process.env.EMAIL_FROM_NAME ? process.env.EMAIL_FROM_NAME.trim() : 'Ingress Within';
   const replyTo = process.env.EMAIL_REPLY_TO ? process.env.EMAIL_REPLY_TO.trim() : 'contactus@ingresswithin.com';
   
