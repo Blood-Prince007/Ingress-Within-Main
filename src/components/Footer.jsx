@@ -1,4 +1,3 @@
-import React from 'react';
 
 export default function Footer({ onOpenPolicy }) {
   const getCopyrightYear = () => {
@@ -59,7 +58,7 @@ export default function Footer({ onOpenPolicy }) {
               </svg>
             </a>
             <a
-              href="https://chat.whatsapp.com/"
+              href="https://chat.whatsapp.com/LEw8xXpBuRg2ZYzZR9FH7T"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="WhatsApp Community"

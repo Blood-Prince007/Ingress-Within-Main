@@ -67,7 +67,7 @@ export default function PublicFooter({ onSelectTab, onOpenPolicy }) {
                   </svg>
                 </a>
                 <a
-                  href="https://chat.whatsapp.com/"
+                  href="https://chat.whatsapp.com/LEw8xXpBuRg2ZYzZR9FH7T"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="WhatsApp Community"
@@ -142,7 +142,7 @@ export default function PublicFooter({ onSelectTab, onOpenPolicy }) {
             <ul className="space-y-2 text-xs font-zen text-[#8D98A3]">
               <li>
                 <a
-                  href="https://chat.whatsapp.com/"
+                  href="https://chat.whatsapp.com/LEw8xXpBuRg2ZYzZR9FH7T"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition-colors flex items-center gap-1.5"

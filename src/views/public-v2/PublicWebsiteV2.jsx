@@ -3970,7 +3970,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
                 </p>
                 <div className="pt-2">
                   <a
-                    href="https://chat.whatsapp.com/"
+                    href="https://chat.whatsapp.com/LEw8xXpBuRg2ZYzZR9FH7T"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-2.5 py-3.5 px-7 bg-[#162723] hover:bg-[#203631] text-white text-sm font-semibold rounded-full cursor-pointer transition-all hover:scale-[1.01] shadow-xs group"
@@ -3989,7 +3989,13 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
 
               {/* Right Column: QR Code to Join */}
               <div className="md:col-span-5 border-t md:border-t-0 md:border-l border-[#E7DECF] pt-6 md:pt-0 md:pl-8 lg:pl-10 flex flex-col items-center justify-center text-center">
-                <div className="p-2 sm:p-2.5 bg-white rounded-2xl border border-[#E7DECF] shadow-xs inline-block relative group">
+                <a
+                  href="https://chat.whatsapp.com/LEw8xXpBuRg2ZYzZR9FH7T"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 sm:p-2.5 bg-white rounded-2xl border border-[#E7DECF] shadow-xs inline-block relative group hover:shadow-md hover:border-[#162723]/30 transition-all hover:scale-[1.02]"
+                  title="Scan with camera or click to join The Unsaid WhatsApp Community"
+                >
                   <div className="relative w-40 h-40 sm:w-44 sm:h-44 rounded-xl overflow-hidden bg-white flex items-center justify-center p-1">
                     <img
                       src="/whatsapp-community-qr.svg"
@@ -3997,7 +4003,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
                       className="w-full h-full object-contain"
                     />
                     {/* Centered WhatsApp icon badge */}
-                    <div className="absolute inset-0 m-auto w-10 h-10 rounded-full bg-white shadow-md border border-[#E7DECF]/80 flex items-center justify-center p-1.5 pointer-events-none">
+                    <div className="absolute inset-0 m-auto w-10 h-10 rounded-full bg-white shadow-md border border-[#E7DECF]/80 flex items-center justify-center p-1.5 pointer-events-none group-hover:scale-110 transition-transform">
                       <svg
                         className="w-full h-full text-[#25D366] fill-current"
                         viewBox="0 0 24 24"
@@ -4006,13 +4012,13 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
                       </svg>
                     </div>
                   </div>
-                </div>
+                </a>
                 <div className="pt-3 space-y-1">
                   <span className="font-mono-code text-[10.5px] uppercase tracking-wider text-[#795663] font-semibold block">
-                    SCAN TO JOIN
+                    SCAN OR TAP TO JOIN
                   </span>
                   <p className="font-zen text-xs text-[#5C6873]">
-                    Scan with your phone to open WhatsApp
+                    Scan with your phone or tap to open WhatsApp
                   </p>
                 </div>
               </div>
