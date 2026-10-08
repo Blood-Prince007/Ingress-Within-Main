@@ -169,8 +169,13 @@ export default function YearEndPortraitFlow({ instanceId, instance, onClose, onC
     return (
       <div className="fixed inset-0 z-50 bg-[#FAF9F6] flex flex-col font-sans overflow-y-auto">
         <div className="max-w-2xl w-full mx-auto my-auto p-6 sm:p-10 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-full bg-[#EBF0EE] flex items-center justify-center mb-6 text-[#4A6A64]">
-            <Compass className="w-7 h-7" />
+          <div className="flex items-center gap-2 mb-6">
+            <img 
+              src="/logo-mark-transparent.png" 
+              alt="Ingress Within" 
+              className="w-6 h-6 object-contain" 
+            />
+            <span className="font-serif font-semibold text-xs text-[#1E2A2E]">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
           </div>
 
           <span className="text-xs font-semibold text-[#7A8E85] uppercase tracking-wider mb-2">
@@ -332,6 +337,11 @@ export default function YearEndPortraitFlow({ instanceId, instance, onClose, onC
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
+          <img 
+            src="/logo-mark-transparent.png" 
+            alt="Ingress Within" 
+            className="w-5 h-5 object-contain flex-shrink-0" 
+          />
           <span className="text-xs font-medium text-[#7A8E85] uppercase tracking-wider">
             Year-End Self-Portrait
           </span>

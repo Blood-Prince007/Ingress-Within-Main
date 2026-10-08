@@ -196,13 +196,23 @@ export default function CostBenefitAuditFlow({ instance, instanceId, onClose, on
     return (
       <div className="fixed inset-0 z-50 bg-[#F4F6F5] flex flex-col justify-between p-6 md:p-12 font-sans overflow-y-auto">
         <div className="max-w-[620px] mx-auto w-full pt-4 space-y-6">
-          <button
-            onClick={onClose}
-            className="p-2 text-[#4A6A64] hover:text-[#1E2A2E] transition-colors rounded-full hover:bg-black/5"
-            aria-label="Close"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img 
+                src="/logo-mark-transparent.png" 
+                alt="Ingress Within" 
+                className="w-5 h-5 object-contain" 
+              />
+              <span className="font-serif font-semibold text-xs text-[#1E2A2E]">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 text-[#4A6A64] hover:text-[#1E2A2E] transition-colors rounded-full hover:bg-black/5"
+              aria-label="Close"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          </div>
 
           <div className="bg-white border border-[#1E2A2E]/10 rounded-2xl p-8 md:p-10 shadow-xs space-y-6">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-[#2E7A70]">

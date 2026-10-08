@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ShieldCheck, Clock, CheckCircle2, User, Phone, LogOut } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ShieldCheck, Clock, CheckCircle2, User, Phone, LogOut } from 'lucide-react';
 
 const therapistQuotes = [
   "Holding space for reflection is the foundation of thoughtful care.",
@@ -52,6 +52,10 @@ export default function TherapistAuthPage({ onAuthSuccess }) {
           const data = await res.json();
           if (data.success && data.therapist) {
             setTherapistData(data);
+            if (onAuthSuccess) {
+              onAuthSuccess(data);
+              return;
+            }
             if (data.therapist.status === 'pending') {
               setView('pending');
             } else {
@@ -62,7 +66,21 @@ export default function TherapistAuthPage({ onAuthSuccess }) {
       } catch {}
     }
     checkCurrentSession();
-  }, []);
+  }, [onAuthSuccess]);
+
+  // Auto-transition to dashboard when verified practitioner is confirmed
+  useEffect(() => {
+    if (view === 'active' && therapistData?.therapist) {
+      const timer = setTimeout(() => {
+        if (onAuthSuccess) {
+          onAuthSuccess(therapistData);
+        } else if (typeof window !== 'undefined' && window.navigateTo) {
+          window.navigateTo('/therapist');
+        }
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [view, therapistData, onAuthSuccess]);
 
   // Quotes rotation on Left panel
   useEffect(() => {
@@ -657,7 +675,22 @@ export default function TherapistAuthPage({ onAuthSuccess }) {
                   </div>
                 </div>
 
-                <div className="pt-2 flex flex-col gap-2">
+                <div className="pt-2 flex flex-col gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onAuthSuccess) {
+                        onAuthSuccess(therapistData);
+                      } else if (typeof window !== 'undefined' && window.navigateTo) {
+                        window.navigateTo('/therapist');
+                      } else if (typeof window !== 'undefined') {
+                        window.location.href = '/therapist';
+                      }
+                    }}
+                    className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 text-xs font-semibold text-white bg-[#132A24] hover:bg-[#132A24]/90 rounded-md transition-all cursor-pointer shadow-xs"
+                  >
+                    Enter Clinical Dashboard <ArrowRight size={14} />
+                  </button>
                   <button
                     type="button"
                     onClick={handleLogout}

@@ -147,9 +147,16 @@ export default function RecurringScenarioFlow({ instanceId, instance, onClose, o
     return (
       <div className="max-w-2xl mx-auto p-6 bg-stone-900 text-stone-100 rounded-xl shadow-2xl border border-stone-800">
         <div className="flex items-center justify-between border-b border-stone-800 pb-4 mb-6">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Month 10 • Day 304</span>
-            <h2 className="text-2xl font-serif font-bold text-stone-100 mt-1">Recurring Scenario Exercise</h2>
+          <div className="flex items-center gap-3">
+            <img 
+              src="/logo-mark-light.png" 
+              alt="Ingress Within" 
+              className="w-8 h-8 object-contain flex-shrink-0" 
+            />
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Month 10 • Day 304</span>
+              <h2 className="text-2xl font-serif font-bold text-stone-100 mt-1">Recurring Scenario Exercise</h2>
+            </div>
           </div>
           {onClose && (
             <button onClick={onClose} className="text-stone-400 hover:text-stone-200 text-sm px-3 py-1 rounded bg-stone-800 hover:bg-stone-700">
@@ -192,6 +199,11 @@ export default function RecurringScenarioFlow({ instanceId, instance, onClose, o
             <button onClick={handlePrevPrompt} className="text-stone-400 hover:text-stone-200 p-1">
               <ArrowLeft className="w-5 h-5" />
             </button>
+            <img 
+              src="/logo-mark-light.png" 
+              alt="Ingress Within" 
+              className="w-5 h-5 object-contain flex-shrink-0" 
+            />
             <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">
               Prompt {pIdx + 1} of 4 • {currentPrompt.label}
             </span>

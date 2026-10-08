@@ -67,12 +67,12 @@ export async function POST(request: NextRequest) {
     const startedInstance = await ExerciseService.startExercise(instance.id);
     return NextResponse.json({ success: true, instance: startedInstance });
   } catch (error: any) {
-    if (error instanceof AccessDeniedError || error.code === 'SUBSCRIPTION_REQUIRED') {
+    if (error instanceof AccessDeniedError || error.code === 'SUBSCRIPTION_REQUIRED' || error.code === 'SELF_HELP_SUBSCRIPTION_REQUIRED') {
       return NextResponse.json(
         {
           error: {
-            code: error.code || 'SUBSCRIPTION_REQUIRED',
-            message: error.message || 'An active subscription is required to progress through exercises.',
+            code: 'SELF_HELP_SUBSCRIPTION_REQUIRED',
+            message: error.message || 'An active self-help subscription is required to progress through exercises.',
             state: error.state || 'DORMANT'
           }
         },

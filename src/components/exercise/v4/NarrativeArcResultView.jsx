@@ -71,12 +71,19 @@ export default function NarrativeArcResultView({ instanceId, onClose }) {
     <div className="fixed inset-0 z-50 bg-[#FAF9F6] flex flex-col p-6 md:p-12 font-sans overflow-y-auto">
       <div className="max-w-[620px] mx-auto w-full space-y-8 pb-12">
         <div className="flex items-center justify-between pt-4">
-          <button
-            onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-700 transition-colors rounded-full hover:bg-stone-100"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="p-2 text-stone-400 hover:text-stone-700 transition-colors rounded-full hover:bg-stone-100"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <img 
+              src="/logo-mark-transparent.png" 
+              alt="Ingress Within" 
+              className="w-6 h-6 object-contain flex-shrink-0" 
+            />
+          </div>
           <span className="text-xs text-stone-400 font-medium">Completed</span>
         </div>
 

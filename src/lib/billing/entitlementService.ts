@@ -1,4 +1,5 @@
 import { supabase } from '../db';
+import { ComplimentaryAccessService } from './complimentaryAccessService';
 
 export class EntitlementService {
   /**
@@ -9,6 +10,11 @@ export class EntitlementService {
 
     // Dedicated synthetic reviewer bypass for compliance verification testing
     if (userId === 'usr_synthetic_razorpay_reviewer' || userId === 'synthetic-reviewer-user') {
+      return true;
+    }
+
+    // 1. Authoritative Complimentary Access Check
+    if (await ComplimentaryAccessService.hasActiveComplimentaryAccess(userId)) {
       return true;
     }
 
@@ -56,6 +62,11 @@ export class EntitlementService {
 
     // Dedicated synthetic reviewer bypass for compliance verification testing
     if (userId === 'usr_synthetic_razorpay_reviewer' || userId === 'synthetic-reviewer-user') {
+      return true;
+    }
+
+    // Authoritative Complimentary Access Check (Waives paywall for complimentary accounts)
+    if (await ComplimentaryAccessService.hasActiveComplimentaryAccess(userId)) {
       return true;
     }
 

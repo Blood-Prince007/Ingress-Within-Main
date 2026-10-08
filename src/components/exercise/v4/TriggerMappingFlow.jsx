@@ -218,18 +218,25 @@ export default function TriggerMappingFlow({ instance, instanceId, onClose, onCo
       <div className="max-w-[560px] mx-auto w-full flex-1 flex flex-col justify-between space-y-6 pb-12">
         {/* TOP BAR */}
         <div className="flex items-center justify-between pt-2">
-          <button
-            onClick={() => {
-              if (phase === 'questions') handleBackMoment();
-              else if (phase === 'synthesis') setPhase('questions');
-              else if (phase === 'moments_entry') setPhase('intro');
-              else onClose();
-            }}
-            className="p-2 text-[#4A6A64] hover:text-[#1E2A2E] transition-colors rounded-full hover:bg-black/5 cursor-pointer"
-            aria-label="Back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (phase === 'questions') handleBackMoment();
+                else if (phase === 'synthesis') setPhase('questions');
+                else if (phase === 'moments_entry') setPhase('intro');
+                else onClose();
+              }}
+              className="p-2 text-[#4A6A64] hover:text-[#1E2A2E] transition-colors rounded-full hover:bg-black/5 cursor-pointer"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <img 
+              src="/logo-mark-transparent.png" 
+              alt="Ingress Within" 
+              className="w-5 h-5 object-contain" 
+            />
+          </div>
           <span className="text-xs font-semibold uppercase tracking-widest text-[#8DBFB4]">
             Trigger Mapping
           </span>

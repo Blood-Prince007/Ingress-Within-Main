@@ -13,7 +13,7 @@ import { getCardEmergence } from '../../utils/cardEmergence';
  * Complete transformation of the source HTML content into the premium editorial /
  * watercolour / psychological self-reflection design system shown in reference screenshots.
  */
-export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
+export default function PublicWebsiteV2({ user, profile, initialTab = 'home', onOpenPolicy }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedChips, setSelectedChips] = useState(new Set());
   const [orientDate, setOrientDate] = useState('');
@@ -55,9 +55,16 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
   };
 
   const handleAuthRedirect = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    const destination = user
+      ? (profile && !profile.onboarding_completed ? '/onboarding' : '/dashboard')
+      : '/login';
     if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+      if (window.navigateTo) {
+        window.navigateTo(destination);
+      } else {
+        window.location.href = destination;
+      }
     }
   };
 
@@ -4263,7 +4270,7 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
       <WatercolorBackground activeTab={activeTab} />
 
       {/* 2. Editorial Top Navbar */}
-      <EditorialNavbar activeTab={activeTab} onSelectTab={handleSelectTab} />
+      <EditorialNavbar user={user} profile={profile} activeTab={activeTab} onSelectTab={handleSelectTab} />
 
       {/* 3. Main Content Area */}
       <main className="relative z-10">

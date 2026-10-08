@@ -242,7 +242,15 @@ export default function RelationshipMapFlow({ instanceId, onClose, onComplete })
         {phase === 'intro' && (
           <div className="flex flex-col justify-between min-h-[calc(100vh-4rem)]">
             <div className="space-y-6 pt-4">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8DBFB4]">
+              <div className="flex items-center gap-2">
+                <img 
+                  src="/logo-mark-transparent.png" 
+                  alt="Ingress Within" 
+                  className="w-5 h-5 object-contain" 
+                />
+                <span className="font-serif font-semibold text-xs text-[#1E2A2E]">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8DBFB4] block">
                 Relationship Map
               </span>
               <h1 className="font-serif text-3xl md:text-4xl text-primary font-normal">

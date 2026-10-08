@@ -19,29 +19,66 @@ export async function POST(request: NextRequest) {
     // Check if this is a request to finalize onboarding (Summary review page 'Continue' click)
     if (body.finalize === true) {
       console.log(`[API Assessment] Finalizing onboarding for user ${user.userId}`);
-      
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          onboarding_completed: true
-        })
-        .eq('id', user.userId);
 
-      if (updateError) {
-        console.error('Failed to finalize onboarding:', updateError);
+      // Finalization is only valid after every required onboarding milestone
+      // has been completed. This prevents a direct finalize request from
+      // marking an incomplete onboarding flow as complete.
+      const { data: currentProfile, error: profileReadError } = await supabase
+        .from('profiles')
+        .select('consent_completed, profile_completed, orientation_completed, assessment_completed, onboarding_completed')
+        .eq('id', user.userId)
+        .maybeSingle();
+
+      if (profileReadError) {
+        console.error('[API Onboarding Finalize] Failed to read onboarding state:', profileReadError);
         return NextResponse.json(
-          { error: { code: 'DATABASE_ERROR', message: 'Failed to finalize onboarding.' } },
+          { error: { code: 'DATABASE_ERROR', message: 'Failed to verify onboarding progress.' } },
           { status: 500 }
         );
       }
 
-      // Automatically create Cycle 1 for the user if it doesn't already exist
-      const { data: existingCycle } = await supabase
+      if (!currentProfile) {
+        return NextResponse.json(
+          { error: { code: 'PROFILE_NOT_FOUND', message: 'User onboarding profile was not found.' } },
+          { status: 404 }
+        );
+      }
+
+      const requiredMilestones = [
+        ['consent_completed', currentProfile.consent_completed],
+        ['profile_completed', currentProfile.profile_completed],
+        ['orientation_completed', currentProfile.orientation_completed],
+        ['assessment_completed', currentProfile.assessment_completed]
+      ] as const;
+
+      const incompleteMilestone = requiredMilestones.find(([, completed]) => !completed);
+      if (incompleteMilestone) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'ONBOARDING_INCOMPLETE',
+              message: `Onboarding step is incomplete: ${incompleteMilestone[0]}.`
+            }
+          },
+          { status: 400 }
+        );
+      }
+
+      // Automatically create Cycle 1 for the user if it doesn't already exist.
+      const { data: existingCycle, error: cycleLookupError } = await supabase
         .from('cycles')
         .select('id')
         .eq('user_id', user.userId)
         .limit(1)
         .maybeSingle();
+
+      if (cycleLookupError) {
+        console.error('[API Onboarding Finalize] Failed to check Cycle 1:', cycleLookupError);
+        return NextResponse.json(
+          { error: { code: 'DATABASE_ERROR', message: 'Failed to initialize the first reflection cycle.' } },
+          { status: 500 }
+        );
+      }
 
       if (!existingCycle) {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -59,11 +96,34 @@ export async function POST(request: NextRequest) {
             assessment_completed: false,
             assessment_available: false
           });
+
         if (cycleError) {
           console.error('[API Onboarding Finalize] Failed to create Cycle 1 automatically:', cycleError);
-        } else {
-          console.log('[API Onboarding Finalize] Cycle 1 automatically created for user', user.userId);
+          return NextResponse.json(
+            { error: { code: 'DATABASE_ERROR', message: 'Failed to initialize the first reflection cycle.' } },
+            { status: 500 }
+          );
         }
+
+        console.log('[API Onboarding Finalize] Cycle 1 automatically created for user', user.userId);
+      }
+
+      // Mark both flags consistently. onboarding_status is part of the
+      // existing auth profile schema and should reflect the completion flag.
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          onboarding_completed: true,
+          onboarding_status: 'completed'
+        })
+        .eq('id', user.userId);
+
+      if (updateError) {
+        console.error('Failed to finalize onboarding:', updateError);
+        return NextResponse.json(
+          { error: { code: 'DATABASE_ERROR', message: 'Failed to finalize onboarding.' } },
+          { status: 500 }
+        );
       }
 
       return NextResponse.json({

@@ -51,7 +51,7 @@ export async function GET(
     }
 
     // 2. Fetch entries for this cycle
-    const { data: entries, error: entriesErr } = await supabase
+    let { data: entries, error: entriesErr } = await supabase
       .from('entries')
       .select('*, reflections(*)')
       .eq('cycle_id', cy.id)
@@ -59,7 +59,17 @@ export async function GET(
       .order('created_at', { ascending: false });
 
     if (entriesErr) {
-      console.error(`Error fetching entries for cycle ${cy.id}:`, entriesErr.message);
+      console.warn(`[API Cycle Details] Join select failed for cycle ${cy.id}, falling back to simple select:`, entriesErr.message);
+      const { data: simpleEntries, error: simpleErr } = await supabase
+        .from('entries')
+        .select('*')
+        .eq('cycle_id', cy.id)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      
+      if (!simpleErr && simpleEntries) {
+        entries = simpleEntries;
+      }
     }
 
     // 3. Count weekly summaries

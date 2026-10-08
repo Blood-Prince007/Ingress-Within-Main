@@ -14,6 +14,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Access control: Ensure user has write access to self-help exercises
+    await AccessControlService.requireSelfHelpWriteAccess(authUser.userId);
+
     const body = await request.json().catch(() => ({}));
     const { instance_id } = body;
 
@@ -196,12 +199,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, instance: submittedInstance });
   } catch (error: any) {
-    if (error instanceof AccessDeniedError || error.code === 'SUBSCRIPTION_REQUIRED') {
+    if (error instanceof AccessDeniedError || error.code === 'SUBSCRIPTION_REQUIRED' || error.code === 'SELF_HELP_SUBSCRIPTION_REQUIRED') {
       return NextResponse.json(
         {
           error: {
-            code: error.code || 'SUBSCRIPTION_REQUIRED',
-            message: error.message || 'An active subscription is required to submit exercises.',
+            code: 'SELF_HELP_SUBSCRIPTION_REQUIRED',
+            message: error.message || 'An active self-help subscription is required to submit exercises.',
             state: error.state || 'DORMANT'
           }
         },

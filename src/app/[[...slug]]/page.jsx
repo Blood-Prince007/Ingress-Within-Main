@@ -5,12 +5,23 @@ import AppClient from './AppClient';
 const KNOWN_PUBLIC_ROUTES = new Set([
   '',
   'login',
+  'signup',
   'auth',
+  'auth/login',
+  'auth/signup',
   'user/login',
   'user/auth',
+  'user/signup',
   'therapist',
   'therapist/auth',
   'therapist/login',
+  'therapist/onboarding',
+  'therapist/application',
+  'therapist/clients',
+  'therapist/calendar',
+  'therapist/sessions',
+  'therapist/earnings',
+  'therapist/profile',
   'solution',
   'what-it-is',
   'how',
@@ -32,6 +43,10 @@ const KNOWN_PUBLIC_ROUTES = new Set([
   'journaling-prompts-for-self-discovery',
   'how-to-start-journaling',
   'how-to-practice-self-reflection',
+  'privacy-policy',
+  'privacy',
+  'terms',
+  'terms-of-service',
   'v2',
   'v2/what-it-is',
   'v2/how-it-works',
@@ -53,9 +68,23 @@ const KNOWN_PUBLIC_ROUTES = new Set([
 function isKnownRoute(rawPath) {
   if (!rawPath || KNOWN_PUBLIC_ROUTES.has(rawPath)) return true;
   if (rawPath.startsWith('v2')) return true;
-  if (rawPath === 'auth' || rawPath === 'login' || rawPath === 'user/login' || rawPath === 'user/auth') return true;
+
+  if (
+    rawPath === 'auth' ||
+    rawPath === 'login' ||
+    rawPath === 'signup' ||
+    rawPath === 'auth/login' ||
+    rawPath === 'auth/signup' ||
+    rawPath === 'user/login' ||
+    rawPath === 'user/auth' ||
+    rawPath === 'user/signup'
+  ) {
+    return true;
+  }
+
   if (
     rawPath.startsWith('onboarding') ||
+    rawPath.startsWith('therapy') ||
     rawPath.startsWith('dashboard') ||
     rawPath.startsWith('settings') ||
     rawPath.startsWith('write') ||
@@ -80,6 +109,7 @@ function isKnownRoute(rawPath) {
   ) {
     return true;
   }
+
   return false;
 }
 
@@ -105,11 +135,38 @@ export function generateStaticParams() {
     { slug: [] },
     { slug: ['auth'] },
     { slug: ['login'] },
+    { slug: ['signup'] },
+    { slug: ['auth', 'login'] },
+    { slug: ['auth', 'signup'] },
     { slug: ['user', 'login'] },
     { slug: ['user', 'auth'] },
+    { slug: ['user', 'signup'] },
+    { slug: ['therapy'] },
     { slug: ['therapist'] },
     { slug: ['therapist', 'auth'] },
     { slug: ['therapist', 'login'] },
+    { slug: ['therapist', 'onboarding'] },
+    { slug: ['therapist', 'application'] },
+    { slug: ['therapist', 'clients'] },
+    { slug: ['therapist', 'calendar'] },
+    { slug: ['therapist', 'sessions'] },
+    { slug: ['therapist', 'earnings'] },
+    { slug: ['therapist', 'profile'] },
+    { slug: ['admin'] },
+    { slug: ['admin', 'login'] },
+    { slug: ['admin', 'overview'] },
+    { slug: ['admin', 'users'] },
+    { slug: ['admin', 'therapists'] },
+    { slug: ['admin', 'applications'] },
+    { slug: ['admin', 'clients'] },
+    { slug: ['admin', 'sessions'] },
+    { slug: ['admin', 'payments'] },
+    { slug: ['admin', 'payouts'] },
+    { slug: ['admin', 'api-usage'] },
+    { slug: ['admin', 'health'] },
+    { slug: ['admin', 'webhooks'] },
+    { slug: ['admin', 'audit-logs'] },
+    { slug: ['admin', 'security'] },
     { slug: ['what-it-is'] },
     { slug: ['how-it-works'] },
     { slug: ['about'] },
@@ -124,11 +181,14 @@ export function generateStaticParams() {
     { slug: ['journaling-prompts-for-self-discovery'] },
     { slug: ['how-to-start-journaling'] },
     { slug: ['how-to-practice-self-reflection'] },
+    { slug: ['privacy-policy'] },
+    { slug: ['privacy'] },
+    { slug: ['terms'] },
+    { slug: ['terms-of-service'] },
     { slug: ['v2'] },
     { slug: ['v2', 'what-it-is'] },
     { slug: ['v2', 'how-it-works'] },
     { slug: ['v2', 'about'] },
-    { slug: ['pricing'] },
     { slug: ['v2', 'pricing'] },
     { slug: ['v2', 'faq'] },
     { slug: ['v2', 'contact'] },
@@ -155,6 +215,7 @@ export default async function CatchAllPage({ params }) {
   }
 
   let initialRoute = 'home';
+
   if (rawPath === 'what-it-is') initialRoute = 'what-it-is';
   else if (rawPath === 'guided-journaling') initialRoute = 'guided-journaling';
   else if (rawPath === 'self-reflection') initialRoute = 'self-reflection';
@@ -169,8 +230,18 @@ export default async function CatchAllPage({ params }) {
   else if (rawPath === 'faq') initialRoute = 'faq';
   else if (rawPath === 'contact') initialRoute = 'contact';
   else if (rawPath === 'ai-data') initialRoute = 'ai-data';
-  else if (rawPath === 'auth') initialRoute = 'auth';
-  else if (rawPath === 'therapist' || rawPath === 'therapist/auth' || rawPath === 'therapist/login') initialRoute = 'therapist/auth';
+  else if (rawPath === 'therapy') initialRoute = 'therapy';
+  else if (
+    rawPath === 'auth' ||
+    rawPath === 'login' ||
+    rawPath === 'signup' ||
+    rawPath === 'auth/login' ||
+    rawPath === 'auth/signup' ||
+    rawPath === 'user/login' ||
+    rawPath === 'user/auth' ||
+    rawPath === 'user/signup'
+  ) initialRoute = 'auth';
+  else if (rawPath === 'therapist' || rawPath === 'therapist/auth' || rawPath === 'therapist/login') initialRoute = 'therapist';
   else if (rawPath === 'v2') initialRoute = 'v2-home';
   else if (rawPath.startsWith('v2/')) initialRoute = `v2-${rawPath.slice(3)}`;
   else if (rawPath) initialRoute = rawPath;

@@ -81,13 +81,20 @@ export default function CoreValuesResultView({ instanceId, onClose }) {
         {/* Header */}
         <div>
           <div className="flex items-center justify-between border-b border-[#1E2A2E]/10 pb-4 mb-8">
-            <div>
-              <h1 className="font-serif text-2xl md:text-3xl text-primary font-normal">
-                Core Values Card Sort
-              </h1>
-              <p className="text-xs text-mid mt-1 font-mono">
-                Completed {formattedDate}
-              </p>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/logo-mark-transparent.png" 
+                alt="Ingress Within" 
+                className="w-8 h-8 object-contain flex-shrink-0" 
+              />
+              <div>
+                <h1 className="font-serif text-2xl md:text-3xl text-primary font-normal">
+                  Core Values Card Sort
+                </h1>
+                <p className="text-xs text-mid mt-0.5 font-mono">
+                  Completed {formattedDate}
+                </p>
+              </div>
             </div>
             <button
               onClick={onClose}

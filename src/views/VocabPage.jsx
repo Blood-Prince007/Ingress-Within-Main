@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import { DashboardService } from '../services/dashboardService';
+import SearchInput from '../components/search/SearchInput';
+import HighlightText from '../components/search/HighlightText';
 
 export default function VocabPage({ user, profile, onSignOut }) {
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,14 @@ export default function VocabPage({ user, profile, onSignOut }) {
       
       // 2. Fetch cycle-by-cycle breakdowns
       const byCycle = await DashboardService.fetchVocabByCycle();
-      setCycles(byCycle || []);
+      const cycleList = byCycle || [];
+      setCycles(cycleList);
+      if (cycleList.length > 0) {
+        const currentCy = cycleList.find(c => c.is_current || c.is_active || c.status?.toUpperCase() === 'ACTIVE') || cycleList[0];
+        if (currentCy?.number !== undefined) {
+          setOpenCycles(prev => ({ ...prev, [currentCy.number]: true }));
+        }
+      }
 
       // 3. Fetch completed thread responses
       try {
@@ -212,14 +221,15 @@ export default function VocabPage({ user, profile, onSignOut }) {
               </div>
 
               {/* Search Bar */}
-              <div className="relative mb-4">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-mid/60" />
-                <input 
-                  type="text" 
-                  value={awpSearchQuery}
-                  onChange={(e) => setAwpSearchQuery(e.target.value)}
+              <div className="mb-4">
+                <SearchInput
+                  id="vocab-words-search"
                   placeholder="Search words..."
-                  className="w-full text-[12.5px] text-primary bg-warm-paper/50 border border-primary/10 rounded-xl py-2.5 pl-8 pr-3 outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 focus:bg-white-paper transition-all"
+                  ariaLabel="Search tracked vocabulary words"
+                  value={awpSearchQuery}
+                  onChange={(val) => setAwpSearchQuery(val)}
+                  onClear={() => setAwpSearchQuery('')}
+                  size="sm"
                 />
               </div>
 
@@ -236,7 +246,7 @@ export default function VocabPage({ user, profile, onSignOut }) {
                       <div className={`flex flex-wrap gap-1.5 ${filteredTiers.frequent.length > 18 ? 'max-h-[150px] overflow-y-auto pr-0.5' : ''}`}>
                         {filteredTiers.frequent.map((w, idx) => (
                           <span key={idx} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#1E2A2E]/5 text-[#1E2A2E] border border-[#1E2A2E]/10">
-                            {w.word}
+                            <HighlightText text={w.word} query={awpSearchQuery} />
                             <span className="text-[10.5px] font-bold text-[#8A3020] font-mono">×{w.count}</span>
                           </span>
                         ))}
@@ -252,7 +262,7 @@ export default function VocabPage({ user, profile, onSignOut }) {
                       <div className={`flex flex-wrap gap-1.5 ${filteredTiers.occasional.length > 18 ? 'max-h-[150px] overflow-y-auto pr-0.5' : ''}`}>
                         {filteredTiers.occasional.map((w, idx) => (
                           <span key={idx} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#1E2A2E]/5 text-[#1E2A2E] border border-[#1E2A2E]/10">
-                            {w.word}
+                            <HighlightText text={w.word} query={awpSearchQuery} />
                             <span className="text-[10.5px] font-bold text-[#8A3020] font-mono">×{w.count}</span>
                           </span>
                         ))}
@@ -274,7 +284,7 @@ export default function VocabPage({ user, profile, onSignOut }) {
                         <div className={`flex flex-wrap gap-1.5 mt-2 ${filteredTiers.usedOnce.length > 18 ? 'max-h-[150px] overflow-y-auto pr-0.5' : ''}`}>
                           {filteredTiers.usedOnce.map((w, idx) => (
                             <span key={idx} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#1E2A2E]/5 text-[#1E2A2E]/65 border border-[#1E2A2E]/10">
-                              {w.word}
+                              <HighlightText text={w.word} query={awpSearchQuery} />
                               <span className="text-[10.5px] font-bold text-[#4A6A64] font-mono">×{w.count}</span>
                             </span>
                           ))}
@@ -473,12 +483,13 @@ export default function VocabPage({ user, profile, onSignOut }) {
                   const top3 = cy.most_used || [];
                   const maxCyFreq = top3[0]?.frequency || 1;
                   const cyPalette = ['#E0A898', '#E0A898', '#B8A8D4'];
+                  const isCurrent = cy.is_current ?? cy.is_active ?? (cy.status?.toUpperCase() === 'ACTIVE') ?? !cy.is_locked;
 
                   return (
                     <div 
                       key={cy.id || idx} 
                       className="bg-white border border-[#1E2A2E]/10 rounded-xl overflow-hidden"
-                      style={{ opacity: cy.is_locked ? 1.0 : 0.85 }}
+                      style={{ opacity: isCurrent ? 1.0 : 0.85 }}
                     >
                       <div 
                         onClick={() => toggleCycle(cy.number)}
@@ -486,16 +497,16 @@ export default function VocabPage({ user, profile, onSignOut }) {
                       >
                         <div className="flex items-center gap-2.5">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 border ${
-                            cy.is_locked 
+                            isCurrent 
                               ? 'bg-[#E0A898]/12 text-[#8A3020] border-[#E0A898]/28' 
                               : 'bg-[#8DBFB4]/10 text-[#1A5040] border-[#8DBFB4]/25'
                           }`}>
-                            {cy.is_locked ? 'Current' : 'Completed'}
+                            {isCurrent ? 'Current' : 'Completed'}
                           </span>
                           <div>
                             <div className="text-sm font-bold text-primary">Cycle {cy.number}</div>
                             <div className="text-[11px] text-[#8DBFB4] mt-0.5">
-                              {fmtDate(cy.started_at)} – {cy.is_locked ? 'present' : fmtDate(cy.ended_at)} · {cy.entry_count} entries
+                              {fmtDate(cy.started_at)} – {isCurrent ? 'present' : (fmtDate(cy.ended_at) || 'completed')} · {cy.entry_count} entries
                             </div>
                           </div>
                         </div>
@@ -573,7 +584,7 @@ export default function VocabPage({ user, profile, onSignOut }) {
                                 <div className="text-[10px] font-bold tracking-wider uppercase text-[#8DBFB4]">
                                   Word clusters
                                 </div>
-                                {cy.is_locked && (
+                                {isCurrent && (
                                   <div className="text-[10.5px] text-[#8DBFB4] italic">
                                     Auto-updates weekly
                                   </div>

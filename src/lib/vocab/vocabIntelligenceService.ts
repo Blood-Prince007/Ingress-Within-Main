@@ -272,22 +272,53 @@ export class VocabularyIntelligenceService {
     const snapMap = new Map<string, any>();
     dbSnaps?.forEach(s => snapMap.set(s.cycle_id, s));
 
+    // Sort chronologically ascending to establish sequence
+    const sortedCycles = [...(cycles || [])].sort((a: any, b: any) => {
+      const numA = typeof a.cycle_number === 'number' ? a.cycle_number : (typeof a.number === 'number' ? a.number : 0);
+      const numB = typeof b.cycle_number === 'number' ? b.cycle_number : (typeof b.number === 'number' ? b.number : 0);
+      if (numA !== numB) return numA - numB;
+      const dateA = new Date(a.start_date || a.started_at || a.created_at || 0).getTime();
+      const dateB = new Date(b.start_date || b.started_at || b.created_at || 0).getTime();
+      return dateA - dateB;
+    });
+
+    const maxCycleNum = sortedCycles.length > 0
+      ? Math.max(...sortedCycles.map((c: any) => (typeof c.cycle_number === 'number' ? c.cycle_number : (typeof c.number === 'number' ? c.number : 0))))
+      : 0;
+
     const cycleBreakdowns: any[] = [];
 
-    (cycles || []).forEach(cy => {
+    sortedCycles.forEach((cy: any, index: number) => {
       const cyId = cy.id;
       const snap = snapMap.get(cyId);
-      const isActive = cy.status?.toUpperCase() === 'ACTIVE';
+      const cyNum = cy.cycle_number !== undefined ? cy.cycle_number : (cy.number !== undefined ? cy.number : index + 1);
+      const statusUpper = (cy.status || '').toUpperCase();
+      const isLatest = cyNum === maxCycleNum || index === sortedCycles.length - 1;
+
+      // Determine active/current status authoritatively
+      const isActive = statusUpper === 'ACTIVE' || (!statusUpper && isLatest) || (isLatest && statusUpper !== 'COMPLETED' && !cy.end_date && !cy.ended_at);
+      const isCompleted = !isActive;
+
+      // For completed cycles with missing end date, fallback to start date of subsequent cycle
+      const nextCycle = sortedCycles[index + 1];
+      const nextCycleStartDate = nextCycle ? (nextCycle.start_date || nextCycle.started_at) : null;
+      const endedAt = isActive ? null : (cy.end_date || cy.ended_at || nextCycleStartDate || null);
+
+      const commonFields = {
+        id: cyId,
+        number: cyNum,
+        status: isActive ? 'ACTIVE' : (cy.status || 'COMPLETED'),
+        started_at: cy.start_date || cy.started_at,
+        ended_at: endedAt,
+        is_current: isActive,
+        is_active: isActive,
+        is_locked: isCompleted,
+      };
 
       if (snap) {
         const data = snap.snapshot_data as VocabularySnapshotData;
         cycleBreakdowns.push({
-          id: cyId,
-          number: cy.cycle_number !== undefined ? cy.cycle_number : cy.number,
-          status: cy.status,
-          started_at: cy.start_date || cy.started_at,
-          ended_at: cy.end_date || cy.ended_at,
-          is_locked: !isActive,
+          ...commonFields,
           entry_count: data.entry_count || 0,
           most_used: data.most_used || [],
           new_words: data.new_words || [],
@@ -297,12 +328,7 @@ export class VocabularyIntelligenceService {
       } else {
         // Safe fallback payload for cycles with no snapshot yet
         cycleBreakdowns.push({
-          id: cyId,
-          number: cy.cycle_number !== undefined ? cy.cycle_number : cy.number,
-          status: cy.status,
-          started_at: cy.start_date || cy.started_at,
-          ended_at: cy.end_date || cy.ended_at,
-          is_locked: !isActive,
+          ...commonFields,
           entry_count: 0,
           most_used: [],
           new_words: [],
@@ -312,6 +338,7 @@ export class VocabularyIntelligenceService {
       }
     });
 
+    // Return newest cycles first (descending order)
     return cycleBreakdowns.reverse();
   }
 

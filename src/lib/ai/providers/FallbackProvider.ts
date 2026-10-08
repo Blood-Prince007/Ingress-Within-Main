@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { 
   AIProvider, 
   ClarityScoreResponse, 
@@ -14,6 +15,7 @@ import {
 import { ClaudeProvider } from './claude';
 import { GroqProvider } from './GroqProvider';
 import { GeminiProvider } from './GeminiProvider';
+import { ApiUsageService } from '../../admin/apiUsageService';
 
 export class FallbackProvider implements AIProvider {
   public primary: AIProvider;
@@ -56,6 +58,7 @@ export class FallbackProvider implements AIProvider {
     safeFallback?: () => T
   ): Promise<T> {
     const startTime = Date.now();
+    const logicalRequestId = `ai_req_${crypto.randomUUID().slice(0, 12)}`;
     this.lastFallbackUsed = false;
     this.lastPrimaryError = null;
 
@@ -68,6 +71,21 @@ export class FallbackProvider implements AIProvider {
         this.lastFallbackUsed = false;
         this.lastLatencyMs = Date.now() - startTime;
         this.syncTracing(this.primary);
+
+        ApiUsageService.recordEvent({
+          provider: 'claude',
+          service: operationName,
+          endpoint: 'FallbackProvider.execute',
+          statusCode: 200,
+          success: true,
+          latencyMs: this.lastLatencyMs,
+          logicalRequestId,
+          isFallback: false,
+          model: (this.primary as any).model || 'claude-3-5-sonnet',
+          inputTokens: (this.primary as any).lastUsage?.input_tokens || 0,
+          outputTokens: (this.primary as any).lastUsage?.output_tokens || 0,
+        });
+
         return result;
       }
       throw new Error(`Primary provider (Claude) returned invalid structure for "${operationName}".`);
@@ -86,6 +104,21 @@ export class FallbackProvider implements AIProvider {
           this.lastLatencyMs = Date.now() - startTime;
           this.syncTracing(this.fallback);
           console.log(`[AI Fallback Layer] Groq fallback succeeded for "${operationName}".`);
+
+          ApiUsageService.recordEvent({
+            provider: 'groq',
+            service: operationName,
+            endpoint: 'FallbackProvider.fallback_groq',
+            statusCode: 200,
+            success: true,
+            latencyMs: this.lastLatencyMs,
+            logicalRequestId,
+            isFallback: true,
+            model: (this.fallback as any).model || 'llama-3.3-70b-versatile',
+            inputTokens: (this.fallback as any).lastUsage?.prompt_tokens || 0,
+            outputTokens: (this.fallback as any).lastUsage?.completion_tokens || 0,
+          });
+
           return fallbackResult;
         }
         throw new Error(`Fallback provider (Groq) returned invalid structure for "${operationName}".`);
@@ -104,6 +137,21 @@ export class FallbackProvider implements AIProvider {
               this.lastLatencyMs = Date.now() - startTime;
               this.syncTracing(this.tertiary);
               console.log(`[AI Fallback Layer] Gemini tertiary fallback succeeded for "${operationName}".`);
+
+              ApiUsageService.recordEvent({
+                provider: 'gemini',
+                service: operationName,
+                endpoint: 'FallbackProvider.fallback_gemini',
+                statusCode: 200,
+                success: true,
+                latencyMs: this.lastLatencyMs,
+                logicalRequestId,
+                isFallback: true,
+                model: (this.tertiary as any).model || 'gemini-1.5-flash',
+                inputTokens: (this.tertiary as any).lastUsage?.prompt_tokens || 0,
+                outputTokens: (this.tertiary as any).lastUsage?.completion_tokens || 0,
+              });
+
               return tertiaryResult;
             }
           } catch (geminiErr: any) {
@@ -117,6 +165,21 @@ export class FallbackProvider implements AIProvider {
           this.lastProviderUsed = 'synthesizer';
           this.lastFallbackUsed = true;
           this.lastLatencyMs = Date.now() - startTime;
+
+          ApiUsageService.recordEvent({
+            provider: 'synthesizer',
+            service: operationName,
+            endpoint: 'FallbackProvider.deterministic_synthesizer',
+            statusCode: 200,
+            success: true,
+            latencyMs: this.lastLatencyMs,
+            logicalRequestId,
+            isFallback: true,
+            model: 'synthesizer',
+            inputTokens: 0,
+            outputTokens: 0,
+          });
+
           return safeFallback();
         }
 

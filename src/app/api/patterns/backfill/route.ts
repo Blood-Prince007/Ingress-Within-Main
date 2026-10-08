@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '../../../../lib/auth-helper';
 import { backfillPatterns } from '../../../../lib/patterns/patternBackfill';
 import { supabase } from '../../../../lib/db';
+import { AccessControlService, AccessDeniedError } from '../../../../lib/billing/accessControlService';
 
 /**
  * POST /api/patterns/backfill: Manually triggers the backfill orchestrator to scan and backfill missing patterns and snapshots.
@@ -57,6 +58,9 @@ export async function POST(request: NextRequest) {
 
     const userId = authUser.userId;
 
+    // Guard single-user pattern backfill with self-help generation access
+    await AccessControlService.requirePatternGenerateAccess(userId);
+
     // Idempotency guard: skip if backfill has already completed for this user.
     try {
       const { data: profile } = await supabase
@@ -88,6 +92,19 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
+    if (error instanceof AccessDeniedError || error.code === 'SUBSCRIPTION_REQUIRED' || error.code === 'SELF_HELP_SUBSCRIPTION_REQUIRED') {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'SELF_HELP_SUBSCRIPTION_REQUIRED',
+            message: error.message || 'An active self-help subscription is required to generate new patterns.',
+            state: error.state || 'DORMANT'
+          }
+        },
+        { status: error.statusCode || 403 }
+      );
+    }
+
     console.error('[API Patterns Backfill POST] Error:', error);
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: error.message || 'An unexpected server error occurred.' } },

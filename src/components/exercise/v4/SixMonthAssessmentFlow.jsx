@@ -131,8 +131,13 @@ export default function SixMonthAssessmentFlow({ instanceId, instance, userBranc
     return (
       <div className="fixed inset-0 z-50 bg-[#FAF9F6] flex flex-col font-sans overflow-y-auto">
         <div className="max-w-2xl w-full mx-auto my-auto p-6 sm:p-10 flex flex-col items-center text-center">
-          <div className="w-12 h-12 rounded-full bg-[#EBF0EE] flex items-center justify-center mb-6">
-            <span className="text-[#4A6A64] font-serif text-lg font-semibold">6M</span>
+          <div className="flex items-center gap-2 mb-6">
+            <img 
+              src="/logo-mark-transparent.png" 
+              alt="Ingress Within" 
+              className="w-6 h-6 object-contain" 
+            />
+            <span className="font-serif font-semibold text-xs text-[#1E2A2E]">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-serif text-[#2C3E35] mb-4">
@@ -196,6 +201,11 @@ export default function SixMonthAssessmentFlow({ instanceId, instance, userBranc
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
+          <img 
+            src="/logo-mark-transparent.png" 
+            alt="Ingress Within" 
+            className="w-5 h-5 object-contain flex-shrink-0" 
+          />
           <span className="text-xs font-medium text-[#7A8E85] uppercase tracking-wider">
             6-Month Self-Assessment
           </span>

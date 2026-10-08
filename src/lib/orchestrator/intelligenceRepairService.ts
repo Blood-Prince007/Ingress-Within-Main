@@ -199,8 +199,9 @@ export class IntelligenceRepairService {
 
           const startDateMs = new Date(userCycle.start_date).getTime();
           const calculatedDay = Math.max(1, Math.floor((Date.now() - startDateMs) / (1000 * 60 * 60 * 24)) + 1);
-          const cDay = Math.max(maxEntry?.cycle_day || 0, calculatedDay);
-          const isDue = cDay >= 28 || userCycle.status === 'COMPLETED' || userCycle.status === 'completed' || userCycle.assessment_available || userCycle.assessment_completed;
+          const isCycleCompleted = userCycle.status === 'COMPLETED' || userCycle.status === 'completed' || userCycle.assessment_completed;
+          const isDay28Eligible = Boolean(userCycle.assessment_available) && (maxEntry?.cycle_day || 0) >= 28;
+          const isDue = isCycleCompleted || isDay28Eligible;
 
           if (isDue) {
             const { data: assessment } = await supabase

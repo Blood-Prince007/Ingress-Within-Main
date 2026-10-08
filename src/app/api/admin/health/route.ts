@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../lib/db';
 import { IntelligenceOrchestrator } from '../../../../lib/orchestrator/intelligenceOrchestrator';
+import { requireAuthorizedAdmin } from '../../../../lib/auth/adminAuthHelper';
+import { AdminPlatformService } from '../../../../lib/admin/adminPlatformService';
 
 /**
  * GET /api/admin/health: Production Health Dashboard & Pipeline Audit API
  */
 export async function GET(request: NextRequest) {
   try {
+    await requireAuthorizedAdmin(request);
     const userId = request.nextUrl.searchParams.get('userId');
 
-    // 1. Queue Status & Failed Jobs
+    // 1. Core System & Infrastructure Health
+    const systemHealth = await AdminPlatformService.getSystemHealth();
+
+    // 2. Queue Status & Failed Jobs
     const { data: queuedJobs } = await supabase
       .from('orchestrator_jobs')
       .select('*')
@@ -27,7 +33,7 @@ export async function GET(request: NextRequest) {
       .order('queued_at', { ascending: false })
       .limit(50);
 
-    // 2. Engine Health Metrics for specified user or system-wide sample
+    // 3. Engine Health Metrics for specified user or system-wide sample
     const engines = ['crisis_detection', 'reflection', 'scoring', 'vocabulary', 'patterns', 'knowledge', 'weekly_report'];
     const engineHealthMap: Record<string, any> = {};
 
@@ -54,13 +60,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 3. Pending Reports
+    // 4. Pending Reports
     const { count: pendingWeeklyReports } = await supabase
       .from('weekly_summaries')
       .select('id', { count: 'exact', head: true })
       .in('status', ['PENDING', 'pending', 'WAITING_FOR_PROCESSING', 'GRACE_PERIOD']);
 
-    // 4. Missing Snapshots Audit
+    // 5. Missing Snapshots Audit
     const { count: totalEntries } = await supabase.from('entries').select('id', { count: 'exact', head: true });
     const { count: totalReflections } = await supabase.from('reflections').select('id', { count: 'exact', head: true });
     const { count: totalScores } = await supabase.from('journal_scores').select('id', { count: 'exact', head: true });
@@ -70,7 +76,7 @@ export async function GET(request: NextRequest) {
     const missingScoresCount = Math.max(0, (totalEntries || 0) - (totalScores || 0));
     const missingVocabCount = Math.max(0, (totalEntries || 0) - (totalVocab || 0));
 
-    // 5. Recent System Events
+    // 6. Recent System Events
     const { data: recentEvents } = await supabase
       .from('orchestrator_events')
       .select('*')
@@ -80,6 +86,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
+      systemHealth,
       summary: {
         status: (failedJobs && failedJobs.length > 5) ? 'DEGRADED' : 'HEALTHY',
         activeQueuedCount: queuedJobs?.length || 0,

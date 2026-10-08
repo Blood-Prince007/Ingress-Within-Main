@@ -598,7 +598,7 @@ JSON SCHEMA:
         supabase.from('thread_responses').select('id, thread_id, response_text, created_at, cycle_id, threads(cycle_id)').eq('user_id', userId).order('created_at', { ascending: true }),
         supabase.from('weekly_summaries').select('id, week_number, title, why, body, open_question, generated_at, created_at, cycle_id').eq('user_id', userId).eq('status', 'READY').order('week_number', { ascending: true }),
         supabase.from('pattern_snapshots').select('id, cycle_number, snapshot_data, updated_at, created_at, cycle_id').eq('user_id', userId).eq('snapshot_status', 'completed').order('cycle_number', { ascending: true }),
-        supabase.from('exercises').select('id, cycle_id, completed_at, created_at').eq('user_id', userId).eq('status', 'completed'),
+        supabase.from('exercise_instances').select('id, cycle_id, completed_at, created_at').eq('user_id', userId).in('status', ['completed', 'submitted', 'processing']),
         supabase.from('assessments').select('id, cycle_id, generated_at, unlocked_at').eq('user_id', userId).eq('generation_status', 'ready'),
         supabase.from('knowledge_events').select('*').eq('user_id', userId)
       ]);

@@ -179,7 +179,6 @@ const DRAFT_KEY = 'iw_guided_writing_draft_v2';
 
 export default function GuidedWritePage({ journeyConfig = STANDARD_GUIDED_JOURNEY, onSignOut }) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedPromptId, setSelectedPromptId] = useState(null);
   const [answers, setAnswers] = useState({
     q1: '',
     q2: '',
@@ -257,11 +256,6 @@ export default function GuidedWritePage({ journeyConfig = STANDARD_GUIDED_JOURNE
   const activeQuestion = questions[currentStep] || questions[0];
   const activeAnswerKey = activeQuestion.id;
   const currentAnswerText = answers[activeAnswerKey] || '';
-
-  const handleSelectPrompt = (prompt) => {
-    setSelectedPromptId(prompt.id);
-    setAnswers(prompt.answers);
-  };
 
   const handleAnswerChange = (text) => {
     setAnswers(prev => ({ ...prev, [activeAnswerKey]: text }));
@@ -429,34 +423,6 @@ export default function GuidedWritePage({ journeyConfig = STANDARD_GUIDED_JOURNE
                 </button>
               </div>
             )}
-
-            {/* TRY AN EXAMPLE OR WRITE YOUR OWN */}
-            <div className="bg-white rounded-2xl border border-[#1E2A2E]/8 p-5 shadow-xs space-y-3 text-left">
-              <div className="text-[9px] font-bold uppercase tracking-widest text-[#1A5040] flex items-center gap-1.5">
-                <Sparkles size={11} className="text-[#8DBFB4]" />
-                <span>TRY AN EXAMPLE, OR WRITE YOUR OWN BELOW</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {PREDEFINED_PROMPTS.map((p) => {
-                  const isSelected = selectedPromptId === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleSelectPrompt(p)}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer border flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-primary text-white border-primary shadow-xs'
-                          : 'bg-white text-primary border-[#1E2A2E]/15 hover:border-primary/40 hover:bg-primary/5'
-                      }`}
-                    >
-                      {p.isWarning && <AlertCircle size={12} className={isSelected ? 'text-white' : 'text-[#b45309]'} />}
-                      <span>{p.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Step Progress Header */}
             <div className="bg-white rounded-2xl border border-[#1E2A2E]/8 p-6 shadow-xs space-y-4">

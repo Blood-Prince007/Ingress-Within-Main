@@ -181,19 +181,19 @@ export default function PublicFooter({ onSelectTab, onOpenPolicy }) {
             <div className="font-editorial text-sm text-white font-medium">Legal</div>
             <ul className="space-y-2 text-xs font-zen text-[#8D98A3]">
               <li>
-                <button type="button" onClick={(e) => handlePolicy('privacy', e)} className="text-left text-xs text-[#8D98A3] hover:text-white transition-colors cursor-pointer">
+                <a href="/privacy-policy" className="text-left text-xs text-[#8D98A3] hover:text-white transition-colors cursor-pointer block">
                   Privacy policy
-                </button>
+                </a>
               </li>
               <li>
-                <button type="button" onClick={(e) => handlePolicy('terms', e)} className="text-left text-xs text-[#8D98A3] hover:text-white transition-colors cursor-pointer">
-                  Terms of use
-                </button>
+                <a href="/terms" className="text-left text-xs text-[#8D98A3] hover:text-white transition-colors cursor-pointer block">
+                  Terms of service
+                </a>
               </li>
               <li>
-                <button type="button" onClick={(e) => handlePolicy('cancellation', e)} className="text-left text-xs text-[#8D98A3] hover:text-white transition-colors cursor-pointer">
+                <a href="/terms" className="text-left text-xs text-[#8D98A3] hover:text-white transition-colors cursor-pointer block">
                   Refund & cancellation policy
-                </button>
+                </a>
               </li>
             </ul>
           </div>

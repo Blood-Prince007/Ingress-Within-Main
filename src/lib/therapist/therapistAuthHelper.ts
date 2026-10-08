@@ -11,22 +11,56 @@ export interface AuthenticatedTherapist {
   scope: 'therapist';
 }
 
+export interface AuthenticatedTherapistAccount {
+  id: string;
+  phone_number: string;
+  status: 'pending' | 'active' | 'suspended' | 'rejected';
+  is_active: boolean;
+  can_practice: boolean;
+  application_status: 'onboarding_incomplete' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'suspended';
+  verification_status: 'unverified' | 'pending' | 'verified' | 'rejected';
+  rci_registered?: boolean;
+  rci_number?: string | null;
+  commission_rate?: number;
+  per_session_fee?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuthenticatedTherapistProfileData {
+  id: string;
+  phone_number: string;
+  full_name: string;
+  contact_email?: string | null;
+  title?: string;
+  bio?: string;
+  qualification?: string;
+  experience_years?: number;
+  specializations?: string[];
+  languages?: string[];
+  session_formats?: string[];
+  availability_hours?: Record<string, string[]>;
+  profile_image_url?: string | null;
+  city?: string | null;
+  state?: string | null;
+  practice_name?: string;
+  practice_address?: string;
+  timezone?: string;
+  notification_preferences?: {
+    email_appointment_reminders?: boolean;
+    email_booking_notifications?: boolean;
+    email_cancellation_alerts?: boolean;
+    email_homework_submissions?: boolean;
+    in_app_session_alerts?: boolean;
+    security_alerts?: boolean;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AuthenticatedTherapistProfile {
-  account: {
-    id: string;
-    phone_number: string;
-    status: 'pending' | 'active' | 'suspended' | 'rejected';
-    is_active: boolean;
-    created_at: string;
-    updated_at: string;
-  };
-  profile: {
-    id: string;
-    phone_number: string;
-    full_name: string;
-    created_at: string;
-    updated_at: string;
-  };
+  account: AuthenticatedTherapistAccount;
+  profile: AuthenticatedTherapistProfileData;
 }
 
 /**
@@ -116,7 +150,7 @@ export async function requireTherapistProfile(request: NextRequest): Promise<Aut
   // 1. Fetch therapist account
   const { data: account, error: accountError } = await supabase
     .from('therapist_accounts')
-    .select('id, phone_number, status, created_at, updated_at')
+    .select('*')
     .eq('id', authTherapist.therapistId)
     .neq('status', 'rejected')
     .single();
@@ -137,25 +171,154 @@ export async function requireTherapistProfile(request: NextRequest): Promise<Aut
 
   const isAccountActive = account.status !== 'suspended' && account.status !== 'rejected';
 
-  const profileData = profile ? {
+  const profileData: AuthenticatedTherapistProfileData = profile ? {
     id: profile.id,
     phone_number: profile.phone || account.phone_number,
-    full_name: profile.full_name,
-    created_at: profile.created_at,
-    updated_at: profile.updated_at
+    full_name: profile.full_name || '',
+    contact_email: profile.contact_email || null,
+    title: profile.title || 'Consultant Psychologist',
+    bio: profile.bio || '',
+    qualification: profile.qualification || '',
+    experience_years: profile.experience_years ?? 0,
+    specializations: Array.isArray(profile.specializations) ? profile.specializations : [],
+    languages: Array.isArray(profile.languages) ? profile.languages : ['English', 'Hindi'],
+    session_formats: (() => {
+      const raw = Array.isArray(profile.session_formats) ? profile.session_formats : ['telehealth'];
+      const norm = Array.from(
+        new Set<string>(
+          raw.flatMap((f: any): string[] => {
+            const s = String(f || '').trim().toLowerCase().replace(/-/g, '_');
+            if (s === 'either' || s === 'both') return ['telehealth', 'in_person'];
+            if (s === 'telehealth' || s === 'in_person') return [s];
+            return [];
+          })
+        )
+      );
+      return (norm.length > 0 ? norm : ['telehealth']) as string[];
+    })(),
+    availability_hours: profile.availability_hours || {},
+    profile_image_url: profile.profile_image_url || null,
+    city: profile.city || null,
+    state: profile.state || null,
+    practice_name: profile.practice_name || '',
+    practice_address: profile.practice_address || '',
+    timezone: profile.timezone || 'Asia/Kolkata',
+    notification_preferences: profile.notification_preferences || {
+      email_appointment_reminders: true,
+      email_booking_notifications: true,
+      email_cancellation_alerts: true,
+      email_homework_submissions: true,
+      in_app_session_alerts: true,
+      security_alerts: true,
+    },
+    created_at: profile.created_at || account.created_at,
+    updated_at: profile.updated_at || account.updated_at
   } : {
     id: account.id,
     phone_number: account.phone_number,
     full_name: '',
+    contact_email: null,
+    title: 'Consultant Psychologist',
+    bio: '',
+    qualification: '',
+    experience_years: 0,
+    specializations: [],
+    languages: ['English', 'Hindi'],
+    session_formats: ['telehealth'],
+    availability_hours: {},
+    profile_image_url: null,
+    city: null,
+    state: null,
+    practice_name: '',
+    practice_address: '',
+    timezone: 'Asia/Kolkata',
+    notification_preferences: {
+      email_appointment_reminders: true,
+      email_booking_notifications: true,
+      email_cancellation_alerts: true,
+      email_homework_submissions: true,
+      in_app_session_alerts: true,
+      security_alerts: true,
+    },
     created_at: account.created_at,
     updated_at: account.updated_at
   };
 
   return {
     account: {
-      ...account,
-      is_active: isAccountActive
+      id: account.id,
+      phone_number: account.phone_number,
+      status: account.status,
+      is_active: isAccountActive,
+      can_practice: Boolean(account.can_practice),
+      application_status: account.application_status || 'onboarding_incomplete',
+      verification_status: account.verification_status || 'unverified',
+      rci_registered: Boolean(account.rci_registered),
+      rci_number: account.rci_number || null,
+      commission_rate: Number(account.commission_rate) || 15,
+      per_session_fee: Number(account.per_session_fee) || 1500,
+      created_at: account.created_at,
+      updated_at: account.updated_at
     },
     profile: profileData
   };
+}
+
+/**
+ * Requires an authenticated therapist who has completed clinical review
+ * and is actively authorized to practice (can_practice === true).
+ * Used to protect clinical client data, SOAP notes, booking, and earnings.
+ */
+export async function requireAuthorizedTherapist(request: NextRequest): Promise<AuthenticatedTherapistProfile> {
+  const profile = await requireTherapistProfile(request);
+
+  if (!profile.account.is_active || profile.account.status !== 'active') {
+    const error: any = new Error('Therapist account is not active.');
+    error.status = 403;
+    error.code = 'THERAPIST_NOT_ACTIVE';
+    throw error;
+  }
+
+  if (profile.account.application_status !== 'approved') {
+    const error: any = new Error('Therapist application is not approved.');
+    error.status = 403;
+    error.code = 'APPLICATION_NOT_APPROVED';
+    error.application_status = profile.account.application_status;
+    throw error;
+  }
+
+  if (profile.account.verification_status !== 'verified') {
+    const error: any = new Error('Therapist practitioner verification required.');
+    error.status = 403;
+    error.code = 'VERIFICATION_REQUIRED';
+    error.verification_status = profile.account.verification_status;
+    throw error;
+  }
+
+  if (!profile.account.can_practice) {
+    const error: any = new Error('Therapist practice authorization required. Clinical onboarding is pending review.');
+    error.status = 403;
+    error.code = 'PRACTICE_NOT_AUTHORIZED';
+    error.application_status = profile.account.application_status;
+    throw error;
+  }
+
+  return profile;
+}
+
+/**
+ * Requires an authenticated therapist applicant (for onboarding and application tracking).
+ * Does not require can_practice === true.
+ */
+export async function requireTherapistApplicant(request: NextRequest): Promise<AuthenticatedTherapistProfile> {
+  const profile = await requireTherapistProfile(request);
+
+  if (profile.account.status === 'suspended' || profile.account.status === 'rejected') {
+    const error: any = new Error('Therapist account is suspended or rejected.');
+    error.status = 403;
+    error.code = 'THERAPIST_DEACTIVATED';
+    throw error;
+  }
+
+  return profile;
 }

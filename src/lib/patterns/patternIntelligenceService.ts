@@ -348,23 +348,39 @@ export class PatternIntelligenceService {
     const latestData = latestSnapshot.snapshot_data || {};
     const latestPatterns = latestData.patterns || [];
 
-    // Gather all unique pattern names ever observed to build full history
-    const allPatternNames = new Set<string>();
+    // Gather all unique pattern slugs and their cleanest display names ever observed to build full history
+    const patternSlugMap = new Map<string, string>();
     orderedSnapshots.forEach(snap => {
       const snapPatterns = snap.snapshot_data?.patterns || [];
       snapPatterns.forEach((p: any) => {
         const pName = p.pattern_name || p.name;
-        if (pName) {
-          allPatternNames.add(pName);
+        if (pName && typeof pName === 'string' && pName.trim()) {
+          const cleanName = pName.trim();
+          const slug = this.getPatternSlug(cleanName);
+          if (!slug) return;
+          if (!patternSlugMap.has(slug)) {
+            patternSlugMap.set(slug, cleanName);
+          } else {
+            // Prefer clean formatting without enclosing quotes
+            const currentName = patternSlugMap.get(slug)!;
+            const currentHasQuotes = /^["'].*["']$/.test(currentName);
+            const newHasQuotes = /^["'].*["']$/.test(cleanName);
+            if (currentHasQuotes && !newHasQuotes) {
+              patternSlugMap.set(slug, cleanName);
+            }
+          }
         }
       });
     });
 
     const cards: PatternCard[] = [];
 
-    allPatternNames.forEach(name => {
-      // Find this pattern in the latest snapshot
-      const currentPat = latestPatterns.find((p: any) => (p.pattern_name || p.name) === name);
+    patternSlugMap.forEach((name, slug) => {
+      // Find this pattern in the latest snapshot by slug
+      const currentPat = latestPatterns.find((p: any) => {
+        const pName = p.pattern_name || p.name;
+        return pName && this.getPatternSlug(pName) === slug;
+      });
       
       let status: 'present' | 'shifting' | 'quiet' | 'new' | 'returned' | 'emerging' | 'active' | 're_emerging' | 'absent' = 'quiet';
       let lifecycleStatus: PatternLifecycleStatus = 'quiet';
@@ -383,7 +399,10 @@ export class PatternIntelligenceService {
 
       // Find first/last appearance and gather stats
       orderedSnapshots.forEach(snap => {
-        const snapPat = (snap.snapshot_data?.patterns || []).find((p: any) => (p.pattern_name || p.name) === name);
+        const snapPat = (snap.snapshot_data?.patterns || []).find((p: any) => {
+          const pName = p.pattern_name || p.name;
+          return pName && this.getPatternSlug(pName) === slug;
+        });
         if (snapPat && snapPat.status !== 'absent' && snapPat.status !== 'quiet' && snapPat.lifecycle_status !== 'quiet') {
           if (snap.cycle_number < firstAppearedCycle) {
             firstAppearedCycle = snap.cycle_number;
@@ -424,7 +443,10 @@ export class PatternIntelligenceService {
       const timeline: string[] = [];
       for (let c = 1; c <= totalCycles; c++) {
         const cycleSnap = orderedSnapshots.find(s => s.cycle_number === c);
-        const cyclePat = (cycleSnap?.snapshot_data?.patterns || []).find((p: any) => (p.pattern_name || p.name) === name);
+        const cyclePat = (cycleSnap?.snapshot_data?.patterns || []).find((p: any) => {
+          const pName = p.pattern_name || p.name;
+          return pName && this.getPatternSlug(pName) === slug;
+        });
         if (cyclePat) {
           timeline.push(cyclePat.lifecycle_status || cyclePat.status || 'absent');
         } else {
@@ -495,7 +517,7 @@ export class PatternIntelligenceService {
       else if (c.status === 'returned') returnedCount++;
     });
 
-    const hasHistoricalPatterns = allPatternNames.size > 0;
+    const hasHistoricalPatterns = patternSlugMap.size > 0;
 
     let summarySentence = '';
     if (cards.length === 0) {

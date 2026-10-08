@@ -12,6 +12,7 @@ import {
   WeeklyReportResponse
 } from '../types';
 import { extractJson } from '../utils';
+import { ApiUsageService } from '../../admin/apiUsageService';
 
 export class GroqProvider implements AIProvider {
   private apiKey: string;
@@ -22,9 +23,9 @@ export class GroqProvider implements AIProvider {
   public lastRawResponse: string = '';
   public lastUsage: any = null;
 
-  constructor() {
-    this.apiKey = process.env.GROQ_API_KEY || '';
-    this.model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  constructor(apiKey?: string, model?: string) {
+    this.apiKey = apiKey || process.env.GROQ_API_KEY || '';
+    this.model = model || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
   }
 
   private async callGroq<T>(systemPrompt: string, userContent: string): Promise<T> {
@@ -294,6 +295,17 @@ export class GroqProvider implements AIProvider {
       if (mockRes) {
         this.lastRawResponse = JSON.stringify(mockRes, null, 2);
         this.lastUsage = { prompt_tokens: 270, completion_tokens: 130, total_tokens: 400 };
+        ApiUsageService.recordEvent({
+          provider: 'groq',
+          service: 'ai_inference_mock',
+          endpoint: 'api.groq.com/chat/completions',
+          statusCode: 200,
+          success: true,
+          latencyMs: 30,
+          model: this.model,
+          inputTokens: 270,
+          outputTokens: 130,
+        });
         return mockRes as T;
       }
       throw new Error(`[GroqProvider Mock] Unsupported prompt template.`);
@@ -320,6 +332,7 @@ export class GroqProvider implements AIProvider {
       let delayMs = 1000;
 
       for (let attempt = 1; attempt <= attempts; attempt++) {
+        const callStart = Date.now();
         try {
           const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -339,7 +352,20 @@ export class GroqProvider implements AIProvider {
             })
           });
 
+          const latencyMs = Date.now() - callStart;
+
           if (response.status === 429) {
+            ApiUsageService.recordEvent({
+              provider: 'groq',
+              service: 'ai_inference',
+              endpoint: 'api.groq.com/chat/completions',
+              statusCode: 429,
+              success: false,
+              latencyMs,
+              model: currentModel,
+              errorCategory: 'RATE_LIMIT',
+            });
+
             if (attempt === attempts) {
               throw new Error(`Groq API returned HTTP error 429 (Rate Limit Exceeded) for model ${currentModel}.`);
             }
@@ -351,6 +377,17 @@ export class GroqProvider implements AIProvider {
 
           if (response.status === 404 || response.status === 400) {
             const errText = await response.text();
+            ApiUsageService.recordEvent({
+              provider: 'groq',
+              service: 'ai_inference',
+              endpoint: 'api.groq.com/chat/completions',
+              statusCode: response.status,
+              success: false,
+              latencyMs,
+              model: currentModel,
+              errorCategory: response.status === 404 ? 'NOT_FOUND' : 'INVALID_REQUEST',
+            });
+
             if (response.status === 404 || errText.includes('decommissioned') || errText.includes('model_not_found') || errText.includes('invalid_request_error') || errText.includes('model `')) {
               console.warn(`[GroqProvider] Model ${currentModel} returned ${response.status}. Trying next candidate model...`);
               lastError = new Error(`Groq model ${currentModel} error: ${errText}`);
@@ -360,6 +397,16 @@ export class GroqProvider implements AIProvider {
 
           if (!response.ok) {
             const errText = await response.text();
+            ApiUsageService.recordEvent({
+              provider: 'groq',
+              service: 'ai_inference',
+              endpoint: 'api.groq.com/chat/completions',
+              statusCode: response.status,
+              success: false,
+              latencyMs,
+              model: currentModel,
+              errorCategory: 'API_ERROR',
+            });
             throw new Error(`Groq API returned HTTP error ${response.status}: ${errText}`);
           }
 
@@ -372,8 +419,24 @@ export class GroqProvider implements AIProvider {
           this.lastRawResponse = rawText;
           this.lastUsage = payload.usage || null;
 
+          const inTok = payload.usage?.prompt_tokens || 0;
+          const outTok = payload.usage?.completion_tokens || 0;
+
+          ApiUsageService.recordEvent({
+            provider: 'groq',
+            service: 'ai_inference',
+            endpoint: 'api.groq.com/chat/completions',
+            statusCode: 200,
+            success: true,
+            latencyMs,
+            model: currentModel,
+            inputTokens: inTok,
+            outputTokens: outTok,
+          });
+
           return extractJson<T>(rawText);
         } catch (error: any) {
+          const latencyMs = Date.now() - callStart;
           lastError = error;
           if (error.message?.includes('404') || error.message?.includes('401') || error.message?.includes('403')) {
             break; // Non-retryable error, try next model or throw
