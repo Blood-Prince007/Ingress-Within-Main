@@ -76,7 +76,7 @@ export function generatePageMetadata({ slug }: RouteMetadataOptions = {}) {
   }
 
   const intent = ROUTE_INTENT_MAP[routeKey] || ROUTE_INTENT_MAP.home;
-  const canonicalPath = routeKey === 'home' ? '' : `/${rawPath}`;
+  const canonicalPath = routeKey === 'home' ? '/' : `/${rawPath}`;
   const canonicalUrl = `${BASE_URL}${canonicalPath}`;
 
   const robots = isKnownPublicRoute
