@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ArrowLeft, ChevronDown, Link2, Activity, Sparkles, Loader2 } from 'lucide-react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import { DashboardService } from '../services/dashboardService';
@@ -371,7 +371,7 @@ export default function PatternsPage({ user, profile, onSignOut }) {
   // --- State-based branching ---
   const currentState = userState?.state ?? 'active';
 
-  const allPatterns = (overview?.patterns && overview.patterns.length > 0)
+  const rawPatterns = (overview?.patterns && overview.patterns.length > 0)
     ? overview.patterns
     : [
         ...(overview?.lifecycle?.active || []),
@@ -379,6 +379,20 @@ export default function PatternsPage({ user, profile, onSignOut }) {
         ...(overview?.lifecycle?.reEmerging || []),
         ...(overview?.lifecycle?.quiet || [])
       ];
+
+  // Defensively deduplicate patterns by canonical ID / slug to prevent React key collisions
+  const allPatterns = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    for (const p of rawPatterns) {
+      const canonicalId = p.id || (p.name ? p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : null);
+      if (canonicalId && !seen.has(canonicalId)) {
+        seen.add(canonicalId);
+        result.push(p);
+      }
+    }
+    return result;
+  }, [rawPatterns]);
 
   const hasPatterns = allPatterns.length > 0;
 
@@ -390,16 +404,31 @@ export default function PatternsPage({ user, profile, onSignOut }) {
     return <NewUserEmptyScreen />;
   }
 
-  // Group patterns into 4 categories: New, Shifting, Quiet, Present
+  // Filter patterns matching query on clinical/therapeutic content only
   const query = searchQuery.trim().toLowerCase();
-  const filteredPatterns = query
-    ? allPatterns.filter(p =>
-        (p.name && p.name.toLowerCase().includes(query)) ||
-        (p.body && p.body.toLowerCase().includes(query)) ||
-        (p.status && p.status.toLowerCase().includes(query)) ||
-        (p.lifecycleStatus && p.lifecycleStatus.toLowerCase().includes(query))
-      )
-    : allPatterns;
+  const filteredPatterns = useMemo(() => {
+    if (!query) return allPatterns;
+
+    return allPatterns.filter(p => {
+      // 1. Pattern name (primary therapeutic title)
+      if (p.name && p.name.toLowerCase().includes(query)) return true;
+
+      // 2. Connected patterns
+      if (Array.isArray(p.connectedPatterns) && p.connectedPatterns.some(cp => typeof cp === 'string' && cp.toLowerCase().includes(query))) {
+        return true;
+      }
+
+      // 3. Clinical orientation / why it matters
+      if (p.orientation && p.orientation.toLowerCase().includes(query)) return true;
+
+      // 4. Clinical summary (excluding automated boilerplate tracking strings)
+      const isBoilerplate = typeof p.body === 'string' && /^Observed \d+ times in recent entries/i.test(p.body.trim());
+      if (p.body && !isBoilerplate && p.body.toLowerCase().includes(query)) return true;
+      if (p.summary && p.summary.toLowerCase().includes(query)) return true;
+
+      return false;
+    });
+  }, [allPatterns, query]);
 
   const newPatternsAll = filteredPatterns.filter(p => 
     p.status === 'new' || (!['shifting', 'quiet', 'present'].includes(p.status) && p.lifecycleStatus === 'emerging')
@@ -547,11 +576,11 @@ export default function PatternsPage({ user, profile, onSignOut }) {
                     <span>New patterns</span>
                     <span className="text-[10px] font-normal text-mid/70">Recently observed ({newPatternsAll.length})</span>
                   </div>
-                  {newPatterns.map(p => {
+                  {newPatterns.map((p, idx) => {
                     const badge = getStatusBadge(p.status || p.lifecycleStatus);
                     return (
                       <div
-                        key={p.id}
+                        key={`${p.id || 'new'}-${idx}`}
                         onClick={() => handleOpenPattern(p.id)}
                         className="bg-white border border-[#B8A8D4]/20 rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-[#B8A8D4]/35 transition-all relative overflow-hidden pl-5 group"
                       >
@@ -611,11 +640,11 @@ export default function PatternsPage({ user, profile, onSignOut }) {
                     <span>Shifting patterns</span>
                     <span className="text-[10px] font-normal text-mid/70">Changing in focus or intensity ({shiftingPatternsAll.length})</span>
                   </div>
-                  {shiftingPatterns.map(p => {
+                  {shiftingPatterns.map((p, idx) => {
                     const badge = getStatusBadge(p.status || p.lifecycleStatus);
                     return (
                       <div
-                        key={p.id}
+                        key={`${p.id || 'shifting'}-${idx}`}
                         onClick={() => handleOpenPattern(p.id)}
                         className="bg-white border border-[#8DBFB4]/25 rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-[#8DBFB4]/40 transition-all relative overflow-hidden pl-5 group"
                       >
@@ -675,11 +704,11 @@ export default function PatternsPage({ user, profile, onSignOut }) {
                     <span>Quiet patterns</span>
                     <span className="text-[10px] font-normal text-mid/70">Quieter recently ({quietPatternsAll.length})</span>
                   </div>
-                  {quietPatterns.map(p => {
+                  {quietPatterns.map((p, idx) => {
                     const badge = getStatusBadge(p.status || p.lifecycleStatus);
                     return (
                       <div
-                        key={p.id}
+                        key={`${p.id || 'quiet'}-${idx}`}
                         onClick={() => handleOpenPattern(p.id)}
                         className="bg-white/80 border border-[#1E2A2E]/8 rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-[#1E2A2E]/15 transition-all relative overflow-hidden pl-5 group opacity-90"
                       >
@@ -739,11 +768,11 @@ export default function PatternsPage({ user, profile, onSignOut }) {
                     <span>Present patterns</span>
                     <span className="text-[10px] font-normal text-mid/70">Sustained evidence ({presentPatternsAll.length})</span>
                   </div>
-                  {presentPatterns.map(p => {
+                  {presentPatterns.map((p, idx) => {
                     const badge = getStatusBadge(p.status || p.lifecycleStatus);
                     return (
                       <div
-                        key={p.id}
+                        key={`${p.id || 'present'}-${idx}`}
                         onClick={() => handleOpenPattern(p.id)}
                         className="bg-white border border-[#1E2A2E]/8 rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-[#1E2A2E]/15 transition-all relative overflow-hidden pl-5 group"
                       >

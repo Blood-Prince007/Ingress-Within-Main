@@ -18,10 +18,11 @@ export default function HighlightText({
     return <span className={className}>{str}</span>;
   }
 
-  // Split query into distinct non-empty tokens and escape regex characters
+  // Split query into distinct non-empty tokens and escape regex characters.
+  // Ignore single-character tokens (e.g. 'a', 'e', 'i') to prevent highlighting every occurrence across words.
   const tokens = trimmed
     .split(/\s+/)
-    .filter((t) => t.length > 0)
+    .filter((t) => t.length >= 2)
     .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
   if (tokens.length === 0) {
