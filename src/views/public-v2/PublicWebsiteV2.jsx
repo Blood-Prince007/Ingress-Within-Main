@@ -3909,12 +3909,11 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
                 </p>
               </div>
               <div className="pt-5 mt-6 border-t border-[#E7DECF]/60">
-                <a
-                  href="/therapist/auth"
-                  className="w-full text-center py-3.5 px-6 bg-[#795663] hover:bg-[#674753] text-white rounded-full text-sm font-semibold transition-all hover:scale-[1.01] shadow-2xs inline-block cursor-pointer"
+                <span
+                  className="w-full text-center py-3.5 px-6 bg-[#795663] text-white rounded-full text-sm font-semibold shadow-2xs inline-block cursor-default select-none"
                 >
-                  Book your first session →
-                </a>
+                  Coming Soon
+                </span>
               </div>
             </motion.div>
 
@@ -3950,8 +3949,80 @@ export default function PublicWebsiteV2({ initialTab = 'home', onOpenPolicy }) {
             </motion.div>
           </div>
 
-          {/* Orientation Call / Inquiry Booking */}
-          <div className="w-full rounded-xl p-8 sm:p-12 bg-[#FDFBF8] border border-[#E7DECF] shadow-xs space-y-8">
+          {/* ========================================================================= */}
+          {/* JOIN OUR WHATSAPP COMMUNITY CARD: The Unsaid by Ingress Within */}
+          {/* ========================================================================= */}
+          <div className="w-full rounded-2xl p-8 sm:p-12 bg-[#FDFBF8] border border-[#E7DECF] shadow-xs relative overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-center">
+              {/* Left Column: Title, Opening & Primary CTA */}
+              <div className="md:col-span-7 space-y-5">
+                <h3 className="font-editorial text-2xl sm:text-3xl lg:text-4xl text-[#162723] leading-tight flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                  <span className="text-[#795663]">The Unsaid</span>
+                  <span className="font-editorial italic font-normal text-lg sm:text-xl lg:text-2xl text-[#5C6873]">
+                    by Ingress Within
+                  </span>
+                </h3>
+                <p className="font-zen text-base sm:text-lg text-[#162723]/90 font-medium leading-relaxed">
+                  For the thoughts, questions and experiences we rarely say out loud.
+                </p>
+                <p className="font-zen text-sm sm:text-base text-[#5C6873] leading-relaxed">
+                  The Unsaid is a community for talking about them. A place to share what’s on your mind, ask difficult questions, hear different perspectives, and have honest conversations about mental and emotional wellbeing.
+                </p>
+                <div className="pt-2">
+                  <a
+                    href="https://chat.whatsapp.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2.5 py-3.5 px-7 bg-[#162723] hover:bg-[#203631] text-white text-sm font-semibold rounded-full cursor-pointer transition-all hover:scale-[1.01] shadow-xs group"
+                  >
+                    <svg
+                      className="w-4 h-4 text-[#25D366] fill-current flex-shrink-0"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+                    </svg>
+                    <span>Join WhatsApp Community</span>
+                    <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Right Column: QR Code to Join */}
+              <div className="md:col-span-5 border-t md:border-t-0 md:border-l border-[#E7DECF] pt-6 md:pt-0 md:pl-8 lg:pl-10 flex flex-col items-center justify-center text-center">
+                <div className="p-2 sm:p-2.5 bg-white rounded-2xl border border-[#E7DECF] shadow-xs inline-block relative group">
+                  <div className="relative w-40 h-40 sm:w-44 sm:h-44 rounded-xl overflow-hidden bg-white flex items-center justify-center p-1">
+                    <img
+                      src="/whatsapp-community-qr.svg"
+                      alt="Scan QR to join The Unsaid WhatsApp Community"
+                      className="w-full h-full object-contain"
+                    />
+                    {/* Centered WhatsApp icon badge */}
+                    <div className="absolute inset-0 m-auto w-10 h-10 rounded-full bg-white shadow-md border border-[#E7DECF]/80 flex items-center justify-center p-1.5 pointer-events-none">
+                      <svg
+                        className="w-full h-full text-[#25D366] fill-current"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-3 space-y-1">
+                  <span className="font-mono-code text-[10.5px] uppercase tracking-wider text-[#795663] font-semibold block">
+                    SCAN TO JOIN
+                  </span>
+                  <p className="font-zen text-xs text-[#5C6873]">
+                    Scan with your phone to open WhatsApp
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* PREVIOUS ORIENTATION BOOKING CARD (HIDDEN - PRESERVED AS REQUESTED) */}
+          {/* ========================================================================= */}
+          <div className="hidden" aria-hidden="true">
             <div>
               <div className="inline-flex items-center gap-2 font-mono-code text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#795663] px-3 py-0.5 rounded-full border border-[#795663]/30 font-semibold mb-2">
                 <span>●</span> NOT SURE WHICH ONE YET?
