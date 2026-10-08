@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowLeft, ChevronDown, Link2, Activity, Sparkles, Loader2 } from 'lucide-react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import { DashboardService } from '../services/dashboardService';
@@ -381,18 +381,16 @@ export default function PatternsPage({ user, profile, onSignOut }) {
       ];
 
   // Defensively deduplicate patterns by canonical ID / slug to prevent React key collisions
-  const allPatterns = useMemo(() => {
-    const seen = new Set();
-    const result = [];
-    for (const p of rawPatterns) {
-      const canonicalId = p.id || (p.name ? p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : null);
-      if (canonicalId && !seen.has(canonicalId)) {
-        seen.add(canonicalId);
-        result.push(p);
-      }
+  const seenPatterns = new Set();
+  const allPatterns = [];
+  for (const p of rawPatterns) {
+    if (!p) continue;
+    const canonicalId = p.id || (p.name ? p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : null);
+    if (canonicalId && !seenPatterns.has(canonicalId)) {
+      seenPatterns.add(canonicalId);
+      allPatterns.push(p);
     }
-    return result;
-  }, [rawPatterns]);
+  }
 
   const hasPatterns = allPatterns.length > 0;
 
@@ -406,29 +404,28 @@ export default function PatternsPage({ user, profile, onSignOut }) {
 
   // Filter patterns matching query on clinical/therapeutic content only
   const query = searchQuery.trim().toLowerCase();
-  const filteredPatterns = useMemo(() => {
-    if (!query) return allPatterns;
+  const filteredPatterns = query
+    ? allPatterns.filter(p => {
+        if (!p) return false;
+        // 1. Pattern name (primary therapeutic title)
+        if (p.name && p.name.toLowerCase().includes(query)) return true;
 
-    return allPatterns.filter(p => {
-      // 1. Pattern name (primary therapeutic title)
-      if (p.name && p.name.toLowerCase().includes(query)) return true;
+        // 2. Connected patterns
+        if (Array.isArray(p.connectedPatterns) && p.connectedPatterns.some(cp => typeof cp === 'string' && cp.toLowerCase().includes(query))) {
+          return true;
+        }
 
-      // 2. Connected patterns
-      if (Array.isArray(p.connectedPatterns) && p.connectedPatterns.some(cp => typeof cp === 'string' && cp.toLowerCase().includes(query))) {
-        return true;
-      }
+        // 3. Clinical orientation / why it matters
+        if (p.orientation && p.orientation.toLowerCase().includes(query)) return true;
 
-      // 3. Clinical orientation / why it matters
-      if (p.orientation && p.orientation.toLowerCase().includes(query)) return true;
+        // 4. Clinical summary (excluding automated boilerplate tracking strings)
+        const isBoilerplate = typeof p.body === 'string' && /^Observed \d+ times in recent entries/i.test(p.body.trim());
+        if (p.body && !isBoilerplate && p.body.toLowerCase().includes(query)) return true;
+        if (p.summary && p.summary.toLowerCase().includes(query)) return true;
 
-      // 4. Clinical summary (excluding automated boilerplate tracking strings)
-      const isBoilerplate = typeof p.body === 'string' && /^Observed \d+ times in recent entries/i.test(p.body.trim());
-      if (p.body && !isBoilerplate && p.body.toLowerCase().includes(query)) return true;
-      if (p.summary && p.summary.toLowerCase().includes(query)) return true;
-
-      return false;
-    });
-  }, [allPatterns, query]);
+        return false;
+      })
+    : allPatterns;
 
   const newPatternsAll = filteredPatterns.filter(p => 
     p.status === 'new' || (!['shifting', 'quiet', 'present'].includes(p.status) && p.lifecycleStatus === 'emerging')
