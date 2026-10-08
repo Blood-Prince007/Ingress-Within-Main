@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowLeft, ChevronDown, Link2, Activity, Sparkles, Loader2 } from 'lucide-react';
 import DashboardNavbar from '../components/DashboardNavbar';
 import { DashboardService } from '../services/dashboardService';
+import SearchInput from '../components/search/SearchInput';
+import HighlightText from '../components/search/HighlightText';
 
 const dotLabels = {
   active: 'bg-[#E0A898]',
@@ -213,6 +215,7 @@ export default function PatternsPage({ user, profile, onSignOut }) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [expandedCycles, setExpandedCycles] = useState({});
   const [listExpandedCycles, setListExpandedCycles] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
 
   const toggleListCycleCard = (cycleNumber) => {
     setListExpandedCycles(prev => ({
@@ -226,16 +229,18 @@ export default function PatternsPage({ user, profile, onSignOut }) {
 
   /** Trigger backfill API call for first-time users. */
   const triggerBackfill = useCallback(async () => {
-    if (backfillTriggeredRef.current) return;
+    if (backfillTriggeredRef.current) return false;
     backfillTriggeredRef.current = true;
     try {
       console.log('[PatternsPage] Triggering backfill for new user…');
-      await fetch('/api/patterns/backfill', {
+      const res = await fetch('/api/patterns/backfill', {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
       });
+      return res.ok;
     } catch (err) {
       console.warn('[PatternsPage] Backfill trigger failed:', err);
+      return false;
     }
   }, []);
 
@@ -279,10 +284,14 @@ export default function PatternsPage({ user, profile, onSignOut }) {
         setUserState(data.userState ?? { state: 'active' });
 
         if (state === 'new_user') {
-          // Trigger backfill, then immediately show processing screen + poll
-          await triggerBackfill();
-          setUserState({ state: 'backfill_pending' });
-          startPolling();
+          const started = await triggerBackfill();
+          if (started) {
+            setUserState({ state: 'backfill_pending' });
+            startPolling();
+          } else {
+            // If backfill was not queued (e.g. dormant user), stay active to view existing patterns
+            setUserState({ state: 'active' });
+          }
         } else if (state === 'backfill_pending') {
           startPolling();
         }
@@ -362,20 +371,85 @@ export default function PatternsPage({ user, profile, onSignOut }) {
   // --- State-based branching ---
   const currentState = userState?.state ?? 'active';
 
-  if (currentState === 'backfill_pending') {
+  const rawPatterns = (overview?.patterns && overview.patterns.length > 0)
+    ? overview.patterns
+    : [
+        ...(overview?.lifecycle?.active || []),
+        ...(overview?.lifecycle?.emerging || []),
+        ...(overview?.lifecycle?.reEmerging || []),
+        ...(overview?.lifecycle?.quiet || [])
+      ];
+
+  // Defensively deduplicate patterns by canonical ID / slug to prevent React key collisions
+  const seenPatterns = new Set();
+  const allPatterns = [];
+  for (const p of rawPatterns) {
+    if (!p) continue;
+    const canonicalId = p.id || (p.name ? p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : null);
+    if (canonicalId && !seenPatterns.has(canonicalId)) {
+      seenPatterns.add(canonicalId);
+      allPatterns.push(p);
+    }
+  }
+
+  const hasPatterns = allPatterns.length > 0;
+
+  if (currentState === 'backfill_pending' && !hasPatterns) {
     return <BackfillProcessingScreen />;
   }
 
-  const hasPatterns = overview?.isAvailable && overview?.patterns && overview.patterns.length > 0;
-
-  if (currentState === 'new_user' || !hasPatterns) {
+  if (!hasPatterns) {
     return <NewUserEmptyScreen />;
   }
 
-  // Group patterns for display
-  const presentPatterns = overview.patterns.filter(p => p.status === 'present' || p.status === 'new' || p.status === 'returned').slice(0, 3);
-  const shiftingPatterns = overview.patterns.filter(p => p.status === 'shifting').slice(0, 3);
-  const quietPatterns = overview.patterns.filter(p => p.status === 'quiet').slice(0, 3);
+  // Filter patterns matching query on clinical/therapeutic content only
+  const query = searchQuery.trim().toLowerCase();
+  const filteredPatterns = query
+    ? allPatterns.filter(p => {
+        if (!p) return false;
+        // 1. Pattern name (primary therapeutic title)
+        if (p.name && p.name.toLowerCase().includes(query)) return true;
+
+        // 2. Connected patterns
+        if (Array.isArray(p.connectedPatterns) && p.connectedPatterns.some(cp => typeof cp === 'string' && cp.toLowerCase().includes(query))) {
+          return true;
+        }
+
+        // 3. Clinical orientation / why it matters
+        if (p.orientation && p.orientation.toLowerCase().includes(query)) return true;
+
+        // 4. Clinical summary (excluding automated boilerplate tracking strings)
+        const isBoilerplate = typeof p.body === 'string' && /^Observed \d+ times in recent entries/i.test(p.body.trim());
+        if (p.body && !isBoilerplate && p.body.toLowerCase().includes(query)) return true;
+        if (p.summary && p.summary.toLowerCase().includes(query)) return true;
+
+        return false;
+      })
+    : allPatterns;
+
+  const newPatternsAll = filteredPatterns.filter(p => 
+    p.status === 'new' || (!['shifting', 'quiet', 'present'].includes(p.status) && p.lifecycleStatus === 'emerging')
+  );
+
+  const shiftingPatternsAll = filteredPatterns.filter(p => 
+    p.status === 'shifting'
+  );
+
+  const quietPatternsAll = filteredPatterns.filter(p => 
+    p.status === 'quiet' || p.lifecycleStatus === 'quiet'
+  );
+
+  const presentPatternsAll = filteredPatterns.filter(p => 
+    !newPatternsAll.includes(p) && 
+    !shiftingPatternsAll.includes(p) && 
+    !quietPatternsAll.includes(p)
+  );
+
+  // When searching, show all matches; when not searching, show 3 each
+  const newPatterns = query ? newPatternsAll : newPatternsAll.slice(0, 3);
+  const shiftingPatterns = query ? shiftingPatternsAll : shiftingPatternsAll.slice(0, 3);
+  const quietPatterns = query ? quietPatternsAll : quietPatternsAll.slice(0, 3);
+  const presentPatterns = query ? presentPatternsAll : presentPatternsAll.slice(0, 3);
 
   return (
     <div className="min-h-screen bg-mint-grey text-primary font-sans relative pb-20 sm:pb-24">
@@ -403,33 +477,85 @@ export default function PatternsPage({ user, profile, onSignOut }) {
             {/* Summary strip */}
             <div className="bg-white-paper border border-primary/10 rounded-xl p-5 shadow-xs space-y-3">
               <p className="text-[12.5px] sm:text-xs text-primary leading-relaxed">
-                {overview.summary.sentence}
+                {overview.summary?.sentence || overview.summary || 'Summary across your cycles'}
               </p>
               <div className="flex gap-4 flex-wrap text-xs text-[#4A6A64]">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-[#E0A898]" /> {overview.lifecycle?.active?.length || 0} active
-                </span>
-                {(overview.lifecycle?.reEmerging?.length || 0) > 0 && (
+                {newPatternsAll.length > 0 && (
                   <span className="flex items-center gap-1.5 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-[#E0A898]/60 border border-[#E0A898]/40" /> {overview.lifecycle.reEmerging.length} re-emerging
+                    <span className="w-2 h-2 rounded-full bg-[#B8A8D4]" /> {newPatternsAll.length} new
                   </span>
                 )}
-                {(overview.lifecycle?.emerging?.length || 0) > 0 && (
+                {shiftingPatternsAll.length > 0 && (
                   <span className="flex items-center gap-1.5 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-[#B8A8D4]" /> {overview.lifecycle.emerging.length} emerging
+                    <span className="w-2 h-2 rounded-full bg-[#8DBFB4]" /> {shiftingPatternsAll.length} shifting
                   </span>
                 )}
-                <span className="flex items-center gap-1.5 font-medium">
-                  <span className="w-2.5 h-2.5 rounded bg-primary/20 border border-primary/30" /> {overview.lifecycle?.quiet?.length || 0} quiet
-                </span>
+                {quietPatternsAll.length > 0 && (
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <span className="w-2.5 h-2.5 rounded bg-primary/20 border border-primary/30" /> {quietPatternsAll.length} quiet
+                  </span>
+                )}
+                {presentPatternsAll.length > 0 && (
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-[#E0A898]" /> {presentPatternsAll.length} present
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* If zero active, emerging, or re-emerging patterns exist, show informative state */}
-            {(overview.lifecycle?.active?.length || 0) === 0 && 
-             (overview.lifecycle?.reEmerging?.length || 0) === 0 && 
-             (overview.lifecycle?.emerging?.length || 0) === 0 && 
-             (overview.lifecycle?.quiet?.length || 0) > 0 && (
+            {/* Local Search Bar for Observed Patterns */}
+            <div className="pt-0.5">
+              <SearchInput
+                id="patterns-search"
+                placeholder="Search your observed patterns..."
+                ariaLabel="Search observed patterns"
+                value={searchQuery}
+                onChange={(val) => setSearchQuery(val)}
+                onClear={() => setSearchQuery('')}
+                resultCount={query ? filteredPatterns.length : null}
+              />
+            </div>
+
+            {/* Active Search Result Indicator */}
+            {query && filteredPatterns.length > 0 && (
+              <div className="flex items-center justify-between text-xs text-mid/90 bg-accent/5 border border-accent/15 rounded-xl px-3.5 py-2">
+                <span>
+                  Showing <strong className="text-primary font-semibold">{filteredPatterns.length}</strong> {filteredPatterns.length === 1 ? 'pattern' : 'patterns'} matching &ldquo;<strong className="text-accent font-semibold">{searchQuery}</strong>&rdquo;
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="text-accent hover:underline font-semibold text-[11px] cursor-pointer"
+                >
+                  Clear search
+                </button>
+              </div>
+            )}
+
+            {/* Empty Search Result State */}
+            {query && filteredPatterns.length === 0 && (
+              <div className="bg-white-paper border border-primary/10 rounded-xl p-8 text-center space-y-2 shadow-xs">
+                <h3 className="text-sm font-semibold text-primary">No patterns match "{searchQuery}"</h3>
+                <p className="text-xs text-mid max-w-[380px] mx-auto leading-relaxed">
+                  No themes in your journal history match this term. Try searching for broader behavioral terms or clear the search.
+                </p>
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="px-4 py-2 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-[#654652] transition-colors cursor-pointer border-none"
+                  >
+                    Clear Search
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* If zero active, shifting, or new patterns exist (unfiltered), show informative state */}
+            {!query && newPatternsAll.length === 0 && 
+             shiftingPatternsAll.length === 0 && 
+             presentPatternsAll.length === 0 && 
+             quietPatternsAll.length > 0 && (
               <div className="bg-white-paper border border-primary/10 rounded-xl p-5 text-center space-y-1.5 shadow-xs">
                 <h3 className="text-sm font-semibold text-primary">No active patterns right now</h3>
                 <p className="text-xs text-mid max-w-[420px] mx-auto leading-relaxed">
@@ -438,148 +564,35 @@ export default function PatternsPage({ user, profile, onSignOut }) {
               </div>
             )}
 
-            {/* Pattern Lists Grouped by Longitudinal Lifecycle */}
-            <div className="space-y-4">
-              {/* 1. ACTIVE PATTERNS */}
-              {(overview.lifecycle?.active?.length || 0) > 0 && (
+            {/* Pattern Lists Grouped by Category: New, Shifting, Quiet, Present (3 each) */}
+            <div className="space-y-5">
+              {/* 1. NEW PATTERNS */}
+              {newPatterns.length > 0 && (
                 <div className="space-y-3">
-                  <div className="text-[9.5px] font-bold tracking-widest text-[#8DBFB4] uppercase flex items-center justify-between">
-                    <span>Active patterns</span>
-                    <span className="text-[10px] font-mono text-mid/70 font-normal">Sustained evidence</span>
-                  </div>
-                  {overview.lifecycle.active.map(p => {
-                    const badge = getStatusBadge(p.lifecycleStatus || p.status);
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => handleOpenPattern(p.id)}
-                        className="bg-white border border-[#1E2A2E]/8 rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-[#1E2A2E]/15 transition-all relative overflow-hidden pl-5 group"
-                      >
-                        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#E0A898]" />
-                        <div className="flex justify-between items-center mb-1.5">
-                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#E0A898] transition-colors">{p.name}</h3>
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-semibold ${badge.className}`}>
-                            {badge.text}
-                          </span>
-                        </div>
-                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">{p.body}</p>
-
-                        {/* Metadata Row */}
-                        <div className="flex flex-wrap items-center gap-2 text-[10px] text-mid/80 mb-2.5">
-                          <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
-                            Historical: {p.historicalStrength || 'moderate'}
-                          </span>
-                          <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
-                            Activity: {p.currentActivity || 'high'}
-                          </span>
-                        </div>
-
-                        {/* Timeline preview */}
-                        <div className="space-y-1 mb-2.5">
-                          <div className="text-[8.5px] tracking-wider uppercase text-[#8DBFB4] font-bold">Across {p.timeline.length} cycles</div>
-                          <div className="flex gap-2 flex-wrap">
-                            {p.timeline.map((s, idx) => (
-                              <div key={idx} className="flex flex-col items-center">
-                                <div className={`w-3 h-3 rounded-full ${dotLabels[s] || dotLabels.absent}`} />
-                                <span className="text-[8px] font-mono text-mid/60 mt-0.5">{idx + 1}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="flex justify-between items-center text-[10.5px] text-mid border-t border-[#1E2A2E]/5 pt-2.5 mt-2.5">
-                          <span>{p.meta}</span>
-                          <span className="font-semibold text-primary flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-                            See history <ArrowLeft size={11} className="rotate-180" />
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* 2. RE-EMERGING PATTERNS */}
-              {(overview.lifecycle?.reEmerging?.length || 0) > 0 && (
-                <div className="space-y-3 pt-1">
-                  <div className="text-[9.5px] font-bold tracking-widest text-[#E0A898] uppercase flex items-center justify-between">
-                    <span>Re-emerging patterns</span>
-                    <span className="text-[10px] font-normal text-mid/70">Appearing again in recent entries</span>
-                  </div>
-                  {overview.lifecycle.reEmerging.map(p => {
-                    const badge = getStatusBadge(p.lifecycleStatus || p.status);
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => handleOpenPattern(p.id)}
-                        className="bg-white border border-[#E0A898]/20 rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-[#E0A898]/35 transition-all relative overflow-hidden pl-5 group"
-                      >
-                        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#E0A898]" />
-                        <div className="flex justify-between items-center mb-1.5">
-                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#E0A898] transition-colors">{p.name}</h3>
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-semibold ${badge.className}`}>
-                            {badge.text}
-                          </span>
-                        </div>
-                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">{p.body}</p>
-
-                        <div className="flex flex-wrap items-center gap-2 text-[10px] text-mid/80 mb-2.5">
-                          <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
-                            Historical: {p.historicalStrength || 'moderate'}
-                          </span>
-                          <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
-                            Activity: {p.currentActivity || 'moderate'}
-                          </span>
-                        </div>
-
-                        {/* Timeline preview */}
-                        <div className="space-y-1 mb-2.5">
-                          <div className="text-[8.5px] tracking-wider uppercase text-[#8DBFB4] font-bold">Across {p.timeline.length} cycles</div>
-                          <div className="flex gap-2 flex-wrap">
-                            {p.timeline.map((s, idx) => (
-                              <div key={idx} className="flex flex-col items-center">
-                                <div className={`w-3 h-3 rounded-full ${dotLabels[s] || dotLabels.absent}`} />
-                                <span className="text-[8px] font-mono text-mid/60 mt-0.5">{idx + 1}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="flex justify-between items-center text-[10.5px] text-mid border-t border-[#1E2A2E]/5 pt-2.5 mt-2.5">
-                          <span>{p.meta}</span>
-                          <span className="font-semibold text-primary flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-                            See history <ArrowLeft size={11} className="rotate-180" />
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* 3. EMERGING PATTERNS */}
-              {(overview.lifecycle?.emerging?.length || 0) > 0 && (
-                <div className="space-y-3 pt-1">
                   <div className="text-[9.5px] font-bold tracking-widest text-[#B8A8D4] uppercase flex items-center justify-between">
-                    <span>Emerging patterns</span>
-                    <span className="text-[10px] font-normal text-mid/70">Early signals</span>
+                    <span>New patterns</span>
+                    <span className="text-[10px] font-normal text-mid/70">Recently observed ({newPatternsAll.length})</span>
                   </div>
-                  {overview.lifecycle.emerging.map(p => {
-                    const badge = getStatusBadge(p.lifecycleStatus || p.status);
+                  {newPatterns.map((p, idx) => {
+                    const badge = getStatusBadge(p.status || p.lifecycleStatus);
                     return (
                       <div
-                        key={p.id}
+                        key={`${p.id || 'new'}-${idx}`}
                         onClick={() => handleOpenPattern(p.id)}
                         className="bg-white border border-[#B8A8D4]/20 rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-[#B8A8D4]/35 transition-all relative overflow-hidden pl-5 group"
                       >
                         <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#B8A8D4]" />
                         <div className="flex justify-between items-center mb-1.5">
-                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#8A68B8] transition-colors">{p.name}</h3>
+                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#8A68B8] transition-colors">
+                            <HighlightText text={p.name} query={searchQuery} />
+                          </h3>
                           <span className={`px-2 py-0.5 rounded text-[9px] font-semibold ${badge.className}`}>
                             {badge.text}
                           </span>
                         </div>
-                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">{p.body}</p>
+                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">
+                          <HighlightText text={p.body} query={searchQuery} />
+                        </p>
 
                         <div className="flex flex-wrap items-center gap-2 text-[10px] text-mid/80 mb-2.5">
                           <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
@@ -591,17 +604,19 @@ export default function PatternsPage({ user, profile, onSignOut }) {
                         </div>
 
                         {/* Timeline preview */}
-                        <div className="space-y-1 mb-2.5">
-                          <div className="text-[8.5px] tracking-wider uppercase text-[#8DBFB4] font-bold">Across {p.timeline.length} cycles</div>
-                          <div className="flex gap-2 flex-wrap">
-                            {p.timeline.map((s, idx) => (
-                              <div key={idx} className="flex flex-col items-center">
-                                <div className={`w-3 h-3 rounded-full ${dotLabels[s] || dotLabels.absent}`} />
-                                <span className="text-[8px] font-mono text-mid/60 mt-0.5">{idx + 1}</span>
-                              </div>
-                            ))}
+                        {p.timeline && p.timeline.length > 0 && (
+                          <div className="space-y-1 mb-2.5">
+                            <div className="text-[8.5px] tracking-wider uppercase text-[#8DBFB4] font-bold">Across {p.timeline.length} cycles</div>
+                            <div className="flex gap-2 flex-wrap">
+                              {p.timeline.map((s, idx) => (
+                                <div key={idx} className="flex flex-col items-center">
+                                  <div className={`w-3 h-3 rounded-full ${dotLabels[s] || dotLabels.absent}`} />
+                                  <span className="text-[8px] font-mono text-mid/60 mt-0.5">{idx + 1}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="flex justify-between items-center text-[10.5px] text-mid border-t border-[#1E2A2E]/5 pt-2.5 mt-2.5">
                           <span>{p.meta}</span>
@@ -615,29 +630,97 @@ export default function PatternsPage({ user, profile, onSignOut }) {
                 </div>
               )}
 
-              {/* 4. PREVIOUSLY OBSERVED (QUIET) PATTERNS */}
-              {(overview.lifecycle?.quiet?.length || 0) > 0 && (
-                <div className="space-y-3 pt-2">
-                  <div className="text-[9.5px] font-bold tracking-widest text-mid uppercase flex items-center justify-between">
-                    <span>Previously observed patterns</span>
-                    <span className="text-[10px] font-normal text-mid/70">Quieter recently</span>
+              {/* 2. SHIFTING PATTERNS */}
+              {shiftingPatterns.length > 0 && (
+                <div className="space-y-3 pt-1">
+                  <div className="text-[9.5px] font-bold tracking-widest text-[#8DBFB4] uppercase flex items-center justify-between">
+                    <span>Shifting patterns</span>
+                    <span className="text-[10px] font-normal text-mid/70">Changing in focus or intensity ({shiftingPatternsAll.length})</span>
                   </div>
-                  {overview.lifecycle.quiet.map(p => {
-                    const badge = getStatusBadge(p.lifecycleStatus || p.status);
+                  {shiftingPatterns.map((p, idx) => {
+                    const badge = getStatusBadge(p.status || p.lifecycleStatus);
                     return (
                       <div
-                        key={p.id}
+                        key={`${p.id || 'shifting'}-${idx}`}
+                        onClick={() => handleOpenPattern(p.id)}
+                        className="bg-white border border-[#8DBFB4]/25 rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-[#8DBFB4]/40 transition-all relative overflow-hidden pl-5 group"
+                      >
+                        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#8DBFB4]" />
+                        <div className="flex justify-between items-center mb-1.5">
+                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#2E7A70] transition-colors">
+                            <HighlightText text={p.name} query={searchQuery} />
+                          </h3>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-semibold ${badge.className}`}>
+                            {badge.text}
+                          </span>
+                        </div>
+                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">
+                          <HighlightText text={p.body} query={searchQuery} />
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-2 text-[10px] text-mid/80 mb-2.5">
+                          <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
+                            Historical: {p.historicalStrength || 'moderate'}
+                          </span>
+                          <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
+                            Activity: {p.currentActivity || 'moderate'}
+                          </span>
+                        </div>
+
+                        {/* Timeline preview */}
+                        {p.timeline && p.timeline.length > 0 && (
+                          <div className="space-y-1 mb-2.5">
+                            <div className="text-[8.5px] tracking-wider uppercase text-[#8DBFB4] font-bold">Across {p.timeline.length} cycles</div>
+                            <div className="flex gap-2 flex-wrap">
+                              {p.timeline.map((s, idx) => (
+                                <div key={idx} className="flex flex-col items-center">
+                                  <div className={`w-3 h-3 rounded-full ${dotLabels[s] || dotLabels.absent}`} />
+                                  <span className="text-[8px] font-mono text-mid/60 mt-0.5">{idx + 1}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between items-center text-[10.5px] text-mid border-t border-[#1E2A2E]/5 pt-2.5 mt-2.5">
+                          <span>{p.meta}</span>
+                          <span className="font-semibold text-primary flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                            See history <ArrowLeft size={11} className="rotate-180" />
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 3. QUIET PATTERNS */}
+              {quietPatterns.length > 0 && (
+                <div className="space-y-3 pt-1">
+                  <div className="text-[9.5px] font-bold tracking-widest text-mid uppercase flex items-center justify-between">
+                    <span>Quiet patterns</span>
+                    <span className="text-[10px] font-normal text-mid/70">Quieter recently ({quietPatternsAll.length})</span>
+                  </div>
+                  {quietPatterns.map((p, idx) => {
+                    const badge = getStatusBadge(p.status || p.lifecycleStatus);
+                    return (
+                      <div
+                        key={`${p.id || 'quiet'}-${idx}`}
                         onClick={() => handleOpenPattern(p.id)}
                         className="bg-white/80 border border-[#1E2A2E]/8 rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-[#1E2A2E]/15 transition-all relative overflow-hidden pl-5 group opacity-90"
                       >
                         <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#1E2A2E]/15" />
                         <div className="flex justify-between items-center mb-1.5">
-                          <h3 className="text-[14px] font-bold text-primary/85 group-hover:text-primary transition-colors">{p.name}</h3>
+                          <h3 className="text-[14px] font-bold text-primary/85 group-hover:text-primary transition-colors">
+                            <HighlightText text={p.name} query={searchQuery} />
+                          </h3>
                           <span className={`px-2 py-0.5 rounded text-[9px] font-semibold ${badge.className}`}>
                             {badge.text}
                           </span>
                         </div>
-                        <p className="text-[12px] text-mid leading-relaxed mb-3">{p.body}</p>
+                        <p className="text-[12px] text-mid leading-relaxed mb-3">
+                          <HighlightText text={p.body} query={searchQuery} />
+                        </p>
 
                         <div className="flex flex-wrap items-center gap-2 text-[10px] text-mid/70 mb-2.5">
                           <span className="px-2 py-0.5 bg-mint-grey/60 rounded text-[9.5px] font-medium text-primary/80">
@@ -649,19 +732,85 @@ export default function PatternsPage({ user, profile, onSignOut }) {
                         </div>
 
                         {/* Timeline preview */}
-                        <div className="space-y-1 mb-2.5">
-                          <div className="text-[8.5px] tracking-wider uppercase text-mid/60 font-bold">Across {p.timeline.length} cycles</div>
-                          <div className="flex gap-2 flex-wrap">
-                            {p.timeline.map((s, idx) => (
-                              <div key={idx} className="flex flex-col items-center">
-                                <div className={`w-3 h-3 rounded-full ${dotLabels[s] || dotLabels.absent}`} />
-                                <span className="text-[8px] font-mono text-mid/60 mt-0.5">{idx + 1}</span>
-                              </div>
-                            ))}
+                        {p.timeline && p.timeline.length > 0 && (
+                          <div className="space-y-1 mb-2.5">
+                            <div className="text-[8.5px] tracking-wider uppercase text-mid/60 font-bold">Across {p.timeline.length} cycles</div>
+                            <div className="flex gap-2 flex-wrap">
+                              {p.timeline.map((s, idx) => (
+                                <div key={idx} className="flex flex-col items-center">
+                                  <div className={`w-3 h-3 rounded-full ${dotLabels[s] || dotLabels.absent}`} />
+                                  <span className="text-[8px] font-mono text-mid/60 mt-0.5">{idx + 1}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="flex justify-between items-center text-[10.5px] text-mid/70 border-t border-[#1E2A2E]/5 pt-2.5 mt-2.5">
+                          <span>{p.meta}</span>
+                          <span className="font-semibold text-primary flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
+                            See history <ArrowLeft size={11} className="rotate-180" />
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 4. PRESENT PATTERNS */}
+              {presentPatterns.length > 0 && (
+                <div className="space-y-3 pt-1">
+                  <div className="text-[9.5px] font-bold tracking-widest text-[#E0A898] uppercase flex items-center justify-between">
+                    <span>Present patterns</span>
+                    <span className="text-[10px] font-normal text-mid/70">Sustained evidence ({presentPatternsAll.length})</span>
+                  </div>
+                  {presentPatterns.map((p, idx) => {
+                    const badge = getStatusBadge(p.status || p.lifecycleStatus);
+                    return (
+                      <div
+                        key={`${p.id || 'present'}-${idx}`}
+                        onClick={() => handleOpenPattern(p.id)}
+                        className="bg-white border border-[#1E2A2E]/8 rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-[#1E2A2E]/15 transition-all relative overflow-hidden pl-5 group"
+                      >
+                        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#E0A898]" />
+                        <div className="flex justify-between items-center mb-1.5">
+                          <h3 className="text-[14px] font-bold text-primary group-hover:text-[#E0A898] transition-colors">
+                            <HighlightText text={p.name} query={searchQuery} />
+                          </h3>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-semibold ${badge.className}`}>
+                            {badge.text}
+                          </span>
+                        </div>
+                        <p className="text-[12px] text-[#4A6A64] leading-relaxed mb-3">
+                          <HighlightText text={p.body} query={searchQuery} />
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-2 text-[10px] text-mid/80 mb-2.5">
+                          <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
+                            Historical: {p.historicalStrength || 'moderate'}
+                          </span>
+                          <span className="px-2 py-0.5 bg-mint-grey/70 rounded text-[9.5px] font-medium text-primary">
+                            Activity: {p.currentActivity || 'high'}
+                          </span>
+                        </div>
+
+                        {/* Timeline preview */}
+                        {p.timeline && p.timeline.length > 0 && (
+                          <div className="space-y-1 mb-2.5">
+                            <div className="text-[8.5px] tracking-wider uppercase text-[#8DBFB4] font-bold">Across {p.timeline.length} cycles</div>
+                            <div className="flex gap-2 flex-wrap">
+                              {p.timeline.map((s, idx) => (
+                                <div key={idx} className="flex flex-col items-center">
+                                  <div className={`w-3 h-3 rounded-full ${dotLabels[s] || dotLabels.absent}`} />
+                                  <span className="text-[8px] font-mono text-mid/60 mt-0.5">{idx + 1}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between items-center text-[10.5px] text-mid border-t border-[#1E2A2E]/5 pt-2.5 mt-2.5">
                           <span>{p.meta}</span>
                           <span className="font-semibold text-primary flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
                             See history <ArrowLeft size={11} className="rotate-180" />

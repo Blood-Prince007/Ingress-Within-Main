@@ -10,6 +10,10 @@ export interface EstablishTherapistSessionResult {
     phone_number: string;
     status: 'pending' | 'active' | 'suspended' | 'rejected';
     is_active: boolean;
+    can_practice?: boolean;
+    application_status?: 'onboarding_incomplete' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'suspended';
+    verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected';
+    rci_registered?: boolean;
     created_at: string;
   };
   profile: {
@@ -254,6 +258,10 @@ export class TherapistAuthService {
         phone_number: account.phone_number,
         status: account.status || 'pending',
         is_active: isAccountActive,
+        can_practice: Boolean(account.can_practice),
+        application_status: account.application_status || 'onboarding_incomplete',
+        verification_status: account.verification_status || 'unverified',
+        rci_registered: Boolean(account.rci_registered),
         created_at: account.created_at || new Date().toISOString()
       },
       profile: {

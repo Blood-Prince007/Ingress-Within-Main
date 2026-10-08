@@ -206,7 +206,8 @@ export async function backfillWeeklyReports(userId: string): Promise<BackfillRes
       }
 
       // Also audit monthly assessment report for completed / Day 28+ cycle
-      const isCycleAssessmentDue = isCycleCompleted || currentDay >= 28 || cycle.assessment_available || cycle.assessment_completed;
+      const hasEntries = (maxEntry?.cycle_day || 0) > 0;
+      const isCycleAssessmentDue = (isCycleCompleted || cycle.assessment_completed || (Boolean(cycle.assessment_available) && (maxEntry?.cycle_day || 0) >= 28)) && (hasEntries || isCycleCompleted);
       if (isCycleAssessmentDue) {
         const { data: assessment } = await supabase
           .from('assessments')

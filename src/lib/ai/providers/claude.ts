@@ -13,6 +13,7 @@ import {
   WeeklyReportResponse
 } from '../types';
 import { extractJson } from '../utils';
+import { ApiUsageService } from '../../admin/apiUsageService';
 
 export class ClaudeProvider implements AIProvider {
   private client: Anthropic | null = null;
@@ -305,6 +306,17 @@ export class ClaudeProvider implements AIProvider {
       if (mockRes) {
         this.lastRawResponse = JSON.stringify(mockRes, null, 2);
         this.lastUsage = { input_tokens: 380, output_tokens: 180, total_tokens: 560 };
+        ApiUsageService.recordEvent({
+          provider: 'claude',
+          service: 'ai_inference_mock',
+          endpoint: 'Anthropic.messages.create',
+          statusCode: 200,
+          success: true,
+          latencyMs: 45,
+          model: effectiveModel,
+          inputTokens: 380,
+          outputTokens: 180,
+        });
         return mockRes as T;
       }
       throw new Error(`[ClaudeProvider Mock] Unsupported prompt template.`);
@@ -337,6 +349,7 @@ export class ClaudeProvider implements AIProvider {
     let lastError: any = null;
 
     for (const selectedModel of candidateModels) {
+      const callStart = Date.now();
       console.log(`[ClaudeProvider] Calling Anthropic API (${selectedModel})...`);
 
       try {
@@ -348,6 +361,8 @@ export class ClaudeProvider implements AIProvider {
             { role: 'user', content: userContent }
           ]
         });
+
+        const latencyMs = Date.now() - callStart;
 
         let rawText = '';
         for (const block of response.content) {
@@ -361,15 +376,46 @@ export class ClaudeProvider implements AIProvider {
         }
 
         this.lastRawResponse = rawText;
+        const inTok = response.usage?.input_tokens || 0;
+        const outTok = response.usage?.output_tokens || 0;
+        const cacheTok = (response.usage as any)?.cache_read_input_tokens || 0;
+
         this.lastUsage = {
-          input_tokens: response.usage?.input_tokens || 0,
-          output_tokens: response.usage?.output_tokens || 0,
-          total_tokens: (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0)
+          input_tokens: inTok,
+          output_tokens: outTok,
+          total_tokens: inTok + outTok,
+          cache_tokens: cacheTok,
         };
+
+        ApiUsageService.recordEvent({
+          provider: 'claude',
+          service: 'ai_inference',
+          endpoint: 'Anthropic.messages.create',
+          statusCode: 200,
+          success: true,
+          latencyMs,
+          model: selectedModel,
+          inputTokens: inTok,
+          outputTokens: outTok,
+          cacheTokens: cacheTok,
+        });
 
         return extractJson<T>(rawText);
       } catch (error: any) {
+        const latencyMs = Date.now() - callStart;
         const errorStr = error?.message || String(error);
+
+        ApiUsageService.recordEvent({
+          provider: 'claude',
+          service: 'ai_inference',
+          endpoint: 'Anthropic.messages.create',
+          statusCode: error?.status || 500,
+          success: false,
+          latencyMs,
+          model: selectedModel,
+          errorCategory: error?.status === 429 ? 'RATE_LIMIT' : (error?.status === 404 ? 'NOT_FOUND' : 'API_ERROR'),
+        });
+
         if (error?.status === 404 || errorStr.includes('404') || error?.error?.type === 'not_found_error') {
           console.warn(`[ClaudeProvider] Model ${selectedModel} returned 404 not found. Trying next candidate model...`);
           lastError = error;

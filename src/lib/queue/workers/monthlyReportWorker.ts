@@ -144,12 +144,14 @@ export async function processMonthlyReport(jobData: {
       .eq('status', 'READY')
       .order('week_number', { ascending: true });
 
-    const { data: completedExercises } = await supabase
-      .from('exercises')
-      .select('*')
-      .eq('cycle_id', cycle_id)
-      .eq('status', 'completed')
-      .order('cycle_day', { ascending: true });
+    const { data: cycleObj } = await supabase
+      .from('cycles')
+      .select('cycle_number, start_date, end_date')
+      .eq('id', cycle_id)
+      .maybeSingle();
+
+    const { fetchCompletedExercisesForCycle } = await import('../../reports/cycleReportBuilder');
+    const completedExercises = await fetchCompletedExercisesForCycle(user_id, cycleObj, [cycle_id, String(cycleObj?.cycle_number || 1)]);
 
     const { data: vocabExts } = await supabase
       .from('vocab_extractions')
@@ -218,11 +220,6 @@ export async function processMonthlyReport(jobData: {
       }
     }
 
-    const { data: cycleObj } = await supabase
-      .from('cycles')
-      .select('cycle_number, start_date, end_date')
-      .eq('id', cycle_id)
-      .maybeSingle();
 
     const cycleNum = cycleObj?.cycle_number || 1;
     const startDateFormatted = cycleObj?.start_date
@@ -233,7 +230,8 @@ export async function processMonthlyReport(jobData: {
       : '30 May 2026';
 
     const exercisesCompletedCount = completedExercises?.length || 0;
-    const totalExercisesCount = 3;
+    const baseTotalExercises = (cycleObj?.cycle_number || 1) === 1 ? 4 : 3;
+    const totalExercisesCount = Math.max(baseTotalExercises, exercisesCompletedCount);
 
     let compiledReport: any = null;
 
@@ -372,6 +370,17 @@ Do not include markdown wrappers (like \`\`\`json) in your raw response. Return 
       }
       const aiReport = JSON.parse(cleaned);
 
+      if (
+        !aiReport ||
+        typeof aiReport !== 'object' ||
+        !aiReport.whatThisCycleShowed?.openingObs ||
+        !aiReport.whereLeavesYou?.body ||
+        !Array.isArray(aiReport.patterns) ||
+        aiReport.patterns.length === 0
+      ) {
+        throw new Error('AI report response missing essential sections (whatThisCycleShowed/patterns/whereLeavesYou)');
+      }
+
       // Ensure exactly 4 items in fourThingsWeTracked
       const defaults = [
         { label: "How stuck the patterns were", color: "#E0A898", title: "Pattern persistence", desc: "Analysis of pattern rigidity based on entries." },
@@ -408,7 +417,20 @@ Do not include markdown wrappers (like \`\`\`json) in your raw response. Return 
           mostUsedWordContext: `${topWordFreq} times, always about yourself`,
           exercisesCompletedCount,
           totalExercisesCount,
-          missedExercisesText: exercisesCompletedCount < totalExercisesCount ? `${totalExercisesCount - exercisesCompletedCount} missed` : 'None missed'
+          missedExercisesText: exercisesCompletedCount >= totalExercisesCount ? 'All completed' : (exercisesCompletedCount === 0 ? `${totalExercisesCount} pending` : `${totalExercisesCount - exercisesCompletedCount} pending`)
+        },
+        exercises: (aiReport?.exercises?.items && aiReport.exercises.items.length > 0) ? aiReport.exercises : {
+          collectiveInsight: exercisesCompletedCount > 0
+            ? `Completed ${exercisesCompletedCount} reframing and assessment tasks during Cycle ${cycleNum}.`
+            : `No cognitive reframing exercises completed this cycle.`,
+          items: (completedExercises || []).map((ex: any) => ({
+            id: ex.id,
+            name: ex.name,
+            dayText: ex.dayText,
+            status: ex.status || 'completed',
+            entriesSaid: ex.entriesSaid,
+            exerciseShowed: ex.exerciseShowed
+          }))
         },
         chartData: {
           arcChart: {
@@ -462,6 +484,30 @@ Do not include markdown wrappers (like \`\`\`json) in your raw response. Return 
       const { resolveCycleAndEntries, compileRealCycleReport } = await import('../../reports/cycleReportBuilder');
       const reportContext = await resolveCycleAndEntries(user_id, cycle_id);
       compiledReport = compileRealCycleReport(reportContext);
+    }
+
+    if (
+      !compiledReport?.whatThisCycleShowed?.openingObs ||
+      !compiledReport?.whereLeavesYou?.body ||
+      !Array.isArray(compiledReport?.patterns) ||
+      compiledReport.patterns.length === 0
+    ) {
+      const { resolveCycleAndEntries, compileRealCycleReport } = await import('../../reports/cycleReportBuilder');
+      const reportContext = await resolveCycleAndEntries(user_id, cycle_id);
+      const baseline = compileRealCycleReport(reportContext);
+      compiledReport = {
+        ...baseline,
+        ...(compiledReport || {}),
+        whatThisCycleShowed: compiledReport?.whatThisCycleShowed?.openingObs ? compiledReport.whatThisCycleShowed : baseline.whatThisCycleShowed,
+        whereLeavesYou: compiledReport?.whereLeavesYou?.body ? compiledReport.whereLeavesYou : baseline.whereLeavesYou,
+        patterns: Array.isArray(compiledReport?.patterns) && compiledReport.patterns.length > 0 ? compiledReport.patterns : baseline.patterns,
+        recurringThemes: Array.isArray(compiledReport?.recurringThemes) && compiledReport.recurringThemes.length > 0 ? compiledReport.recurringThemes : baseline.recurringThemes,
+        wordsReachedFor: compiledReport?.wordsReachedFor?.analysisNote ? compiledReport.wordsReachedFor : baseline.wordsReachedFor,
+        fourThingsWeTracked: Array.isArray(compiledReport?.fourThingsWeTracked) && compiledReport.fourThingsWeTracked.length === 4 ? compiledReport.fourThingsWeTracked : baseline.fourThingsWeTracked,
+        saidVsShowed: compiledReport?.saidVsShowed?.analysisNote ? compiledReport.saidVsShowed : baseline.saidVsShowed,
+        exercises: compiledReport?.exercises?.items ? compiledReport.exercises : baseline.exercises,
+        closingQuote: compiledReport?.closingQuote?.quote ? compiledReport.closingQuote : baseline.closingQuote,
+      };
     }
 
     const reportTextPayload = JSON.stringify(compiledReport);

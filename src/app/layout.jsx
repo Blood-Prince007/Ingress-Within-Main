@@ -14,8 +14,7 @@ const instrumentSans = Instrument_Sans({
 
 const lora = Lora({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  style: ['normal', 'italic'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-reflective',
   display: 'swap',
 });
@@ -47,28 +46,27 @@ const bingVerification = process.env.BING_SITE_VERIFICATION || process.env.NEXT_
 export const metadata = {
   metadataBase: new URL('https://ingresswithin.com'),
   alternates: {
-    canonical: 'https://ingresswithin.com',
+    canonical: 'https://ingresswithin.com/',
   },
   verification: {
     ...(googleVerification ? { google: googleVerification } : {}),
     ...(bingVerification ? { other: { 'msvalidate.01': bingVerification } } : {}),
   },
   title: {
-    default: 'Ingress Within | Guided Journaling for Mental Wellness & Self-Understanding',
+    default: 'A Continuous Psychological Journey | Ingress Within',
     template: '%s'
   },
-  description: 'Ingress Within helps you understand yourself through guided journaling, psychology-informed exercises, emotional pattern insights, and structured self-reflection.',
+  description: 'Start on your own, work with a therapist, or move between the two. Ingress Within is one connected space for self-guided work and professional support.',
   keywords: [
     'Ingress Within',
-    'Guided Journaling',
+    'Psychological Journey',
     'Mental Wellness',
+    'Self-Guided Work',
+    'Therapist Support',
     'Self Reflection',
     'Personal Growth',
-    'Psychometric Exercises',
+    'Psychology-Informed Exercises',
     'Emotional Granularity',
-    'Personalized Reports',
-    'Cognitive Behavioral Journal',
-    'Emotional Balance',
     'Pattern Intelligence'
   ],
   authors: [{ name: 'Ingress Within' }],
@@ -86,9 +84,9 @@ export const metadata = {
     },
   },
   openGraph: {
-    title: 'Ingress Within | Guided Journaling for Mental Wellness & Self-Understanding',
-    description: 'Ingress Within helps you understand yourself through guided journaling, psychology-informed exercises, emotional pattern insights, and structured self-reflection.',
-    url: 'https://ingresswithin.com',
+    title: 'A Continuous Psychological Journey | Ingress Within',
+    description: 'Start on your own, work with a therapist, or move between the two. Ingress Within is one connected space for self-guided work and professional support.',
+    url: 'https://ingresswithin.com/',
     siteName: 'Ingress Within',
     locale: 'en_US',
     type: 'website',
@@ -97,14 +95,14 @@ export const metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Ingress Within — Guided Journaling for Mental Wellness & Self-Understanding',
+        alt: 'Ingress Within — A Continuous Psychological Journey',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Ingress Within | Guided Journaling for Mental Wellness & Self-Understanding',
-    description: 'Ingress Within helps you understand yourself through guided journaling, psychology-informed exercises, emotional pattern insights, and structured self-reflection.',
+    title: 'A Continuous Psychological Journey | Ingress Within',
+    description: 'Start on your own, work with a therapist, or move between the two. Ingress Within is one connected space for self-guided work and professional support.',
     images: ['/og-image.png'],
     creator: '@ingresswithin',
   },

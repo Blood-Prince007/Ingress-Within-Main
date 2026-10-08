@@ -15,13 +15,21 @@ export async function POST(request: NextRequest) {
       body = await request.json();
     } catch (e) {}
 
-    // Reject any client attempts to specify price, amount, or currency
-    if (body.amount !== undefined || body.price !== undefined || body.currency !== undefined || body.gst !== undefined) {
+    // Reject any client attempts to specify price, amount, currency, or free bypass
+    if (
+      body.amount !== undefined ||
+      body.price !== undefined ||
+      body.currency !== undefined ||
+      body.gst !== undefined ||
+      body.isFree !== undefined ||
+      body.free !== undefined ||
+      body.complimentary !== undefined
+    ) {
       return NextResponse.json(
         {
           error: {
             code: 'FORBIDDEN_CLIENT_PRICING',
-            message: 'Price, amount, and tax cannot be specified by the client.'
+            message: 'Price, amount, and access entitlement cannot be overridden by the client.'
           }
         },
         { status: 400 }
@@ -31,6 +39,15 @@ export async function POST(request: NextRequest) {
     const sku = body.sku || 'SELF_HELP_MONTHLY';
 
     const result = await BillingService.createSubscription(authUser.userId, sku, authUser.phoneNumber);
+
+    if ((result as any).already_subscribed) {
+      return NextResponse.json({
+        success: true,
+        already_subscribed: true,
+        message: result.message,
+        subscription_id: result.subscription_id
+      });
+    }
 
     console.log(`[Billing API] billing.subscription.created user=${authUser.userId} sub=${result.subscription_id}`);
 

@@ -18,10 +18,13 @@ const FaqPage = lazy(() => import('./views/FaqPage'));
 const ContactPage = lazy(() => import('./views/ContactPage'));
 const AuthPage = lazy(() => import('./views/AuthPage'));
 const TherapistAuthPage = lazy(() => import('./views/TherapistAuthPage'));
+const TherapistPlatformView = lazy(() => import('./views/therapist/TherapistPlatformView'));
+const AdminPlatformView = lazy(() => import('./views/admin/AdminPlatformView'));
 const RazorpayVerificationPage = lazy(() => import('./views/RazorpayVerificationPage'));
 const AiDataPage = lazy(() => import('./views/AiDataPage'));
 const OnboardingPage = lazy(() => import('./views/OnboardingPage'));
 const DashboardPage = lazy(() => import('./views/DashboardPage'));
+const TherapyPage = lazy(() => import('./views/TherapyPage'));
 const SettingsPage = lazy(() => import('./views/SettingsPage'));
 const WritePage = lazy(() => import('./views/WritePage'));
 const GuidedWritePage = lazy(() => import('./views/GuidedWritePage'));
@@ -48,6 +51,8 @@ const FounderTestPage = (process.env.NODE_ENV === 'development' || process.env.N
 
 const PsychoeducationLabPage = lazy(() => import('./views/PsychoeducationLabPage'));
 const NotFoundPage = lazy(() => import('./views/NotFoundPage'));
+const PrivacyPolicyView = lazy(() => import('./views/PrivacyPolicyView'));
+const TermsOfServiceView = lazy(() => import('./views/TermsOfServiceView'));
 
 // Ingress Within V2 Public Website & Design System
 const PublicWebsiteV2 = lazy(() => import('./views/public-v2/PublicWebsiteV2'));
@@ -117,8 +122,43 @@ function DatabaseErrorScreen({ error, onRetry }) {
   );
 }
 
+const isUserAuthRoute = (path, currentRoute) => {
+  const p = (path || '').toLowerCase().replace(/\/+$/, '');
+  const r = (currentRoute || '').toLowerCase().replace(/\/+$/, '');
+
+  if (p.startsWith('/therapist') || p.startsWith('/admin') || r.startsWith('therapist') || r.startsWith('admin')) {
+    return false;
+  }
+
+  const authPaths = [
+    '/auth',
+    '/login',
+    '/signup',
+    '/user/login',
+    '/user/auth',
+    '/user/signup',
+    '/auth/login',
+    '/auth/signup',
+  ];
+
+  const matchesPath = authPaths.some((ap) => p === ap || p.startsWith(ap + '/'));
+  const matchesRoute = r === 'auth' || r === 'login' || r === 'signup' || r === 'user/login' || r === 'user/auth' || r === 'user/signup';
+
+  return matchesPath || matchesRoute;
+};
+
 export default function App({ initialRoute = 'home' }) {
-  const [currentRoute, setCurrentRoute] = useState(initialRoute);
+  const normalizedInitialRoute = (
+    initialRoute === 'login' || 
+    initialRoute === 'signup' || 
+    initialRoute === 'user/login' || 
+    initialRoute === 'user/auth' || 
+    initialRoute === 'user/signup' ||
+    initialRoute === 'auth/login' ||
+    initialRoute === 'auth/signup'
+  ) ? 'auth' : initialRoute;
+
+  const [currentRoute, setCurrentRoute] = useState(normalizedInitialRoute);
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
   const [activePolicyKey, setActivePolicyKey] = useState('privacy');
 
@@ -237,12 +277,12 @@ export default function App({ initialRoute = 'home' }) {
     }
 
     // If there is a transient database/network error on a pointer/protected route, prevent redirect loops to /auth
-    if (authError && (path.startsWith('/onboarding') || path.startsWith('/dashboard') || path.startsWith('/settings') || path.startsWith('/write') || path.startsWith('/reports') || path.startsWith('/patterns') || path.startsWith('/vocab') || path.startsWith('/interventions') || path.startsWith('/support') || path.startsWith('/session') || path.startsWith('/thread'))) {
+    if (authError && (path.startsWith('/onboarding') || path.startsWith('/dashboard') || path.startsWith('/settings') || path.startsWith('/write') || path.startsWith('/reports') || path.startsWith('/patterns') || path.startsWith('/vocab') || path.startsWith('/interventions') || path.startsWith('/support') || path.startsWith('/session') || path.startsWith('/thread') || path.startsWith('/therapy'))) {
       console.warn('[App.jsx] Redirect Engine: Database/Network error detected on protected path. Preventing redirect to /auth. Reason: TRANSIENT_ERROR_SHIELD');
       return;
     }
 
-    const isProtectedRoute = path.startsWith('/onboarding') || path.startsWith('/dashboard') || path.startsWith('/settings') || path.startsWith('/write') || path.startsWith('/reports') || path.startsWith('/patterns') || path.startsWith('/vocab') || path.startsWith('/interventions') || path.startsWith('/support') || path.startsWith('/session') || path.startsWith('/thread') || path.startsWith('/entry') || path.startsWith('/knowledge') || path.startsWith('/kb') || path.startsWith('/modules');
+    const isProtectedRoute = path.startsWith('/onboarding') || path.startsWith('/dashboard') || path.startsWith('/settings') || path.startsWith('/write') || path.startsWith('/reports') || path.startsWith('/patterns') || path.startsWith('/vocab') || path.startsWith('/interventions') || path.startsWith('/support') || path.startsWith('/session') || path.startsWith('/thread') || path.startsWith('/entry') || path.startsWith('/knowledge') || path.startsWith('/kb') || path.startsWith('/modules') || path.startsWith('/therapy');
 
 
     if (isProtectedRoute) {
@@ -279,8 +319,8 @@ export default function App({ initialRoute = 'home' }) {
           window.navigateTo('/onboarding/consent');
         }
       }
-    } else if (path.startsWith('/auth') && user) {
-      console.log('[App.jsx] Redirect Engine: Authenticated user attempting to access /auth. Redirecting forward.');
+    } else if (isUserAuthRoute(path, currentRoute) && user) {
+      console.log('[App.jsx] Redirect Engine: Authenticated user attempting to access auth/login/signup. Redirecting forward.');
       if (profile && !profile.onboarding_completed) {
         if (!profile.consent_completed) {
           console.log('[App.jsx] Redirect Engine: Redirecting to /onboarding/consent. Reason: ONBOARDING_INCOMPLETE');
@@ -294,15 +334,42 @@ export default function App({ initialRoute = 'home' }) {
         } else if (!profile.assessment_completed) {
           console.log('[App.jsx] Redirect Engine: Redirecting to /onboarding/assessment. Reason: ONBOARDING_INCOMPLETE');
           window.navigateTo('/onboarding/assessment');
+        } else {
+          console.log('[App.jsx] Redirect Engine: Redirecting to /onboarding. Reason: ONBOARDING_INCOMPLETE');
+          window.navigateTo('/onboarding');
         }
       } else {
         console.log('[App.jsx] Redirect Engine: Redirecting to /dashboard. Reason: ONBOARDING_ALREADY_COMPLETE');
         window.navigateTo('/dashboard');
       }
     } else {
-      console.log('[App.jsx] Redirect Engine: Public route or unauthenticated user on /auth. No redirect needed.');
+      console.log('[App.jsx] Redirect Engine: Public route or unauthenticated user on auth path. No redirect needed.');
     }
   }, [authChecked, isLoading, user, profile, currentRoute, authError]);
+
+  // Privacy-safe client activity heartbeat (throttled; captures active users in real-time)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sendHeartbeat = () => {
+      try {
+        fetch('/api/telemetry/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user?.id || null,
+            role: user ? (user.role || (user.is_admin ? 'admin' : 'client')) : 'guest',
+            route: window.location.pathname || '/',
+          }),
+        }).catch(() => {});
+      } catch {
+        // fail-safe ignore
+      }
+    };
+
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 120000); // every 2 minutes
+    return () => clearInterval(interval);
+  }, [currentRoute, user?.id]);
 
   const handleAuthSuccess = (authData) => {
     console.log('[App.jsx] handleAuthSuccess received authData:', authData ? { userId: authData.user?.id } : null);
@@ -379,17 +446,33 @@ export default function App({ initialRoute = 'home' }) {
       } else if (path === '/how-to-practice-self-reflection' || path === '/how-to-practice-self-reflection/') {
         setCurrentRoute('how-to-practice-self-reflection');
         window.scrollTo(0, 0);
-      } else if (path.startsWith('/auth') || path.startsWith('/login') || path === '/user/login' || path === '/user/login/' || path === '/user/auth' || path === '/user/auth/') {
+      } else if (
+        path.startsWith('/auth') || 
+        path.startsWith('/login') || 
+        path.startsWith('/signup') || 
+        path === '/user/login' || 
+        path === '/user/login/' || 
+        path === '/user/auth' || 
+        path === '/user/auth/' ||
+        path === '/user/signup' ||
+        path === '/user/signup/'
+      ) {
         setCurrentRoute('auth');
         window.scrollTo(0, 0);
       } else if (path === '/therapist' || path === '/therapist/' || path === '/therapist/auth' || path === '/therapist/auth/' || path === '/therapist/login' || path === '/therapist/login/' || path.startsWith('/therapist/')) {
-        setCurrentRoute('therapist/auth');
+        setCurrentRoute(path.replace(/^\/|\/$/g, '') || 'therapist/auth');
+        window.scrollTo(0, 0);
+      } else if (path === '/admin' || path === '/admin/' || (path.startsWith('/admin') && !path.startsWith('/admin/psychoeducation-lab'))) {
+        setCurrentRoute(path.replace(/^\/|\/$/g, '') || 'admin');
         window.scrollTo(0, 0);
       } else if (path.startsWith('/onboarding')) {
         setCurrentRoute('onboarding');
         window.scrollTo(0, 0);
       } else if (path === '/dashboard' || path === '/dashboard/') {
         setCurrentRoute('dashboard');
+        window.scrollTo(0, 0);
+      } else if (path === '/therapy' || path === '/therapy/') {
+        setCurrentRoute('therapy');
         window.scrollTo(0, 0);
       } else if (path === '/settings' || path === '/settings/') {
         setCurrentRoute('settings');
@@ -501,6 +584,12 @@ export default function App({ initialRoute = 'home' }) {
       } else if (path === '/v2/how-to-practice-self-reflection' || path === '/v2/how-to-practice-self-reflection/') {
         setCurrentRoute('v2-how-to-practice-self-reflection');
         window.scrollTo(0, 0);
+      } else if (path === '/privacy-policy' || path === '/privacy-policy/' || path === '/privacy' || path === '/privacy/') {
+        setCurrentRoute('privacy-policy');
+        window.scrollTo(0, 0);
+      } else if (path === '/terms' || path === '/terms/' || path === '/terms-of-service' || path === '/terms-of-service/') {
+        setCurrentRoute('terms');
+        window.scrollTo(0, 0);
       } else if (path === '/' || path === '') {
         setCurrentRoute('home');
         // Handle section scroll deep link (e.g. /#auth -> scroll to auth section)
@@ -525,10 +614,16 @@ export default function App({ initialRoute = 'home' }) {
     const handleGlobalClick = (e) => {
       const anchor = e.target.closest('a');
       if (!anchor) return;
-
       const href = anchor.getAttribute('href');
-      // If it's a local path or hash link
-      if (href && (href.startsWith('/') || href.startsWith('#')) && !href.startsWith('//') && !anchor.target) {
+      if (!href) return;
+
+      // If it's a local path or hash link (excluding backend API endpoints)
+      if (
+        (href.startsWith('/') || href.startsWith('#')) &&
+        !href.startsWith('//') &&
+        !href.startsWith('/api/') &&
+        !anchor.target
+      ) {
         // Handle in-page hash scroll for Home route
         if (href.startsWith('#') && window.location.pathname === '/') {
           const anchorId = href.replace(/^#\/?/, '');
@@ -563,9 +658,14 @@ export default function App({ initialRoute = 'home' }) {
     const path = typeof window !== 'undefined' 
       ? window.location.pathname 
       : (currentRoute.startsWith('/') ? currentRoute : `/${currentRoute}`);
-    const isProtectedRoute = path.startsWith('/onboarding') || path.startsWith('/dashboard') || path.startsWith('/settings') || path.startsWith('/write') || path.startsWith('/reports') || path.startsWith('/patterns') || path.startsWith('/vocab') || path.startsWith('/support') || path.startsWith('/session') || path.startsWith('/thread') || path.startsWith('/entry') || path.startsWith('/knowledge') || path.startsWith('/kb') || path.startsWith('/modules');
+    const isProtectedRoute = path.startsWith('/onboarding') || path.startsWith('/dashboard') || path.startsWith('/settings') || path.startsWith('/write') || path.startsWith('/reports') || path.startsWith('/patterns') || path.startsWith('/vocab') || path.startsWith('/support') || path.startsWith('/session') || path.startsWith('/thread') || path.startsWith('/entry') || path.startsWith('/knowledge') || path.startsWith('/kb') || path.startsWith('/modules') || path.startsWith('/therapy');
+    const isAuthRoute = isUserAuthRoute(path, currentRoute);
 
     if (isProtectedRoute && (!authChecked || isLoading)) {
+      return <LoadingScreen />;
+    }
+
+    if (isAuthRoute && (!authChecked || isLoading || user)) {
       return <LoadingScreen />;
     }
 
@@ -576,29 +676,35 @@ export default function App({ initialRoute = 'home' }) {
     switch (currentRoute) {
 
       case 'home':
-        return <PublicWebsiteV2 initialTab="home" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="home" onOpenPolicy={handleOpenPolicy} />;
       case 'solution':
       case 'what-it-is':
-        return <PublicWebsiteV2 initialTab="solution" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="solution" onOpenPolicy={handleOpenPolicy} />;
       case 'how':
       case 'how-it-works':
-        return <PublicWebsiteV2 initialTab="how" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="how" onOpenPolicy={handleOpenPolicy} />;
       case 'about':
-        return <PublicWebsiteV2 initialTab="about" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="about" onOpenPolicy={handleOpenPolicy} />;
       case 'pricing':
-        return <PublicWebsiteV2 initialTab="pricing" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="pricing" onOpenPolicy={handleOpenPolicy} />;
       case 'ai':
       case 'ai-data':
-        return <PublicWebsiteV2 initialTab="ai" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="ai" onOpenPolicy={handleOpenPolicy} />;
       case 'evidence':
-        return <PublicWebsiteV2 initialTab="evidence" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="evidence" onOpenPolicy={handleOpenPolicy} />;
       case 'policies':
-        return <PublicWebsiteV2 initialTab="policies" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="policies" onOpenPolicy={handleOpenPolicy} />;
+      case 'privacy-policy':
+      case 'privacy':
+        return <PrivacyPolicyView />;
+      case 'terms':
+      case 'terms-of-service':
+        return <TermsOfServiceView />;
       case 'start':
       case 'contact':
-        return <PublicWebsiteV2 initialTab="start" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="start" onOpenPolicy={handleOpenPolicy} />;
       case 'crisis':
-        return <PublicWebsiteV2 initialTab="crisis" onOpenPolicy={handleOpenPolicy} />;
+        return <PublicWebsiteV2 user={user} profile={profile} initialTab="crisis" onOpenPolicy={handleOpenPolicy} />;
       case 'faq':
         return <FaqPage onOpenPolicy={handleOpenPolicy} />;
       case 'guided-journaling':
@@ -616,11 +722,49 @@ export default function App({ initialRoute = 'home' }) {
       case 'how-to-practice-self-reflection':
         return <HowToPracticeSelfReflectionPage onOpenPolicy={handleOpenPolicy} />;
       case 'auth':
-        return <AuthPage onOpenPolicy={handleOpenPolicy} onAuthSuccess={handleAuthSuccess} />;
+      case 'login':
+      case 'signup':
+      case 'user/login':
+      case 'user/auth':
+      case 'user/signup':
+      case 'auth/login':
+      case 'auth/signup':
+        if (user) {
+          return <LoadingScreen />;
+        }
+        return <AuthPage user={user} profile={profile} onOpenPolicy={handleOpenPolicy} onAuthSuccess={handleAuthSuccess} />;
       case 'therapist/auth':
       case 'therapist/login':
       case 'therapist':
-        return <TherapistAuthPage onAuthSuccess={(data) => {}} />;
+      case 'therapist/onboarding':
+      case 'therapist/application':
+      case 'therapist/dashboard':
+      case 'therapist/today':
+      case 'therapist/requests':
+      case 'therapist/clients':
+      case 'therapist/calendar':
+      case 'therapist/sessions':
+      case 'therapist/earnings':
+      case 'therapist/profile':
+        return <TherapistPlatformView />;
+      case 'admin':
+      case 'admin/login':
+      case 'admin/overview':
+      case 'admin/analytics':
+      case 'admin/users':
+      case 'admin/therapists':
+      case 'admin/applications':
+      case 'admin/clients':
+      case 'admin/sessions':
+      case 'admin/payments':
+      case 'admin/payouts':
+      case 'admin/api-usage':
+      case 'admin/health':
+      case 'admin/webhooks':
+      case 'admin/emails':
+      case 'admin/audit-logs':
+      case 'admin/security':
+        return <AdminPlatformView />;
       case 'razorpay-verification':
         return <RazorpayVerificationPage />;
       case 'onboarding':
@@ -634,6 +778,8 @@ export default function App({ initialRoute = 'home' }) {
         );
       case 'dashboard':
         return <DashboardPage user={user} profile={profile} onSignOut={handleSignOut} />;
+      case 'therapy':
+        return <TherapyPage user={user} profile={profile} onSignOut={handleSignOut} />;
       case 'settings':
         return <SettingsPage user={user} profile={profile} onSignOut={handleSignOut} />;
       case 'write':
@@ -719,6 +865,9 @@ export default function App({ initialRoute = 'home' }) {
         return <NotFoundPage user={user} profile={profile} />;
       case 'home':
       default:
+        if (currentRoute && currentRoute.startsWith('therapist')) {
+          return <TherapistPlatformView />;
+        }
         return <PublicWebsiteV2 initialTab="home" onOpenPolicy={handleOpenPolicy} />;
     }
   };

@@ -159,7 +159,7 @@ async function runTestSuite() {
   try {
     await AccessControlService.requireSelfHelpWriteAccess(testDormantUserId);
   } catch (err: any) {
-    if (err instanceof AccessDeniedError && err.code === 'SUBSCRIPTION_REQUIRED' && err.statusCode === 403) {
+    if (err instanceof AccessDeniedError && (err.code === 'SUBSCRIPTION_REQUIRED' || err.code === 'SELF_HELP_SUBSCRIPTION_REQUIRED') && err.statusCode === 403) {
       writeBlocked = true;
     }
   }
@@ -169,7 +169,7 @@ async function runTestSuite() {
   try {
     await AccessControlService.requireExerciseProgressAccess(testDormantUserId, 'exercise_1');
   } catch (err: any) {
-    if (err instanceof AccessDeniedError && err.code === 'SUBSCRIPTION_REQUIRED' && err.statusCode === 403) {
+    if (err instanceof AccessDeniedError && (err.code === 'SUBSCRIPTION_REQUIRED' || err.code === 'SELF_HELP_SUBSCRIPTION_REQUIRED') && err.statusCode === 403) {
       exerciseBlocked = true;
     }
   }
@@ -179,7 +179,7 @@ async function runTestSuite() {
   try {
     await AccessControlService.requireReportGenerateAccess(testDormantUserId);
   } catch (err: any) {
-    if (err instanceof AccessDeniedError && err.code === 'SUBSCRIPTION_REQUIRED' && err.statusCode === 403) {
+    if (err instanceof AccessDeniedError && (err.code === 'SUBSCRIPTION_REQUIRED' || err.code === 'SELF_HELP_SUBSCRIPTION_REQUIRED') && err.statusCode === 403) {
       reportBlocked = true;
     }
   }

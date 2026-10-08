@@ -69,12 +69,22 @@ export default function NarrativeArcFlow({ instance, instanceId, onClose }) {
     return (
       <div className="fixed inset-0 z-50 bg-[#FAF9F6] flex flex-col justify-between p-6 md:p-12 font-sans overflow-y-auto">
         <div className="max-w-[540px] mx-auto w-full pt-8 space-y-6">
-          <button
-            onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-700 transition-colors rounded-full hover:bg-stone-100"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img 
+                src="/logo-mark-transparent.png" 
+                alt="Ingress Within" 
+                className="w-5 h-5 object-contain" 
+              />
+              <span className="font-serif font-semibold text-xs text-[#1E2A2E]">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 text-stone-400 hover:text-stone-700 transition-colors rounded-full hover:bg-stone-100"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          </div>
 
           <div className="space-y-3 pt-4">
             <span className="text-xs uppercase tracking-widest text-[#4A6A64] font-semibold">

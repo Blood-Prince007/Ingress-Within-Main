@@ -101,13 +101,20 @@ export default function CostBenefitAuditResultView({ instanceId, onClose }) {
       <div className="max-w-[640px] mx-auto w-full space-y-8 pb-16">
         {/* Top Header */}
         <div className="flex items-center justify-between pt-2">
-          <button
-            onClick={onClose}
-            className="p-2 text-[#4A6A64] hover:text-[#1E2A2E] transition-colors rounded-full hover:bg-black/5"
-            aria-label="Back to exercises"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="p-2 text-[#4A6A64] hover:text-[#1E2A2E] transition-colors rounded-full hover:bg-black/5"
+              aria-label="Back to exercises"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <img 
+              src="/logo-mark-transparent.png" 
+              alt="Ingress Within" 
+              className="w-6 h-6 object-contain flex-shrink-0" 
+            />
+          </div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#8DBFB4]/20 text-[#1E2A2E] text-xs font-semibold">
             <CheckCircle2 className="w-3.5 h-3.5 text-[#2E7A70]" />
             Completed

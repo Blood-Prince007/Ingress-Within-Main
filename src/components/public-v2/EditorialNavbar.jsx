@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
  * When scrolling over dark navy/blue bands ([data-dark-section="true"] or footer),
  * it turns into a rich frosty deep blue with glowing legible light accents.
  */
-export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
+export default function EditorialNavbar({ user, profile, activeTab = 'home', onSelectTab }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOnBlue, setIsOnBlue] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -83,10 +83,17 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
   };
 
   const handleAuthClick = (path, e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setMobileMenuOpen(false);
+    const destination = user
+      ? (profile && !profile.onboarding_completed ? '/onboarding' : '/dashboard')
+      : (path || '/login');
     if (typeof window !== 'undefined') {
-      window.location.href = path;
+      if (window.navigateTo) {
+        window.navigateTo(destination);
+      } else {
+        window.location.href = destination;
+      }
     }
   };
 
@@ -195,43 +202,60 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
 
         {/* Desktop CTA / Login Buttons */}
         <div className="hidden sm:flex items-center gap-4">
-          <a
-            href="/login"
-            onClick={(e) => handleAuthClick('/login', e)}
-            className={`text-xs sm:text-[13px] font-medium px-3 py-2 transition-colors duration-300 cursor-pointer ${
-              isOnBlue
-                ? 'text-[#C2D1DE] hover:text-white'
-                : 'text-[#4F635E] hover:text-[#162723]'
-            }`}
-          >
-            Log in
-          </a>
-          <a
-            href="/login"
-            onClick={(e) => handleAuthClick('/login', e)}
-            className={`inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-medium px-5 py-2.5 rounded-full shadow-sm hover:shadow transition-all duration-300 hover:scale-[1.02] cursor-pointer ${
-              isOnBlue
-                ? 'bg-white hover:bg-[#FAF7F2] text-[#011627]'
-                : 'bg-[#162723] hover:bg-[#203631] text-[#FAF7F2]'
-            }`}
-          >
-            <span>Get Started</span>
-            <span className="text-[14px]">→</span>
-          </a>
+          {user ? (
+            <a
+              href="/dashboard"
+              onClick={(e) => handleAuthClick('/dashboard', e)}
+              className={`inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-medium px-5 py-2.5 rounded-full shadow-sm hover:shadow transition-all duration-300 hover:scale-[1.02] cursor-pointer ${
+                isOnBlue
+                  ? 'bg-white hover:bg-[#FAF7F2] text-[#011627]'
+                  : 'bg-[#162723] hover:bg-[#203631] text-[#FAF7F2]'
+              }`}
+            >
+              <span>Dashboard</span>
+              <span className="text-[14px]">→</span>
+            </a>
+          ) : (
+            <>
+              <a
+                href="/login"
+                onClick={(e) => handleAuthClick('/login', e)}
+                className={`text-xs sm:text-[13px] font-medium px-3 py-2 transition-colors duration-300 cursor-pointer ${
+                  isOnBlue
+                    ? 'text-[#C2D1DE] hover:text-white'
+                    : 'text-[#4F635E] hover:text-[#162723]'
+                }`}
+              >
+                Log in
+              </a>
+              <a
+                href="/login"
+                onClick={(e) => handleAuthClick('/login', e)}
+                className={`inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-medium px-5 py-2.5 rounded-full shadow-sm hover:shadow transition-all duration-300 hover:scale-[1.02] cursor-pointer ${
+                  isOnBlue
+                    ? 'bg-white hover:bg-[#FAF7F2] text-[#011627]'
+                    : 'bg-[#162723] hover:bg-[#203631] text-[#FAF7F2]'
+                }`}
+              >
+                <span>Get Started</span>
+                <span className="text-[14px]">→</span>
+              </a>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Toggle Button */}
         <div className="flex items-center gap-2 sm:hidden">
           <a
-            href="/login"
-            onClick={(e) => handleAuthClick('/login', e)}
+            href={user ? '/dashboard' : '/login'}
+            onClick={(e) => handleAuthClick(user ? '/dashboard' : '/login', e)}
             className={`inline-flex items-center text-xs font-semibold px-3.5 py-1.5 rounded-full transition-colors duration-300 ${
               isOnBlue
                 ? 'bg-white text-[#011627]'
                 : 'bg-[#162723] text-white'
             }`}
           >
-            Log in
+            {user ? 'Dashboard' : 'Log in'}
           </a>
           <button
             type="button"
@@ -322,13 +346,13 @@ export default function EditorialNavbar({ activeTab = 'home', onSelectTab }) {
           </div>
           <div className={`pt-4 border-t flex flex-col gap-2 ${isOnBlue ? 'border-white/10' : 'border-[#E7DECF]'}`}>
             <a
-              href="/login"
-              onClick={(e) => handleAuthClick('/login', e)}
+              href={user ? '/dashboard' : '/login'}
+              onClick={(e) => handleAuthClick(user ? '/dashboard' : '/login', e)}
               className={`w-full text-center py-2.5 text-xs font-semibold rounded-full ${
                 isOnBlue ? 'bg-white text-[#011627]' : 'text-white bg-[#162723]'
               }`}
             >
-              Get Started →
+              {user ? 'Go to Dashboard →' : 'Get Started →'}
             </a>
           </div>
         </div>

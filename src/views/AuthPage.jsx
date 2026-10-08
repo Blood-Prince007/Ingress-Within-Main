@@ -9,10 +9,24 @@ const quotes = [
   "A single entry is a moment. A thread is a picture."
 ];
 
-export default function AuthPage({ onOpenPolicy, onAuthSuccess }) {
+export default function AuthPage({ user, profile: propProfile, onOpenPolicy, onAuthSuccess }) {
+  // If user is already authenticated, immediately route to destination without showing login form
+  useEffect(() => {
+    if (user) {
+      const destination = (propProfile && !propProfile.onboarding_completed) ? '/onboarding' : '/dashboard';
+      if (typeof window !== 'undefined') {
+        if (window.navigateTo) {
+          window.navigateTo(destination);
+        } else {
+          window.location.href = destination;
+        }
+      }
+    }
+  }, [user, propProfile]);
+
   // Navigation views: 'entry', 'otp', 'success'
   const [view, setView] = useState('entry');
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(propProfile || null);
   
   // Phone and OTP input values
   const [mobileNumber, setMobileNumber] = useState('');

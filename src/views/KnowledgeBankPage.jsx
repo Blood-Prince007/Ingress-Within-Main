@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import DashboardNavbar from '../components/DashboardNavbar';
+import SearchInput from '../components/search/SearchInput';
+import HighlightText from '../components/search/HighlightText';
 import './KnowledgeBankPage.css';
 import { FAMILIES, DICTIONARY_EMOTIONS, SURFACE, PATTERNS, SITUATIONS, WORD_INDEX } from '../lib/knowledge/dictionaryData';
 
@@ -384,48 +386,6 @@ export default function KnowledgeBankPage({ user, profile: initialProfile, onSig
       return cRefs.some(cr => neighbors.has(cr.toLowerCase()));
     });
   }, [selectedCard, cards, relationships]);
-
-  // Compile timeline progression events
-  const timelineEvents = useMemo(() => {
-    if (!snapshots || snapshots.length === 0) return [];
-    const events = [];
-
-    snapshots.forEach(snap => {
-      const weekNum = snap.week_number;
-      const dateStr = new Date(snap.generated_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-      const snapData = snap.snapshot || {};
-
-      if (snapData.vocabulary_model?.supporting_vocabulary?.length > 0) {
-        events.push({
-          week: weekNum,
-          date: dateStr,
-          type: 'vocabulary',
-          title: 'Lexicon Expansion',
-          desc: `Your emotional grounding lexicon grew to include: ${snapData.vocabulary_model.supporting_vocabulary.slice(0, 3).join(', ')}.`
-        });
-      }
-      if (snapData.pattern_model?.referenced_nodes?.length > 0) {
-        events.push({
-          week: weekNum,
-          date: dateStr,
-          type: 'pattern',
-          title: 'Active Patterns Tracked',
-          desc: `Mined core patterns in writing: ${snapData.pattern_model.referenced_nodes.slice(0, 2).join(' & ')}.`
-        });
-      }
-      if (snapData.growth_model?.summary) {
-        events.push({
-          week: weekNum,
-          date: dateStr,
-          type: 'growth',
-          title: 'Growth Indicators Logged',
-          desc: snapData.growth_model.summary
-        });
-      }
-    });
-
-    return events.reverse();
-  }, [snapshots]);
 
   // Log visited concept in database trail
   const logVisit = async (name) => {
@@ -977,18 +937,37 @@ export default function KnowledgeBankPage({ user, profile: initialProfile, onSig
                   <div className="eyebrow" style={{ marginBottom: '10px' }}>
                     <TiIcon name="mood-search" /> Or find a starting word
                   </div>
-                  <form onSubmit={handleSearch} className="mood-search-row">
-                    <input 
-                      type="text" 
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className="mood-search-input" 
-                      placeholder='Type your own word — e.g. "burnt out", "on edge", "numb"…' 
-                    />
-                    <button type="submit" className="mood-search-btn" aria-label="Search">
+                  <div className="mood-search-row" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <SearchInput
+                        id="kb-mood-search"
+                        placeholder='Type your own word — e.g. "burnt out", "on edge", "numb"…'
+                        ariaLabel="Search emotions and moods"
+                        value={searchQuery}
+                        onChange={(val) => setSearchQuery(val)}
+                        onSearch={(val) => {
+                          if (val && val.trim().length >= 2) {
+                            handleSearch(null, val);
+                          }
+                        }}
+                        onClear={() => {
+                          setSearchQuery('');
+                          setSearchResults(null);
+                          setExploreScreen('home');
+                        }}
+                        isLoading={searchLoading}
+                      />
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => handleSearch(null, searchQuery)} 
+                      className="mood-search-btn" 
+                      aria-label="Submit search"
+                      style={{ cursor: 'pointer' }}
+                    >
                       {searchLoading ? <TiIcon name="refresh" className="animate-spin" /> : <TiIcon name="arrow-right" />}
                     </button>
-                  </form>
+                  </div>
 
                   {/* Mood Split Grid */}
                   <div className="mood-split">
@@ -1103,16 +1082,22 @@ export default function KnowledgeBankPage({ user, profile: initialProfile, onSig
                             </div>
                             <div className="match-body">
                               <div className="match-name">
-                                {name}
+                                <HighlightText text={name} query={searchQuery} />
                                 {isVisited && <span className="visited-badge">visited</span>}
                               </div>
                               {scenario ? (
                                 <>
-                                  <div className="match-scenario-tag">{scenario.s}</div>
-                                  <div className="match-plain">{scenario.f}</div>
+                                  <div className="match-scenario-tag">
+                                    <HighlightText text={scenario.s} query={searchQuery} />
+                                  </div>
+                                  <div className="match-plain">
+                                    <HighlightText text={scenario.f} query={searchQuery} />
+                                  </div>
                                 </>
                               ) : (
-                                <div className="match-plain">{emo.aka}</div>
+                                <div className="match-plain">
+                                  <HighlightText text={emo.aka} query={searchQuery} />
+                                </div>
                               )}
                             </div>
                             <TiIcon name="chevron-right" className="match-chev" />
@@ -1892,24 +1877,6 @@ export default function KnowledgeBankPage({ user, profile: initialProfile, onSig
                 </div>
               </div>
 
-              {/* Knowledge Progression Timeline */}
-              <div className="trail-section-label">Knowledge Timeline</div>
-              {timelineEvents.length === 0 ? (
-                <div className="your-words-empty">Timeline will populate as weekly summaries are generated.</div>
-              ) : (
-                <div className="timeline-card">
-                  <div className="timeline-track">
-                    {timelineEvents.map((ev, i) => (
-                      <div key={i} className="timeline-node">
-                        <div className="timeline-marker" />
-                        <span className="timeline-meta">Week {ev.week} · {ev.date}</span>
-                        <h4 className="timeline-title">{ev.title}</h4>
-                        <p className="timeline-desc">{ev.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </main>

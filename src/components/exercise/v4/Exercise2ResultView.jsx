@@ -74,10 +74,12 @@ export default function Exercise2ResultView({ instanceId, result: propResult, on
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#1E2A2E]/10 pb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-[18px] h-[18px] rounded-full border-[1.5px] border-[#8DBFB4] flex items-center justify-center">
-              <div className="w-[5px] h-[5px] rounded-full bg-[#8DBFB4]" />
-            </div>
+          <div className="flex items-center gap-3">
+            <img 
+              src="/logo-mark-transparent.png" 
+              alt="Ingress Within" 
+              className="w-7 h-7 object-contain flex-shrink-0" 
+            />
             <div>
               <h1 className="font-serif italic text-lg text-[#1E2A2E]">Exercise 2: Inkblot Projective Analysis</h1>
               <div className="text-xs text-[#8DBFB4] font-medium flex items-center gap-1">

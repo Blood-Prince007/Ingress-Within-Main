@@ -12,6 +12,13 @@ export async function GET(request: NextRequest) {
         phone_number: account.phone_number,
         status: account.status,
         is_active: account.is_active,
+        can_practice: account.can_practice,
+        application_status: account.application_status,
+        verification_status: account.verification_status,
+        rci_registered: account.rci_registered,
+        rci_number: account.rci_number,
+        commission_rate: account.commission_rate,
+        per_session_fee: account.per_session_fee,
         created_at: account.created_at,
         updated_at: account.updated_at
       },

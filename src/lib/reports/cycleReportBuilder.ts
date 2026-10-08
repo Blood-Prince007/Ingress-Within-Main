@@ -14,6 +14,331 @@ export interface CycleReportContext {
   dt_score: number;
 }
 
+export interface CompletedCycleExercise {
+  id: string;
+  instance_id?: string;
+  name: string;
+  dayText: string;
+  status: string;
+  entriesSaid: string;
+  exerciseShowed: string;
+  completed_at?: string;
+}
+
+/**
+ * Robustly fetches all completed and attempted exercises for a given cycle.
+ * Queries canonical exercise_instances and exercise_results tables (Exercise System V4).
+ * Auto-detects and heals completed baseline assessments (exercise_0) for Cycle 1.
+ */
+export async function fetchCompletedExercisesForCycle(
+  userId: string,
+  cycleObj: any,
+  cycleIdsToMatch: string[] = []
+): Promise<CompletedCycleExercise[]> {
+  const cycleNum = cycleObj?.cycle_number || cycleObj?.number || 1;
+  const targetCycleIds = Array.from(new Set([
+    cycleObj?.id,
+    String(cycleNum),
+    ...(cycleIdsToMatch || [])
+  ].filter(Boolean)));
+
+  // 1. Fetch exercise instances for user
+  const { data: rawInstances } = await supabase
+    .from('exercise_instances')
+    .select('*')
+    .eq('user_id', userId)
+    .in('status', ['completed', 'submitted', 'processing', 'in_progress', 'started']);
+
+  const instances: any[] = rawInstances ? [...rawInstances] : [];
+
+  // Self-heal / verify baseline assessment (exercise_0) for Cycle 1
+  if (cycleNum === 1) {
+    const hasEx0 = instances.some(i => i.exercise_id === 'exercise_0');
+    if (!hasEx0) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('assessment_completed')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('ocean_openness, ocean_conscientiousness, ocean_extraversion, ocean_agreeableness, ocean_neuroticism')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (profile?.assessment_completed || (userRow?.ocean_openness !== null && userRow?.ocean_openness !== undefined)) {
+          const nowIso = new Date().toISOString();
+          const { data: newEx0 } = await supabase
+            .from('exercise_instances')
+            .upsert({
+              user_id: userId,
+              exercise_id: 'exercise_0',
+              cycle_id: cycleObj?.id || null,
+              status: 'completed',
+              unlock_time: cycleObj?.start_date || nowIso,
+              started_at: cycleObj?.start_date || nowIso,
+              submitted_at: cycleObj?.start_date || nowIso,
+              completed_at: cycleObj?.start_date || nowIso,
+              updated_at: nowIso
+            }, { onConflict: 'user_id,exercise_id' })
+            .select()
+            .maybeSingle();
+
+          if (newEx0) {
+            instances.push(newEx0);
+          }
+        }
+      } catch (ex0Err: any) {
+        console.warn('[cycleReportBuilder] Baseline assessment self-heal check warning:', ex0Err?.message);
+      }
+    }
+  }
+
+  // 2. Fetch definitions and results to enrich exercise details
+  const { data: rawDefinitions } = await supabase
+    .from('exercise_definitions')
+    .select('*');
+  const defsMap = new Map((rawDefinitions || []).map((d: any) => [d.id, d]));
+
+  const { data: rawResults } = await supabase
+    .from('exercise_results')
+    .select('*')
+    .eq('user_id', userId);
+  const resultsByInstance = new Map((rawResults || []).map((r: any) => [r.instance_id, r]));
+  const resultsByExerciseId = new Map((rawResults || []).map((r: any) => [r.exercise_id, r]));
+
+  // Also check legacy exercises table for backward compatibility if any exist
+  const { data: legacyExercises } = await supabase
+    .from('exercises')
+    .select('*')
+    .eq('user_id', userId)
+    .in('cycle_id', targetCycleIds)
+    .eq('status', 'completed');
+
+  // Metadata dictionary for canonical presentation
+  const CATALOG_META: Record<string, { title: string; cycle: number; day: number; defaultSaid: string; defaultShowed: string }> = {
+    exercise_0: {
+      title: 'Core Values & Baseline Assessment',
+      cycle: 1,
+      day: 1,
+      defaultSaid: 'Baseline psychometric values recorded during onboarding.',
+      defaultShowed: 'Psychometric baseline established across OCEAN dimensions.'
+    },
+    ocean_baseline: {
+      title: 'Core Values & Baseline Assessment',
+      cycle: 1,
+      day: 1,
+      defaultSaid: 'Baseline psychometric values recorded during onboarding.',
+      defaultShowed: 'Psychometric baseline established across OCEAN dimensions.'
+    },
+    exercise_1: {
+      title: 'Emotional Vocabulary Wheel',
+      cycle: 1,
+      day: 10,
+      defaultSaid: 'Word association latency and emotional identification in journal.',
+      defaultShowed: 'Mapped cognitive-emotional divergence and register nuance.'
+    },
+    word_association: {
+      title: 'Emotional Vocabulary Wheel',
+      cycle: 1,
+      day: 10,
+      defaultSaid: 'Word association latency and emotional identification in journal.',
+      defaultShowed: 'Mapped cognitive-emotional divergence and register nuance.'
+    },
+    exercise_2: {
+      title: 'Inkblot Projective Reframing',
+      cycle: 1,
+      day: 16,
+      defaultSaid: 'Spontaneous perceptual responses to ambiguous stimuli.',
+      defaultShowed: 'Revealed cognitive projection style and perceptual defense stance.'
+    },
+    inkblot_projective: {
+      title: 'Inkblot Projective Reframing',
+      cycle: 1,
+      day: 16,
+      defaultSaid: 'Spontaneous perceptual responses to ambiguous stimuli.',
+      defaultShowed: 'Revealed cognitive projection style and perceptual defense stance.'
+    },
+    exercise_3: {
+      title: 'Self-Perception Check',
+      cycle: 1,
+      day: 24,
+      defaultSaid: 'Self-described traits versus perceived external demands.',
+      defaultShowed: 'Mapped self-ideal congruence and identity alignment.'
+    },
+    self_perception: {
+      title: 'Self-Perception Check',
+      cycle: 1,
+      day: 24,
+      defaultSaid: 'Self-described traits versus perceived external demands.',
+      defaultShowed: 'Mapped self-ideal congruence and identity alignment.'
+    },
+    exercise_4: {
+      title: 'Core Values Card Sort',
+      cycle: 2,
+      day: 5,
+      defaultSaid: 'Hierarchical ranking of non-negotiable principles.',
+      defaultShowed: 'Identified authentic value drivers and decision anchors.'
+    },
+    core_values: {
+      title: 'Core Values Card Sort',
+      cycle: 2,
+      day: 5,
+      defaultSaid: 'Hierarchical ranking of non-negotiable principles.',
+      defaultShowed: 'Identified authentic value drivers and decision anchors.'
+    },
+    core_values_card_sort: {
+      title: 'Core Values Card Sort',
+      cycle: 2,
+      day: 5,
+      defaultSaid: 'Hierarchical ranking of non-negotiable principles.',
+      defaultShowed: 'Identified authentic value drivers and decision anchors.'
+    },
+    exercise_5: {
+      title: 'Relationship Map',
+      cycle: 2,
+      day: 15,
+      defaultSaid: 'Interpersonal boundary and energy expenditure notes.',
+      defaultShowed: 'Mapped relational support dynamics and boundary frictions.'
+    },
+    relationship_map: {
+      title: 'Relationship Map',
+      cycle: 2,
+      day: 15,
+      defaultSaid: 'Interpersonal boundary and energy expenditure notes.',
+      defaultShowed: 'Mapped relational support dynamics and boundary frictions.'
+    },
+    exercise_6: {
+      title: 'Body Signal Inventory',
+      cycle: 2,
+      day: 25,
+      defaultSaid: 'Somatic stress signals logged during intense moments.',
+      defaultShowed: 'Correlated physiological indicators with cognitive triggers.'
+    },
+    body_signal_inventory: {
+      title: 'Body Signal Inventory',
+      cycle: 2,
+      day: 25,
+      defaultSaid: 'Somatic stress signals logged during intense moments.',
+      defaultShowed: 'Correlated physiological indicators with cognitive triggers.'
+    }
+  };
+
+  const completedList: CompletedCycleExercise[] = [];
+  const processedExerciseIds = new Set<string>();
+
+  // Filter instances belonging to this cycle
+  for (const inst of instances) {
+    const exId = inst.exercise_id;
+    if (!exId || processedExerciseIds.has(exId)) continue;
+
+    const def = defsMap.get(exId);
+    const meta = CATALOG_META[exId];
+
+    // Determine cycle matching:
+    let matchesCycle = false;
+    if (inst.cycle_id && targetCycleIds.includes(inst.cycle_id)) {
+      matchesCycle = true;
+    } else if (meta?.cycle === cycleNum) {
+      matchesCycle = true;
+    } else if (def?.cycle === cycleNum) {
+      matchesCycle = true;
+    } else if (cycleNum === 1 && ['exercise_0', 'exercise_1', 'exercise_2', 'exercise_3', 'ocean_baseline', 'word_association', 'inkblot_projective', 'self_perception'].includes(exId)) {
+      matchesCycle = true;
+    } else if (cycleNum === 2 && ['exercise_4', 'exercise_5', 'exercise_6', 'core_values', 'relationship_map', 'body_signal_inventory'].includes(exId)) {
+      matchesCycle = true;
+    } else if (cycleObj?.start_date && inst.completed_at) {
+      const compDate = new Date(inst.completed_at);
+      const sDate = new Date(cycleObj.start_date);
+      const eDate = cycleObj.end_date ? new Date(cycleObj.end_date) : null;
+      if (compDate >= sDate && (!eDate || compDate <= eDate)) {
+        matchesCycle = true;
+      }
+    }
+
+    if (!matchesCycle) continue;
+
+    // Check status: 'completed', 'submitted', 'processing', or has result
+    const result = resultsByInstance.get(inst.id) || resultsByExerciseId.get(exId);
+    const isCompleted = ['completed', 'submitted', 'processing'].includes(inst.status) || Boolean(result);
+
+    if (!isCompleted) continue;
+
+    processedExerciseIds.add(exId);
+
+    // Build title and day
+    const title = meta?.title || def?.display_configuration?.title || def?.title || exId;
+    const unlockDay = meta?.day || def?.unlock_rules?.day || 1;
+    const dayText = `Day ${unlockDay}`;
+
+    // Extract what entries said & what exercise showed
+    let exerciseShowed = meta?.defaultShowed || 'Pattern analysis completed.';
+    let entriesSaid = meta?.defaultSaid || 'Entries reflected corresponding cognitive themes.';
+
+    if (result) {
+      if (result.summary) {
+        exerciseShowed = result.summary;
+      } else if (result.analysis?.summaryText) {
+        exerciseShowed = result.analysis.summaryText;
+      } else if (result.analysis?.reflection_text) {
+        exerciseShowed = result.analysis.reflection_text;
+      } else if (result.analysis?.scores) {
+        const sc = result.analysis.scores;
+        exerciseShowed = `O: ${sc.openness}%, C: ${sc.conscientiousness}%, E: ${sc.extraversion}%, A: ${sc.agreeableness}%, N: ${sc.neuroticism}%`;
+      } else if (Array.isArray(result.insights) && result.insights.length > 0) {
+        exerciseShowed = result.insights.slice(0, 3).join('. ');
+      }
+
+      if (result.analysis?.entriesSaid) {
+        entriesSaid = result.analysis.entriesSaid;
+      } else if (result.analysis?.raw_responses && typeof result.analysis.raw_responses === 'string') {
+        entriesSaid = result.analysis.raw_responses;
+      }
+    }
+
+    completedList.push({
+      id: exId,
+      instance_id: inst.id,
+      name: title,
+      dayText,
+      status: inst.status === 'processing' ? 'processing' : 'completed',
+      entriesSaid,
+      exerciseShowed,
+      completed_at: inst.completed_at || inst.updated_at
+    });
+  }
+
+  // Also include any legacy completed exercises if present and not already represented
+  if (legacyExercises && legacyExercises.length > 0) {
+    for (const leg of legacyExercises) {
+      const legName = leg.stressor_type || 'Reframing Task';
+      const alreadyIncluded = completedList.some(c => c.name.toLowerCase() === legName.toLowerCase());
+      if (!alreadyIncluded) {
+        completedList.push({
+          id: leg.id || `leg_${Date.now()}`,
+          name: legName,
+          dayText: `Day ${leg.cycle_day || 1}`,
+          status: leg.status || 'completed',
+          entriesSaid: leg.reactive_thought || 'Reflective journaling entry recorded.',
+          exerciseShowed: leg.reframed_thought || 'Reframed cognitive reaction.',
+          completed_at: leg.completed_at
+        });
+      }
+    }
+  }
+
+  // Sort by day number
+  completedList.sort((a, b) => {
+    const dayA = parseInt(a.dayText.replace(/\D/g, '') || '0', 10);
+    const dayB = parseInt(b.dayText.replace(/\D/g, '') || '0', 10);
+    return dayA - dayB;
+  });
+
+  return completedList;
+}
+
 /**
  * Robustly resolves cycle metadata and all associated entries for a given user and cycle ID or number.
  */
@@ -144,12 +469,7 @@ export async function resolveCycleAndEntries(userId: string, cycleIdOrNumber: st
   });
 
   // 5. Fetch completed exercises and vocab extractions for this cycle
-  const { data: completedExercises } = await supabase
-    .from('exercises')
-    .select('*')
-    .eq('user_id', userId)
-    .in('cycle_id', cycleIdsToMatch)
-    .eq('status', 'completed');
+  const completedExercises = await fetchCompletedExercisesForCycle(userId, cycleObj, cycleIdsToMatch);
 
   const { data: vocabExts } = await supabase
     .from('vocab_extractions')
@@ -177,14 +497,14 @@ export async function resolveCycleAndEntries(userId: string, cycleIdOrNumber: st
 export function compileRealCycleReport(ctx: CycleReportContext): any {
   const { cycleObj, validEntries, completedExercises, vocabExts, candidateQuotes, ei_avg, pr_avg, sa_avg, dt_score } = ctx;
 
-  const cycleNum = cycleObj.cycle_number || cycleObj.number || 1;
-  const totalDays = cycleObj.total_days || 30;
+  const cycleNum = cycleObj?.cycle_number || cycleObj?.number || 1;
+  const totalDays = cycleObj?.total_days || 30;
   const entriesCount = validEntries.length;
 
-  const startDateFormatted = cycleObj.start_date
+  const startDateFormatted = cycleObj?.start_date
     ? new Date(cycleObj.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
     : 'Day 1';
-  const endDateFormatted = cycleObj.end_date
+  const endDateFormatted = cycleObj?.end_date
     ? new Date(cycleObj.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : 'Day 30';
 
@@ -224,7 +544,12 @@ export function compileRealCycleReport(ctx: CycleReportContext): any {
   const secondaryQuote = candidateQuotes[1] || candidateQuotes[0] || (entriesCount > 0 ? "Focusing on what I can influence." : "Consistent daily practice supports emotional grounding.");
 
   const exercisesCompletedCount = completedExercises.length;
-  const totalExercisesCount = 4;
+  const totalExercisesCount = cycleNum === 1 ? 4 : (cycleNum === 2 ? 3 : 3);
+  const effectiveTotalExercises = Math.max(totalExercisesCount, exercisesCompletedCount);
+  const missedCount = Math.max(0, effectiveTotalExercises - exercisesCompletedCount);
+  const missedExercisesText = exercisesCompletedCount >= effectiveTotalExercises
+    ? 'All completed'
+    : (exercisesCompletedCount === 0 ? `${effectiveTotalExercises} pending` : `${missedCount} pending`);
 
   return {
     cycleNumber: cycleNum,
@@ -238,8 +563,8 @@ export function compileRealCycleReport(ctx: CycleReportContext): any {
       mostUsedWordFreq,
       mostUsedWordContext: `${mostUsedWordFreq} occurrences in Cycle ${cycleNum} entries`,
       exercisesCompletedCount,
-      totalExercisesCount,
-      missedExercisesText: exercisesCompletedCount >= totalExercisesCount ? 'All completed' : `${totalExercisesCount - exercisesCompletedCount} pending`
+      totalExercisesCount: effectiveTotalExercises,
+      missedExercisesText
     },
     chartData: {
       arcChart: {
@@ -304,13 +629,16 @@ export function compileRealCycleReport(ctx: CycleReportContext): any {
       analysisNote: `Daily reflections in Cycle ${cycleNum} demonstrate alignment between written focus and psychometric trends.`
     },
     exercises: {
-      collectiveInsight: `Completed ${exercisesCompletedCount} reframing tasks during Cycle ${cycleNum}.`,
+      collectiveInsight: exercisesCompletedCount > 0
+        ? `Completed ${exercisesCompletedCount} reframing and assessment tasks during Cycle ${cycleNum}.`
+        : `No cognitive reframing exercises completed this cycle.`,
       items: completedExercises.map(ex => ({
-        name: ex.stressor_type || "Reframing Task",
-        dayText: `Day ${ex.cycle_day || 1}`,
+        id: ex.id,
+        name: ex.name,
+        dayText: ex.dayText,
         status: ex.status || "completed",
-        entriesSaid: ex.reactive_thought || "",
-        exerciseShowed: ex.reframed_thought || ""
+        entriesSaid: ex.entriesSaid,
+        exerciseShowed: ex.exerciseShowed
       }))
     },
     whereLeavesYou: {

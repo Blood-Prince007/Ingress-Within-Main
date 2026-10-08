@@ -34,7 +34,7 @@ export default function StructuredData() {
     'url': baseUrl,
     'applicationCategory': 'LifestyleApplication',
     'operatingSystem': 'All',
-    'description': 'Ingress Within helps you understand yourself through guided journaling, psychology-informed exercises, emotional pattern insights, and structured self-reflection.'
+    'description': 'Start on your own, work with a therapist, or move between the two. Ingress Within is one connected space for self-guided work and professional support.'
   };
 
   return (

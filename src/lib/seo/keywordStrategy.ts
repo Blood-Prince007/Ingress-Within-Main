@@ -85,9 +85,9 @@ export const KEYWORD_CLUSTERS: Record<string, KeywordCluster> = {
  */
 export const ROUTE_INTENT_MAP: Record<string, { title: string; description: string; clusterId: string }> = {
   home: {
-    title: 'Guided Journaling for Self-Understanding | Ingress Within',
-    description: 'Ingress Within helps you understand yourself through guided journaling, psychology-informed exercises, emotional pattern insights, and structured self-reflection.',
-    clusterId: 'guidedJournaling'
+    title: 'A Continuous Psychological Journey | Ingress Within',
+    description: 'Start on your own, work with a therapist, or move between the two. Ingress Within is one connected space for self-guided work and professional support.',
+    clusterId: 'psychologyInformed'
   },
   guidedJournaling: {
     title: 'What Is Guided Journaling? | Ingress Within',

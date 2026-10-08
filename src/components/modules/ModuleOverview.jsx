@@ -14,13 +14,25 @@ export default function ModuleOverview({ catalog, content, playerState, onStartI
     <div className="space-y-6">
       {/* Topbar */}
       <div className="flex items-center justify-between gap-3 pb-4 border-b border-primary/10">
-        <button
-          onClick={() => window.navigateTo ? window.navigateTo('/dashboard') : window.location.href = '/dashboard'}
-          className="text-xs font-semibold text-mid hover:text-accent flex items-center gap-1.5 transition-colors cursor-pointer"
-        >
-          <ArrowLeft size={13} />
-          <span>Back to Dashboard</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.navigateTo ? window.navigateTo('/dashboard') : window.location.href = '/dashboard'}
+            className="text-xs font-semibold text-mid hover:text-accent flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <ArrowLeft size={13} />
+            <span>Back to Dashboard</span>
+          </button>
+          <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-primary/10">
+            <img 
+              src="/logo-mark-transparent.png" 
+              alt="Ingress Within" 
+              className="w-5 h-5 object-contain" 
+            />
+            <span className="font-serif text-xs text-primary font-medium">
+              ingress <em className="text-accent not-italic font-semibold">within</em>
+            </span>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] uppercase tracking-wider text-accent border border-accent/25 px-3 py-1 rounded-full bg-accent/5 font-sans font-semibold">
             {price}

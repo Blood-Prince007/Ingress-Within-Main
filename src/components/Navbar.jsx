@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 
-export default function Navbar() {
+export default function Navbar({ user, profile }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activePath, setActivePath] = useState('/');
 
@@ -18,10 +18,13 @@ export default function Navbar() {
 
   const handleStartWriting = (e) => {
     e.preventDefault();
+    const destination = user
+      ? (profile && !profile.onboarding_completed ? '/onboarding' : '/dashboard')
+      : '/auth';
     if (window.navigateTo) {
-      window.navigateTo('/auth');
+      window.navigateTo(destination);
     } else {
-      window.location.pathname = '/auth';
+      window.location.pathname = destination;
     }
     setMobileMenuOpen(false);
   };
@@ -71,11 +74,11 @@ export default function Navbar() {
         {/* <li><a href="/contact" className={getLinkClass('/contact')}>Contact</a></li> */}
         <li>
           <a
-            href="/auth"
+            href={user ? '/dashboard' : '/auth'}
             onClick={handleStartWriting}
             className="nav-cta bg-accent text-white hover:bg-[#654652] hover:translate-y-[-1px] px-[22px] py-[9px] rounded font-medium tracking-[0.03em] transition-all no-underline shadow-xs"
           >
-            Start writing
+            {user ? 'Dashboard' : 'Start writing'}
           </a>
         </li>
       </ul>
@@ -99,11 +102,11 @@ export default function Navbar() {
           <a href="/ai-data" onClick={() => setMobileMenuOpen(false)} className={getMobileLinkClass('/ai-data')}>AI &amp; Data</a>
           <a href="/contact" onClick={() => setMobileMenuOpen(false)} className={getMobileLinkClass('/contact')}>Contact</a>
           <a
-            href="/auth"
+            href={user ? '/dashboard' : '/auth'}
             onClick={handleStartWriting}
             className="bg-primary text-mint-grey py-3 rounded text-center font-medium tracking-wide mt-2"
           >
-            Start writing
+            {user ? 'Dashboard' : 'Start writing'}
           </a>
         </div>
       )}

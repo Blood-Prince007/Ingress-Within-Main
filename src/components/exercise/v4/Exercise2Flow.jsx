@@ -260,10 +260,12 @@ export default function Exercise2Flow({ instance, initialResponses = [], onClose
       <div className="fixed inset-0 z-50 bg-[#ECEFF0] text-[#1E2A2E] flex flex-col justify-between p-6">
         <div className="max-w-[480px] w-full mx-auto flex-1 flex flex-col items-center justify-center">
           <div className="flex items-center gap-2 mb-8">
-            <div className="w-[18px] h-[18px] rounded-full border-[1.5px] border-[#8DBFB4] flex items-center justify-center">
-              <div className="w-[5px] h-[5px] rounded-full bg-[#8DBFB4]" />
-            </div>
-            <span className="font-sans font-semibold text-sm">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
+            <img 
+              src="/logo-mark-transparent.png" 
+              alt="Ingress Within" 
+              className="w-5 h-5 object-contain" 
+            />
+            <span className="font-serif font-semibold text-xs text-[#1E2A2E]">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
           </div>
           <p className="font-serif italic text-base text-[#4A6A64] text-center animate-pulse px-6">
             Preparing your inkblot images...
@@ -279,10 +281,12 @@ export default function Exercise2Flow({ instance, initialResponses = [], onClose
       <div className="fixed inset-0 z-50 bg-[#ECEFF0] text-[#1E2A2E] flex flex-col justify-between p-6 font-sans overflow-y-auto">
         <div className="max-w-[480px] w-full mx-auto flex-1 flex flex-col justify-center py-8">
           <div className="flex items-center gap-2 mb-8">
-            <div className="w-[18px] h-[18px] rounded-full border-[1.5px] border-[#8DBFB4] flex items-center justify-center">
-              <div className="w-[5px] h-[5px] rounded-full bg-[#8DBFB4]" />
-            </div>
-            <span className="font-sans font-semibold text-sm">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
+            <img 
+              src="/logo-mark-transparent.png" 
+              alt="Ingress Within" 
+              className="w-5 h-5 object-contain" 
+            />
+            <span className="font-serif font-semibold text-xs text-[#1E2A2E]">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
           </div>
 
           <h1 className="font-serif text-2xl sm:text-3xl text-[#1E2A2E] mb-6 font-normal">
@@ -317,10 +321,12 @@ export default function Exercise2Flow({ instance, initialResponses = [], onClose
     return (
       <div className="fixed inset-0 z-50 bg-[#ECEFF0] text-[#1E2A2E] flex flex-col items-center justify-center p-6 text-center">
         <div className="flex items-center gap-2 mb-8">
-          <div className="w-[18px] h-[18px] rounded-full border-[1.5px] border-[#8DBFB4] flex items-center justify-center">
-            <div className="w-[5px] h-[5px] rounded-full bg-[#8DBFB4]" />
-          </div>
-          <span className="font-sans font-semibold text-sm">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
+          <img 
+            src="/logo-mark-transparent.png" 
+            alt="Ingress Within" 
+            className="w-5 h-5 object-contain" 
+          />
+          <span className="font-serif font-semibold text-xs text-[#1E2A2E]">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
         </div>
         <h2 className="font-serif italic text-xl sm:text-2xl text-[#4A6A64] animate-pulse mb-2">
           Analyzing your responses...
@@ -338,10 +344,12 @@ export default function Exercise2Flow({ instance, initialResponses = [], onClose
       <div className="fixed inset-0 z-50 bg-[#ECEFF0] text-[#1E2A2E] flex flex-col justify-between p-6 font-sans">
         <div className="max-w-[480px] w-full mx-auto flex-1 flex flex-col items-center justify-center text-center space-y-4">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-[18px] h-[18px] rounded-full border-[1.5px] border-[#E0A898] flex items-center justify-center">
-              <div className="w-[5px] h-[5px] rounded-full bg-[#E0A898]" />
-            </div>
-            <span className="font-sans font-semibold text-sm">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
+            <img 
+              src="/logo-mark-transparent.png" 
+              alt="Ingress Within" 
+              className="w-5 h-5 object-contain" 
+            />
+            <span className="font-serif font-semibold text-xs text-[#1E2A2E]">ingress <em className="text-[#8DBFB4] not-italic">within</em></span>
           </div>
 
           <h2 className="font-serif italic text-xl text-[#1E2A2E]">

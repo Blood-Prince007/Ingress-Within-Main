@@ -477,6 +477,13 @@ export async function POST(request: NextRequest) {
         void checkWeeklyAndMonthlySummary(authUser.userId, cycleId, cycleDay).catch(err => {
           console.error('[Session Complete] Weekly/monthly check error:', err);
         });
+
+        // Synchronize cycle entries count in database
+        if (cycleId) {
+          import('../../../lib/cycles/cycleSync')
+            .then(m => m.CycleSync.syncCycleEntriesCount(cycleId, authUser.userId))
+            .catch(err => console.error('[Session Complete] CycleSync error:', err));
+        }
       }
 
       return NextResponse.json({
@@ -493,12 +500,12 @@ export async function POST(request: NextRequest) {
     );
 
   } catch (error: any) {
-    if (error instanceof AccessDeniedError || error.code === 'SUBSCRIPTION_REQUIRED') {
+    if (error instanceof AccessDeniedError || error.code === 'SUBSCRIPTION_REQUIRED' || error.code === 'SELF_HELP_SUBSCRIPTION_REQUIRED') {
       return NextResponse.json(
         {
           error: {
-            code: error.code || 'SUBSCRIPTION_REQUIRED',
-            message: error.message || 'An active subscription is required to perform daily sessions.',
+            code: 'SELF_HELP_SUBSCRIPTION_REQUIRED',
+            message: error.message || 'An active self-help subscription is required to perform daily sessions.',
             state: error.state || 'DORMANT'
           }
         },

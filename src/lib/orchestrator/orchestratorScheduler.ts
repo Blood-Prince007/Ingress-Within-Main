@@ -270,7 +270,9 @@ export class OrchestratorScheduler {
         const calculatedDay = Math.max(1, Math.floor((Date.now() - startDateMs) / (1000 * 60 * 60 * 24)) + 1);
         const cycleDay = Math.max(maxEntry?.cycle_day || 0, calculatedDay);
 
-        const isAssessmentDue = cycleDay >= 28 || activeCycle.status === 'COMPLETED' || activeCycle.status === 'completed' || activeCycle.assessment_available || activeCycle.assessment_completed;
+        const isCycleCompleted = activeCycle.status === 'COMPLETED' || activeCycle.status === 'completed' || activeCycle.assessment_completed;
+        const isDay28Eligible = Boolean(activeCycle.assessment_available) && (maxEntry?.cycle_day || 0) >= 28;
+        const isAssessmentDue = isCycleCompleted || isDay28Eligible;
 
         if (isAssessmentDue) {
           // Check if assessment already exists

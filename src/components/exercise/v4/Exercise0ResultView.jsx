@@ -84,9 +84,11 @@ export default function Exercise0ResultView({ instanceId, onClose }) {
         {/* Top Header Bar */}
         <header className="flex items-center justify-between gap-4 pb-4 border-b border-black/5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
-              <Brain className="w-5 h-5" />
-            </div>
+            <img 
+              src="/logo-mark-transparent.png" 
+              alt="Ingress Within" 
+              className="w-9 h-9 object-contain flex-shrink-0" 
+            />
             <div>
               <h2 className="font-serif italic text-xl text-primary">Baseline Assessment Analysis</h2>
               <p className="text-xs text-mid flex items-center gap-1.5 mt-0.5">

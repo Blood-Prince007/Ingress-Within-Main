@@ -85,6 +85,11 @@ export default function UnfinishedConversationResultView({ instanceId, onClose }
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
+          <img 
+            src="/logo-mark-transparent.png" 
+            alt="Ingress Within" 
+            className="w-5 h-5 object-contain flex-shrink-0" 
+          />
           <span className="text-xs font-medium text-[#7A8E85] uppercase tracking-wider">
             Unfinished Conversation Analysis
           </span>

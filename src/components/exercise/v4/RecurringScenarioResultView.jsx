@@ -22,9 +22,16 @@ export default function RecurringScenarioResultView({ result, onClose }) {
     <div className="max-w-3xl mx-auto p-6 bg-stone-900 text-stone-100 rounded-xl shadow-2xl border border-stone-800 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-stone-800 pb-4">
-        <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Month 10 • Day 304 Exercise Result</span>
-          <h2 className="text-2xl font-serif font-bold text-stone-100 mt-1">Recurring Scenario Analysis</h2>
+        <div className="flex items-center gap-3">
+          <img 
+            src="/logo-mark-light.png" 
+            alt="Ingress Within" 
+            className="w-8 h-8 object-contain flex-shrink-0" 
+          />
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Month 10 • Day 304 Exercise Result</span>
+            <h2 className="text-2xl font-serif font-bold text-stone-100 mt-1">Recurring Scenario Analysis</h2>
+          </div>
         </div>
         {onClose && (
           <button

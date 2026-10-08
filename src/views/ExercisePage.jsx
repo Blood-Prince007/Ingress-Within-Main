@@ -733,12 +733,21 @@ export default function ExercisePage({ user, profile, onSignOut }) {
               <ArrowLeft className="w-3.5 h-3.5" />
               Back to Dashboard
             </button>
-            <h1 className="font-serif text-2xl md:text-3xl text-primary font-normal">
-              Exercise Hub
-            </h1>
-            <p className="text-sm text-mid mt-1">
-              Complete baseline assessments and unlock targeted psychological reframing tools.
-            </p>
+            <div className="flex items-center gap-3">
+              <img 
+                src="/logo-mark-transparent.png" 
+                alt="Ingress Within" 
+                className="w-8 h-8 object-contain flex-shrink-0" 
+              />
+              <div>
+                <h1 className="font-serif text-2xl md:text-3xl text-primary font-normal">
+                  Exercise Hub
+                </h1>
+                <p className="text-sm text-mid mt-0.5">
+                  Complete baseline assessments and unlock targeted psychological reframing tools.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

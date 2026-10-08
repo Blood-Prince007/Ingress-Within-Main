@@ -93,6 +93,11 @@ export default function YearEndPortraitResultView({ instanceId, onClose }) {
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
+          <img 
+            src="/logo-mark-transparent.png" 
+            alt="Ingress Within" 
+            className="w-7 h-7 object-contain flex-shrink-0" 
+          />
           <div>
             <span className="text-xs font-semibold text-[#7A8E85] uppercase tracking-wider block">
               Month 12 · Universal Anchor

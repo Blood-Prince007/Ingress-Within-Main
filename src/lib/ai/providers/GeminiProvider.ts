@@ -12,6 +12,7 @@ import {
   WeeklyReportResponse
 } from '../types';
 import { extractJson } from '../utils';
+import { ApiUsageService } from '../../admin/apiUsageService';
 
 export class GeminiProvider implements AIProvider {
   private apiKey: string;
@@ -293,6 +294,17 @@ export class GeminiProvider implements AIProvider {
       if (mockRes) {
         this.lastRawResponse = JSON.stringify(mockRes, null, 2);
         this.lastUsage = { prompt_tokens: 270, completion_tokens: 130, total_tokens: 400 };
+        ApiUsageService.recordEvent({
+          provider: 'gemini',
+          service: 'ai_inference_mock',
+          endpoint: 'generativelanguage.googleapis.com',
+          statusCode: 200,
+          success: true,
+          latencyMs: 35,
+          model: this.model,
+          inputTokens: 270,
+          outputTokens: 130,
+        });
         return mockRes as T;
       }
       throw new Error(`[GeminiProvider Mock] Unsupported prompt template.`);
@@ -302,6 +314,7 @@ export class GeminiProvider implements AIProvider {
     let delayMs = 15000;
 
     for (let attempt = 1; attempt <= attempts; attempt++) {
+      const callStart = Date.now();
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -342,8 +355,21 @@ export class GeminiProvider implements AIProvider {
           clearTimeout(timeoutId);
         }
 
+        const latencyMs = Date.now() - callStart;
+
         if (response.status === 429) {
           const errText = await response.text();
+          ApiUsageService.recordEvent({
+            provider: 'gemini',
+            service: 'ai_inference',
+            endpoint: 'generativelanguage.googleapis.com',
+            statusCode: 429,
+            success: false,
+            latencyMs,
+            model: this.model,
+            errorCategory: 'RATE_LIMIT',
+          });
+
           console.warn(`[GeminiProvider] 429 Detail: ${errText}`);
           if (attempt === attempts) {
             throw new Error(`Gemini API returned HTTP error 429 (Rate Limit Exceeded) after all attempts: ${errText}`);
@@ -356,6 +382,16 @@ export class GeminiProvider implements AIProvider {
 
         if (!response.ok) {
           const errText = await response.text();
+          ApiUsageService.recordEvent({
+            provider: 'gemini',
+            service: 'ai_inference',
+            endpoint: 'generativelanguage.googleapis.com',
+            statusCode: response.status,
+            success: false,
+            latencyMs,
+            model: this.model,
+            errorCategory: 'API_ERROR',
+          });
           throw new Error(`Gemini API returned HTTP error ${response.status}: ${errText}`);
         }
 
@@ -366,23 +402,43 @@ export class GeminiProvider implements AIProvider {
         }
 
         this.lastRawResponse = rawText;
+        const inTok = payload.usageMetadata?.promptTokenCount || 0;
+        const outTok = payload.usageMetadata?.candidatesTokenCount || 0;
+
         this.lastUsage = payload.usageMetadata
           ? {
-              prompt_tokens: payload.usageMetadata.promptTokenCount,
-              completion_tokens: payload.usageMetadata.candidatesTokenCount,
-              total_tokens: payload.usageMetadata.totalTokenCount
+              prompt_tokens: inTok,
+              completion_tokens: outTok,
+              total_tokens: payload.usageMetadata.totalTokenCount || (inTok + outTok)
             }
           : null;
 
+        ApiUsageService.recordEvent({
+          provider: 'gemini',
+          service: 'ai_inference',
+          endpoint: 'generativelanguage.googleapis.com',
+          statusCode: 200,
+          success: true,
+          latencyMs,
+          model: this.model,
+          inputTokens: inTok,
+          outputTokens: outTok,
+        });
+
         return extractJson<T>(rawText);
-      } catch (error) {
-        if (attempt === attempts) {
-          console.error('[GeminiProvider] API request failed after all attempts:', error);
-          throw error;
-        }
-        console.warn(`[GeminiProvider] Request failed on attempt ${attempt}. Retrying in ${delayMs}ms... Error: ${error instanceof Error ? error.message : String(error)}`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-        delayMs *= 2.0;
+      } catch (error: any) {
+        const latencyMs = Date.now() - callStart;
+        ApiUsageService.recordEvent({
+          provider: 'gemini',
+          service: 'ai_inference',
+          endpoint: 'generativelanguage.googleapis.com',
+          statusCode: 500,
+          success: false,
+          latencyMs,
+          model: this.model,
+          errorCategory: error.name === 'AbortError' ? 'TIMEOUT' : 'NETWORK_ERROR',
+        });
+        throw error;
       }
     }
     throw new Error('GeminiProvider callGemini completed loop without returning or throwing.');

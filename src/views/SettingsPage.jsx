@@ -825,7 +825,7 @@ export default function SettingsPage({ user, profile, onSignOut }) {
               <span className="card-lbl text-[10px] tracking-widest uppercase font-bold text-mid">Current plan</span>
               <span className="badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold text-[#1A5040] bg-[#8DBFB4]/15 border border-[#8DBFB4]/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#1A5040]" />
-                {sub.cancel_at_period_end ? 'Cancelling at Period End' : 'Active'}
+                {sub.is_complimentary ? 'Complimentary Access' : sub.cancel_at_period_end ? 'Cancelling at Period End' : 'Active'}
               </span>
             </div>
             <div className="sub-area px-5 py-5 border-b border-[#1E2A2E]/8 space-y-3">
@@ -833,7 +833,9 @@ export default function SettingsPage({ user, profile, onSignOut }) {
                 {sub.plan_name || 'Ingress Within Self-Work'}
               </div>
               <div className="text-[13px] text-mid">
-                {sub.current_period_end ? (
+                {sub.is_complimentary ? (
+                  'Permanent complimentary access · Internal account (₹0 / No payment required)'
+                ) : sub.current_period_end ? (
                   sub.cancel_at_period_end ? (
                     `Access remains active until ${new Date(sub.current_period_end).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}. You will not be charged again.`
                   ) : (
@@ -843,7 +845,7 @@ export default function SettingsPage({ user, profile, onSignOut }) {
                   '₹499.00/month (GST inclusive · Taxable ₹422.88 + 18% GST ₹76.12)'
                 )}
               </div>
-              {billingData?.payment_methods?.[0] && (
+              {billingData?.payment_methods?.[0] && !sub.is_complimentary && (
                 <div className="pt-2">
                   <div className="pm-chip inline-block px-3 py-1.5 rounded-lg bg-[#1E2A2E]/5 border border-[#1E2A2E]/10 text-xs font-medium text-primary">
                     {billingData.payment_methods[0].type.toUpperCase()} · {billingData.payment_methods[0].masked_account}
@@ -870,6 +872,13 @@ export default function SettingsPage({ user, profile, onSignOut }) {
                 >
                   {isCheckingOut ? (checkoutMsg || 'Connecting…') : 'Resubscribe (₹499/mo)'}
                 </button>
+              </div>
+            ) : sub.is_complimentary ? (
+              <div className="row flex justify-between items-center px-5 py-3.5 gap-4">
+                <div className="row-l">
+                  <div className="row-lbl font-semibold text-[13.5px]">Complimentary access</div>
+                  <div className="row-sub text-mid text-[11.5px] mt-0.5 leading-relaxed">This internal account has permanent complimentary access with no renewal charges.</div>
+                </div>
               </div>
             ) : (
               <div className="row flex justify-between items-center px-5 py-3.5 gap-4">
